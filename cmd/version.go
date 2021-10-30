@@ -1,69 +1,59 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
-	"flag"
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
-	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/helm"
+	"github.com/spf13/pflag"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
+	bbk8sutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
 )
 
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print version of BigBang Cluster and BigBang CLI.",
-	Long:  `Print version of BigBang Cluster and BigBang CLI.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		clientVersionOnly, _ := cmd.Flags().GetBool("client")
-		fmt.Println("bbctl version 0.0.1")
-		if !clientVersionOnly {
-			bbChartVersion()
-		}
+var (
+	versionUse     = `version`
+	versionShort   = `Print BigBang Deployment and BigBang CLI version.`
+	versionLong    = `Print BigBang Deployment and BigBang CLI version.`
+	versionExample = `
+		# Print version  
+		bbctl version`
+)
 
+// versionCmd represents the version subcommand
+var versionCmd = &cobra.Command{
+	Use:     versionUse,
+	Short:   versionShort,
+	Long:    versionLong,
+	Example: versionExample,
+	Run: func(cmd *cobra.Command, args []string) {
+		flags := cmd.Flags()
+		cmdutil.CheckErr(bbVersion(flags, bbk8sutil.GetIOStream()))
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(versionCmd)
+	bbctlCmd.AddCommand(versionCmd)
 	versionCmd.Flags().BoolP("client", "c", false, "Print bbctl version only")
 }
 
-func bbChartVersion() {
-	var kubeconfig *string
+// query the cluster using helm module to get information on bigbang release
+func bbVersion(flags *pflag.FlagSet, streams genericclioptions.IOStreams) error {
 
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	clientVersionOnly, _ := flags.GetBool("client")
+	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", BigBangCliVersion)
+
+	if clientVersionOnly {
+		return nil
 	}
 
-	flag.Parse()
-
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	config, err := bbk8sutil.BuildKubeConfigFromFlags(flags)
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 
 	opt := &helm.Options{
-		Namespace:        "bigbang",
+		Namespace:        BigBangNamespace,
 		RepositoryCache:  "/tmp/.helmcache",
 		RepositoryConfig: "/tmp/.helmrepo",
 		Debug:            true,
@@ -73,12 +63,19 @@ func bbChartVersion() {
 
 	helmClient, err := helm.New(opt)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	release, _ := helmClient.GetRelease("bigbang")
-	fmt.Printf("%s version %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+	release, err := helmClient.GetRelease(BigBangHelmReleaseName)
+	if err != nil {
+		return fmt.Errorf("error getting helm information for release %s in namespace %s: %s",
+			BigBangHelmReleaseName, BigBangNamespace, err.Error())
+	}
 
-	releases, _ := helmClient.GetList()
-	_ = releases
+	fmt.Fprintf(streams.Out, "%s release version %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+
+	// use helm list to get detailed information on charts deployed by bigbang
+	// releases, _ := helmClient.GetList()
+
+	return nil
 }
