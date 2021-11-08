@@ -1,6 +1,7 @@
-package helmclient
+package helm
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -12,6 +13,13 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
+
+// Client holds the method signatures for a Helm client.
+type Client interface {
+	GetRelease(name string) (*release.Release, error)
+	GetList() ([]*release.Release, error)
+	GetValues(name string, allValues bool) (interface{}, error)
+}
 
 var storage = repo.File{}
 
@@ -120,4 +128,52 @@ func (c *HelmClient) getList() ([]*release.Release, error) {
 	getListClient := action.NewList(c.ActionConfig)
 
 	return getListClient.Run()
+}
+
+// getValues returns release values
+func (c *HelmClient) GetValues(name string, allValues bool) (interface{}, error) {
+	return c.getValues(name, allValues)
+}
+
+// getValues returns release values
+func (c *HelmClient) getValues(name string, allValues bool) (map[string]interface{}, error) {
+	getValuesClient := action.NewGetValues(c.ActionConfig)
+	getValuesClient.AllValues = allValues
+	return getValuesClient.Run(name)
+}
+
+// NewFakeClient returns a new Fale Helm client with the provided options
+func NewFakeClient(releases []*release.Release) (Client, error) {
+	return &FakeClient{releases: releases}, nil
+}
+
+type FakeClient struct {
+	releases []*release.Release
+}
+
+// GetRelease returns a release specified by name.
+func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
+	for _, r := range c.releases {
+		if r.Name == name {
+			return r, nil
+		}
+	}
+
+	return nil, fmt.Errorf("release %s not found", name)
+}
+
+// getList returns a list of releases
+func (c *FakeClient) GetList() ([]*release.Release, error) {
+	return c.releases, nil
+}
+
+// getList returns a list of releases
+func (c *FakeClient) GetValues(name string, allValues bool) (interface{}, error) {
+	for _, r := range c.releases {
+		if r.Name == name {
+			return r.Chart.Values, nil
+		}
+	}
+
+	return nil, fmt.Errorf("release %s not found", name)
 }

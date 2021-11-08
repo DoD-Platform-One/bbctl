@@ -1,4 +1,4 @@
-package helmclient
+package helm
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -48,7 +48,6 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
 	expander := restmapper.NewShortcutExpander(mapper, discoveryClient)
 	return expander, nil
@@ -56,8 +55,7 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 
 func (c *RESTClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	// use the standard defaults for this client command
-	// DEPRECATED: remove and replace with something more accurate
+
 	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 
 	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
