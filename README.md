@@ -37,7 +37,7 @@ create a new subommand.
 
 ### Build bbctl
 
-Execute the following to build the executable and make it available in $GOPATH/bin directory:
+Execute the following to build the executable and make it available in $GOPATH/bin directory. 
 
 ```$ go install```
 
@@ -48,3 +48,9 @@ Execute the following to build the executable and make it available in $GOPATH/b
 ### Run unit tests
 
 ```$ go test -v ./...```
+
+### Command completion
+
+To enable command completion using the tab key, ensure that bbctl completion script gets sourced in all your shell sessions. Execute the following command for details on how to generate the completion script and load it in the supported shells:
+
+```$ bbctl completion -h```

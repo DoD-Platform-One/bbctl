@@ -32,6 +32,11 @@ func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *co
 		Example: cmdExample,
 	}
 
+	cmd.CompletionOptions.DisableDefaultCmd = false
+	cmd.CompletionOptions.DisableNoDescFlag = true
+	cmd.CompletionOptions.DisableDescriptions = false
+
+	cmd.AddCommand(NewCompletionCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewVersionCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewGetReleasesCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewGetValuesCmd(factory, bbk8sutil.GetIOStream()))

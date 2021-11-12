@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -35,6 +36,12 @@ func NewGetValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams
 		Long:    valuesLong,
 		Example: valuesExample,
 		Args:    require.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, hint string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return matchingReleaseNames(factory, hint)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdutil.CheckErr(getHelmValues(factory, streams, cmd.Flags(), args[0]))
 		},
@@ -63,4 +70,29 @@ func getHelmValues(factory bbutil.Factory, streams genericclioptions.IOStreams, 
 	}
 
 	return output.EncodeYAML(streams.Out, releases)
+}
+
+// find helm releases with given prefix for command completion
+func matchingReleaseNames(factory bbutil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
+
+	client, err := factory.GetHelmClient(BigBangNamespace)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	// use helm list to get detailed information on charts deployed by bigbang
+	releases, err := client.GetList()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	var matches []string = make([]string, 0)
+
+	for _, r := range releases {
+		if strings.HasPrefix(r.Name, hint) {
+			matches = append(matches, r.Name)
+		}
+	}
+
+	return matches, cobra.ShellCompDirectiveNoFileComp
 }

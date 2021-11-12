@@ -38,8 +38,6 @@ func NewGetReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStrea
 		},
 	}
 
-	cmd.Flags().BoolP("short", "a", false, "Print release version only without the values")
-
 	return cmd
 }
 
