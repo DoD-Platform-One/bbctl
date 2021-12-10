@@ -2,14 +2,20 @@ package util
 
 import (
 	"github.com/spf13/pflag"
-	"helm.sh/helm/v3/pkg/release"
+	k8sclient "k8s.io/client-go/kubernetes"
 	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
 	bbk8sutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
+
+	ctrl "sigs.k8s.io/controller-runtime"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Factory creates utility objects
 type Factory interface {
 	GetHelmClient(namespace string) (helm.Client, error)
+	GetClientSet() (k8sclient.Interface, error)
+	GetRuntimeClient(*runtime.Scheme) (runtimeclient.Client, error)
 }
 
 func NewFactory(flags *pflag.FlagSet) *utilFactory {
@@ -38,14 +44,28 @@ func (f *utilFactory) GetHelmClient(namespace string) (helm.Client, error) {
 	return helm.New(opt)
 }
 
-func FakeFactory(helmReleases []*release.Release) *fakeFactory {
-	return &fakeFactory{helmReleases: helmReleases}
+func (f *utilFactory) GetClientSet() (k8sclient.Interface, error) {
+	config, err := bbk8sutil.BuildKubeConfigFromFlags(f.flags)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := k8sclient.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, err
 }
 
-type fakeFactory struct {
-	helmReleases []*release.Release
+func (f *utilFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeclient.Client, error) {
+
+	// init runtime cotroller client
+	runtimeClient, err := runtimeclient.New(ctrl.GetConfigOrDie(), runtimeclient.Options{Scheme: scheme})
+	if err != nil {
+		return nil, err
+	}
+
+	return runtimeClient, err
 }
 
-func (f *fakeFactory) GetHelmClient(namespace string) (helm.Client, error) {
-	return helm.NewFakeClient(f.helmReleases)
-}

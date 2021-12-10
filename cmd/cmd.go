@@ -40,6 +40,7 @@ func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *co
 	cmd.AddCommand(NewVersionCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewGetReleasesCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewGetValuesCmd(factory, bbk8sutil.GetIOStream()))
-
+	cmd.AddCommand(NewStatusCmd(factory, bbk8sutil.GetIOStream()))
+	
 	return cmd
 }
