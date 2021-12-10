@@ -66,3 +66,4 @@ To enable command completion using the tab key, ensure that bbctl completion scr
 ```
 bbctl completion -h
 ```
+
