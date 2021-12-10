@@ -9,7 +9,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
+	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
 func TestGetValues(t *testing.T) {
@@ -41,7 +41,7 @@ func TestGetValues(t *testing.T) {
 		},
 	}
 
-	factory := bbutil.FakeFactory(releaseFixture)
+	factory := &bbutil.FakeFactory{HelmReleases: releaseFixture}
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -104,7 +104,7 @@ func TestGetValuesCompletion(t *testing.T) {
 		output  []string
 	}
 
-	factory := bbutil.FakeFactory(releaseFixture)
+	factory := &bbutil.FakeFactory{HelmReleases: releaseFixture}
 
 	streams, _, _, _ := genericclioptions.NewTestIOStreams()
 
