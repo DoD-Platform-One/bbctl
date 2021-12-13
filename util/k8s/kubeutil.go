@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/dynamic"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -52,7 +53,17 @@ func BuildKubeConfigFromFlags(flags *pflag.FlagSet) (*restclient.Config, error) 
 	return config, nil
 }
 
-// BuildConfigFromFlags is a helper function that builds config object used to
+// BuildDynamicClientFromFlags is a helper function that builds a dynamic client
+// used to interact with the k8s cluster.
+func BuildDynamicClientFromFlags(flags *pflag.FlagSet) (dynamic.Interface, error) {
+	restConfig, err := BuildKubeConfigFromFlags(flags)
+	if err != nil {
+		return nil, err
+	}
+	return dynamic.NewForConfig(restConfig)
+}
+
+// GetKubeConfigFromPathList is a helper function that builds config object used to
 // interact with the k8s cluster using a list of kubeconfig file(s)
 func GetKubeConfigFromPathList(configPaths string) (*restclient.Config, error) {
 	configPathList := filepath.SplitList(configPaths)

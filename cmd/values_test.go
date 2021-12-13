@@ -12,7 +12,7 @@ import (
 	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
-func TestGetValues(t *testing.T) {
+func TestValues(t *testing.T) {
 
 	chartFoo := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -41,11 +41,11 @@ func TestGetValues(t *testing.T) {
 		},
 	}
 
-	factory := &bbutil.FakeFactory{HelmReleases: releaseFixture}
+	factory := bbutil.FakeFactory(releaseFixture, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
-	cmd := NewGetValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory, streams)
 	cmd.Run(cmd, []string{"foo"})
 
 	if !strings.Contains(buf.String(), "enabled: 2") {
@@ -104,11 +104,11 @@ func TestGetValuesCompletion(t *testing.T) {
 		output  []string
 	}
 
-	factory := &bbutil.FakeFactory{HelmReleases: releaseFixture}
+	factory := bbutil.FakeFactory(releaseFixture, nil, nil)
 
 	streams, _, _, _ := genericclioptions.NewTestIOStreams()
 
-	cmd := NewGetValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory, streams)
 
 	tests := []test{
 		{input: "", output: []string{"foo", "bar"}},

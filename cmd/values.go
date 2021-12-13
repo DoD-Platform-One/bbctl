@@ -28,7 +28,7 @@ var (
 		bbctl values RELEASE_NAME`))
 )
 
-func NewGetValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     valuesUse,

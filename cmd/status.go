@@ -110,7 +110,7 @@ type fluxKZData struct {
 func bbStatus(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
 
 	// get client-go client
-	clientset, err := factory.GetClientSet()
+	clientset, err := factory.GetK8sClientset()
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func bbStatus(factory bbutil.Factory, streams genericclioptions.IOStreams) error
 	_ = sourcev1beta1.AddToScheme(scheme)
 	_ = helmv2beta1.AddToScheme(scheme)
 	_ = kustomizev1beta1.AddToScheme(scheme)
-	
+
 	fluxclient, err := factory.GetRuntimeClient(scheme)
 	if err != nil {
 		return err
@@ -201,7 +201,7 @@ func getFluxKustomizations(fc client.Client) string {
 		fkzd.name = fkzObj.ObjectMeta.Name
 
 		for _, cndtn := range fkzObj.Status.Conditions {
-			if  cndtn.Type == "Ready" && cndtn.Status != "True" {
+			if cndtn.Type == "Ready" && cndtn.Status != "True" {
 				fkzd.status = cndtn.Message
 				// add to list of not ready flux kustomizations
 				fkzs = append(fkzs, fkzd)
@@ -249,7 +249,7 @@ func getFluxGitRepositories(fc client.Client) string {
 		fgrd.name = fgrObj.ObjectMeta.Name
 
 		for _, cndtn := range fgrObj.Status.Conditions {
-			if  cndtn.Type == "Ready" && cndtn.Status != "True" {
+			if cndtn.Type == "Ready" && cndtn.Status != "True" {
 				fgrd.status = cndtn.Message
 				// add to list of not ready flux gitrepositories
 				fgrs = append(fgrs, fgrd)
@@ -296,14 +296,13 @@ func getFluxHelmReleases(fc client.Client) string {
 		fhrd.namespace = fhrObj.ObjectMeta.Namespace
 		fhrd.name = fhrObj.ObjectMeta.Name
 
-
 		for _, cndtn := range fhrObj.Status.Conditions {
-			if  cndtn.Type == "Ready" && cndtn.Status != "True" {
+			if cndtn.Type == "Ready" && cndtn.Status != "True" {
 				fhrd.status = cndtn.Message
-			// add to list of not ready flux helmreleases
-			fhrs = append(fhrs, fhrd)
+				// add to list of not ready flux helmreleases
+				fhrs = append(fhrs, fhrd)
 			}
-		}	
+		}
 	}
 
 	if len(hrl.Items) == 0 {
