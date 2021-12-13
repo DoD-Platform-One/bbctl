@@ -15,7 +15,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
+	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 
 	helmv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	kustomizev1beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
@@ -24,7 +24,7 @@ import (
 
 func TestGetStatus(t *testing.T) {
 
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -33,7 +33,7 @@ func TestGetStatus(t *testing.T) {
 
 	response := strings.Split(buf.String(), "\n")
 
-	// fuctionality is tested separately. 
+	// fuctionality is tested separately.
 	// only checking for not nil to get code coverage for cobra cmd
 	assert.NotNil(t, response)
 }
@@ -61,13 +61,13 @@ func TestGetBigBangStatus(t *testing.T) {
 	}
 
 	// prepare the helm client with no data
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	helmclient, _ := factory.GetHelmClient(BigBangNamespace)
 	var response = getBigBangStatus(helmclient)
 	assert.Contains(t, response, "No BigBang release was found")
 
 	// prepare the helm client with bigbang release
-	factory = &bbutil.FakeFactory{HelmReleases: releaseFixture}
+	factory = bbtestutil.FakeFactory(releaseFixture, nil, nil)
 	helmclient, _ = factory.GetHelmClient(BigBangNamespace)
 	response = getBigBangStatus(helmclient)
 	assert.Contains(t, response, "Found bigbang release version")
@@ -81,7 +81,7 @@ func TestGetFluxKustomizations(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = kustomizev1beta1.AddToScheme(scheme)
 
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux kustomization
@@ -113,7 +113,6 @@ func TestGetFluxKustomizations(t *testing.T) {
 		},
 	}
 
-
 	// test with no flux gitrepositories
 	var response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response, "No Flux kustomizations were found")
@@ -137,7 +136,7 @@ func TestGetFluxGitRepositories(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = sourcev1beta1.AddToScheme(scheme)
 
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux gitrepository
@@ -192,7 +191,7 @@ func TestGetFluxHelmReleases(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = helmv2beta1.AddToScheme(scheme)
 
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux helmrelease
@@ -242,7 +241,7 @@ func TestGetFluxHelmReleases(t *testing.T) {
 func TestGetDmstStatus(t *testing.T) {
 
 	// prepare the client
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -290,7 +289,7 @@ func TestGetDmstStatus(t *testing.T) {
 func TestGetDpmtStatus(t *testing.T) {
 
 	// prepare the client
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -338,7 +337,7 @@ func TestGetDpmtStatus(t *testing.T) {
 func TestGetStsStatus(t *testing.T) {
 
 	// prepare the client
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -386,7 +385,7 @@ func TestGetStsStatus(t *testing.T) {
 func TestGetPodStatus(t *testing.T) {
 
 	// prepare the client
-	factory := &bbutil.FakeFactory{}
+	factory := bbtestutil.FakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset

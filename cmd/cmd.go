@@ -38,9 +38,11 @@ func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *co
 
 	cmd.AddCommand(NewCompletionCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewVersionCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewGetReleasesCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewGetValuesCmd(factory, bbk8sutil.GetIOStream()))
+	cmd.AddCommand(NewReleasesCmd(factory, bbk8sutil.GetIOStream()))
+	cmd.AddCommand(NewValuesCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewStatusCmd(factory, bbk8sutil.GetIOStream()))
-	
+	cmd.AddCommand(NewViolationsCmd(factory, bbk8sutil.GetIOStream()))
+	cmd.AddCommand(NewPoliciesCmd(factory, bbk8sutil.GetIOStream()))
+
 	return cmd
 }

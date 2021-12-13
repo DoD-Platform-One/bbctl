@@ -26,7 +26,7 @@ var (
 		bbctl list`))
 )
 
-func NewGetReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     listUse,
