@@ -37,6 +37,7 @@ var (
 		bbctl status`))
 )
 
+// NewStatusCmd - new status command
 func NewStatusCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
@@ -53,14 +54,14 @@ func NewStatusCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *
 }
 
 // Pod
-type PodData struct {
+type podData struct {
 	namespace string
 	name      string
 	status    string
 }
 
 // StatefulSet
-type StsData struct {
+type stsData struct {
 	namespace string
 	name      string
 	replicas  int32
@@ -69,7 +70,7 @@ type StsData struct {
 }
 
 // deployments
-type DpmtData struct {
+type dpmtData struct {
 	namespace string
 	name      string
 	replicas  int32
@@ -78,7 +79,7 @@ type DpmtData struct {
 }
 
 // Daemonsets
-type DmstData struct {
+type dmstData struct {
 	namespace string
 	name      string
 	desired   int32
@@ -168,10 +169,10 @@ func getBigBangStatus(helmclient helm.Client) string {
 	if err != nil {
 		sb.WriteString("No BigBang release was found.\n")
 		return sb.String()
-	} else {
-		sb.WriteString(fmt.Sprintf("Found %s release version %s status: %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version, release.Info.Status))
 	}
 
+	sb.WriteString(fmt.Sprintf("Found %s release version %s status: %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version, release.Info.Status))
+	
 	return sb.String()
 }
 
@@ -330,12 +331,12 @@ func getDmstStatus(clientset k8sclient.Interface) string {
 	}
 
 	// declare empty slice of DmstData
-	var dmsts = []DmstData{}
+	var dmsts = []dmstData{}
 
 	// iterate daemonsets
 	for _, dmstObj := range dmstObj.Items {
-		// initialize DmstData
-		var dmst DmstData
+		// initialize dmstData
+		var dmst dmstData
 		dmst.namespace = dmstObj.ObjectMeta.Namespace
 		dmst.name = dmstObj.ObjectMeta.Name
 		dmst.desired = dmstObj.Status.DesiredNumberScheduled
@@ -373,12 +374,12 @@ func getDpmtStatus(clientset k8sclient.Interface) string {
 	}
 
 	// declare empty slice of DpmtData
-	var dpmts = []DpmtData{}
+	var dpmts = []dpmtData{}
 
 	// iterate deployments to determine if requested replicas equal ready replicas
 	for _, dpmtObj := range dpmtObj.Items {
-		// initialize DpmtData
-		var dpmt DpmtData
+		// initialize dpmtData
+		var dpmt dpmtData
 		dpmt.namespace = dpmtObj.ObjectMeta.Namespace
 		dpmt.name = dpmtObj.ObjectMeta.Name
 		dpmt.replicas = dpmtObj.Status.Replicas
@@ -416,12 +417,12 @@ func getStsStatus(clientset k8sclient.Interface) string {
 	}
 
 	// declare empty slice of StsData
-	var stss = []StsData{}
+	var stss = []stsData{}
 
 	// iterate statefulsets to determine if requested replicas equal ready replicas
 	for _, stsObj := range stsObj.Items {
 		// initialize podData
-		var sts StsData
+		var sts stsData
 		sts.namespace = stsObj.ObjectMeta.Namespace
 		sts.name = stsObj.ObjectMeta.Name
 		sts.replicas = stsObj.Status.Replicas
@@ -458,19 +459,19 @@ func getPodStatus(clientset k8sclient.Interface) string {
 		return sb.String()
 	}
 
-	// declare empty slice of PodData
-	var pods = []PodData{}
+	// declare empty slice of podData
+	var pods = []podData{}
 
 	// iterate bad pods to extract status
 	for _, podObj := range podsObj.Items {
 		// initialize podData
-		var pod PodData
+		var pod podData
 		pod.namespace = podObj.Namespace
 		pod.name = podObj.Name
 
 		podready := true
 
-		// add bad pods to slice of PodData
+		// add bad pods to slice of podData
 		// there are 5 possible phases: Pending, Running, Succeeded, Failed, Unknown
 		switch podObj.Status.Phase {
 		case "Running":

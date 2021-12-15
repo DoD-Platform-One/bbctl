@@ -41,7 +41,7 @@ func TestValues(t *testing.T) {
 		},
 	}
 
-	factory := bbutil.FakeFactory(releaseFixture, nil, nil)
+	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -104,7 +104,7 @@ func TestGetValuesCompletion(t *testing.T) {
 		output  []string
 	}
 
-	factory := bbutil.FakeFactory(releaseFixture, nil, nil)
+	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil)
 
 	streams, _, _, _ := genericclioptions.NewTestIOStreams()
 

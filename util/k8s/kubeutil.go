@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-// BuildConfigFromFlags is a helper function that builds config object used to
+// BuildKubeConfigFromFlags - is a helper function that builds config object used to
 // interact with the k8s cluster. The configuration is sourced in the following order:
 //
 // Read config from file specified using --kubeconfig flag

@@ -60,6 +60,18 @@ bbctl -h
 go test -v ./...
 ```
 
+### Run lint checks
+Linting checks code quality based on best practice. For now the [linter tool](https://github.com/golang/lint) is the one from the golang project. To manually run the linter follow these steps.  
+1. install the tool
+    ```
+    go get -u golang.org/x/lint/golint
+    ```
+2. Undo any modifications the install made to the go.mod file
+3. Run the linter from this project's root directory
+    ```
+    golint -set_exit_status ./...
+    ```
+
 ### Command completion
 
 To enable command completion using the tab key, ensure that bbctl completion script gets sourced in all your shell sessions. Execute the following command for details on how to generate the completion script and load it in the supported shells:

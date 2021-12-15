@@ -1,10 +1,10 @@
 package cmd
 
 const (
-	// Helm Release Name for BigBang Deployment
+	// BigBangHelmReleaseName - Helm Release Name for BigBang Deployment
 	BigBangHelmReleaseName = "bigbang"
-	// Namespace where BigBang Helm Chart is deployed
+	// BigBangNamespace - Namespace where BigBang Helm Chart is deployed
 	BigBangNamespace = "bigbang"
-	// TODO: Introduce semantic versioing
+	// BigBangCliVersion - constance for sematic versioning
 	BigBangCliVersion = "0.1.0"
 )
