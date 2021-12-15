@@ -28,6 +28,7 @@ var (
 		bbctl values RELEASE_NAME`))
 )
 
+// NewValuesCmd - new values command
 func NewValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{

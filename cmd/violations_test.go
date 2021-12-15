@@ -173,7 +173,7 @@ func TestAuditViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.FakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
 			cmd.Execute()
@@ -234,7 +234,7 @@ func TestDenyViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.FakeFactory(nil, test.objs, nil)
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil)
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
 			cmd.Execute()
@@ -349,7 +349,7 @@ func TestPolicies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.FakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := policiesCmd(factory, streams, test.args)
 			cmd.Execute()
@@ -429,7 +429,7 @@ func TestPoliciesCompletion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.FakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
 			streams, _, _, _ := genericclioptions.NewTestIOStreams()
 			cmd := NewPoliciesCmd(factory, streams)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)

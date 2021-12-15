@@ -44,6 +44,7 @@ type policyDescriptor struct {
 	action string // enforcement action
 }
 
+// NewPoliciesCmd - new policies command
 func NewPoliciesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
@@ -103,6 +104,7 @@ type constraintViolation struct {
 	timestamp  string // utc time
 }
 
+// NewViolationsCmd - new violations commmand
 func NewViolationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{

@@ -23,6 +23,7 @@ var (
 		bbctl help`))
 )
 
+// NewRootCmd - create a new Cobra root command 
 func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{

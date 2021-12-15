@@ -13,7 +13,7 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Factory creates utility objects
+// Factory interface
 type Factory interface {
 	GetHelmClient(namespace string) (helm.Client, error)
 	GetK8sClientset() (kubernetes.Interface, error)
@@ -21,15 +21,18 @@ type Factory interface {
 	GetK8sDynamicClient() (dynamic.Interface, error)
 }
 
-func NewFactory(flags *pflag.FlagSet) *utilFactory {
-	return &utilFactory{flags: flags}
+// NewFactory - new factory method
+func NewFactory(flags *pflag.FlagSet) *UtilityFactory {
+	return &UtilityFactory{flags: flags}
 }
 
-type utilFactory struct {
+// UtilityFactory - util factory
+type UtilityFactory struct {
 	flags *pflag.FlagSet
 }
 
-func (f *utilFactory) GetHelmClient(namespace string) (helm.Client, error) {
+// GetHelmClient - get helm client
+func (f *UtilityFactory) GetHelmClient(namespace string) (helm.Client, error) {
 	config, err := bbk8sutil.BuildKubeConfigFromFlags(f.flags)
 	if err != nil {
 		return nil, err
@@ -47,7 +50,8 @@ func (f *utilFactory) GetHelmClient(namespace string) (helm.Client, error) {
 	return helm.New(opt)
 }
 
-func (f *utilFactory) GetK8sClientset() (kubernetes.Interface, error) {
+// GetK8sClientset - get k8s clientset
+func (f *UtilityFactory) GetK8sClientset() (kubernetes.Interface, error) {
 
 	config, err := bbk8sutil.BuildKubeConfigFromFlags(f.flags)
 	if err != nil {
@@ -57,11 +61,13 @@ func (f *utilFactory) GetK8sClientset() (kubernetes.Interface, error) {
 	return kubernetes.NewForConfig(config)
 }
 
-func (f *utilFactory) GetK8sDynamicClient() (dynamic.Interface, error) {
+// GetK8sDynamicClient - get k8s dynamic client
+func (f *UtilityFactory) GetK8sDynamicClient() (dynamic.Interface, error) {
 	return bbk8sutil.BuildDynamicClientFromFlags(f.flags)
 }
 
-func (f *utilFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeclient.Client, error) {
+// GetRuntimeClient - get runtime client
+func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeclient.Client, error) {
 
 	// init runtime cotroller client
 	runtimeClient, err := runtimeclient.New(ctrl.GetConfigOrDie(), runtimeclient.Options{Scheme: scheme})

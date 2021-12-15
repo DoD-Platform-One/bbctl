@@ -52,6 +52,7 @@ var (
 		$ bbctl completion fish > ~/.config/fish/completions/bbctl.fish `))
 )
 
+// NewCompletionCmd - create a new Cobra completion command 
 func NewCompletionCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   completionUse,

@@ -24,7 +24,7 @@ import (
 
 func TestGetStatus(t *testing.T) {
 
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -61,13 +61,13 @@ func TestGetBigBangStatus(t *testing.T) {
 	}
 
 	// prepare the helm client with no data
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	helmclient, _ := factory.GetHelmClient(BigBangNamespace)
 	var response = getBigBangStatus(helmclient)
 	assert.Contains(t, response, "No BigBang release was found")
 
 	// prepare the helm client with bigbang release
-	factory = bbtestutil.FakeFactory(releaseFixture, nil, nil)
+	factory = bbtestutil.GetFakeFactory(releaseFixture, nil, nil)
 	helmclient, _ = factory.GetHelmClient(BigBangNamespace)
 	response = getBigBangStatus(helmclient)
 	assert.Contains(t, response, "Found bigbang release version")
@@ -81,7 +81,7 @@ func TestGetFluxKustomizations(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = kustomizev1beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux kustomization
@@ -136,7 +136,7 @@ func TestGetFluxGitRepositories(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = sourcev1beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux gitrepository
@@ -191,7 +191,7 @@ func TestGetFluxHelmReleases(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = helmv2beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux helmrelease
@@ -241,7 +241,7 @@ func TestGetFluxHelmReleases(t *testing.T) {
 func TestGetDmstStatus(t *testing.T) {
 
 	// prepare the client
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -289,7 +289,7 @@ func TestGetDmstStatus(t *testing.T) {
 func TestGetDpmtStatus(t *testing.T) {
 
 	// prepare the client
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -337,7 +337,7 @@ func TestGetDpmtStatus(t *testing.T) {
 func TestGetStsStatus(t *testing.T) {
 
 	// prepare the client
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -385,7 +385,7 @@ func TestGetStsStatus(t *testing.T) {
 func TestGetPodStatus(t *testing.T) {
 
 	// prepare the client
-	factory := bbtestutil.FakeFactory(nil, nil, nil)
+	factory := bbtestutil.GetFakeFactory(nil, nil, nil)
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset

@@ -26,6 +26,7 @@ var (
 		bbctl list`))
 )
 
+// NewReleasesCmd - new releases command
 func NewReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{

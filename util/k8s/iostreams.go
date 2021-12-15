@@ -6,6 +6,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
+// GetIOStream - get io stream
 func GetIOStream() genericclioptions.IOStreams {
 
 	streams := genericclioptions.IOStreams{

@@ -43,6 +43,7 @@ func (c *RESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterfa
 	return memory.NewMemCacheClient(discoveryClient), nil
 }
 
+// ToRESTMapper - to rest mapper
 func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 	discoveryClient, err := c.ToDiscoveryClient()
 	if err != nil {
@@ -53,6 +54,7 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 	return expander, nil
 }
 
+// ToRawKubeConfigLoader - to raw kubeconfig loader
 func (c *RESTClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 

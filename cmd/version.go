@@ -27,6 +27,7 @@ var (
 		bbctl -c`))
 )
 
+// NewVersionCmd - new version command
 func NewVersionCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     versionUse,

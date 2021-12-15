@@ -47,7 +47,7 @@ func TestGetList(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.FakeFactory(releaseFixture, nil, nil)
+	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 

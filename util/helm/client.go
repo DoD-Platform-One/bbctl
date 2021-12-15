@@ -62,7 +62,7 @@ func newClient(options *Options, clientGetter genericclioptions.RESTClientGetter
 		return nil, err
 	}
 
-	return &HelmClient{
+	return &ClientHelm{
 		Settings:     settings,
 		Providers:    getter.All(settings),
 		storage:      &storage,
@@ -106,52 +106,53 @@ func setEnvSettings(options *Options, settings *cli.EnvSettings) error {
 	return nil
 }
 
-// GetRelease returns a release specified by name.
-func (c *HelmClient) GetRelease(name string) (*release.Release, error) {
+// GetRelease - GetRelease returns a release specified by name.
+func (c *ClientHelm) GetRelease(name string) (*release.Release, error) {
 	return c.getRelease(name)
 }
 
 // getRelease returns a release matching the provided 'name'.
-func (c *HelmClient) getRelease(name string) (*release.Release, error) {
+func (c *ClientHelm) getRelease(name string) (*release.Release, error) {
 	getReleaseClient := action.NewGet(c.ActionConfig)
 
 	return getReleaseClient.Run(name)
 }
 
-// getList returns a list of releases
-func (c *HelmClient) GetList() ([]*release.Release, error) {
+// GetList - getList returns a list of releases
+func (c *ClientHelm) GetList() ([]*release.Release, error) {
 	return c.getList()
 }
 
 // getList returns a list of releases
-func (c *HelmClient) getList() ([]*release.Release, error) {
+func (c *ClientHelm) getList() ([]*release.Release, error) {
 	getListClient := action.NewList(c.ActionConfig)
 
 	return getListClient.Run()
 }
 
-// getValues returns release values
-func (c *HelmClient) GetValues(name string, allValues bool) (interface{}, error) {
+// GetValues - getValues returns release values
+func (c *ClientHelm) GetValues(name string, allValues bool) (interface{}, error) {
 	return c.getValues(name, allValues)
 }
 
 // getValues returns release values
-func (c *HelmClient) getValues(name string, allValues bool) (map[string]interface{}, error) {
+func (c *ClientHelm) getValues(name string, allValues bool) (map[string]interface{}, error) {
 	getValuesClient := action.NewGetValues(c.ActionConfig)
 	getValuesClient.AllValues = allValues
 	return getValuesClient.Run(name)
 }
 
-// NewFakeClient returns a new Fale Helm client with the provided options
+// NewFakeClient - returns a new Fale Helm client with the provided options
 func NewFakeClient(releases []*release.Release) (Client, error) {
 	return &FakeClient{releases: releases}, nil
 }
 
+// FakeClient - fake client
 type FakeClient struct {
 	releases []*release.Release
 }
 
-// GetRelease returns a release specified by name.
+// GetRelease - returns a release specified by name.
 func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
 	for _, r := range c.releases {
 		if r.Name == name {
@@ -162,12 +163,12 @@ func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
 	return nil, fmt.Errorf("release %s not found", name)
 }
 
-// getList returns a list of releases
+// GetList - returns a list of releases
 func (c *FakeClient) GetList() ([]*release.Release, error) {
 	return c.releases, nil
 }
 
-// getList returns a list of releases
+// GetValues - returns a list of releases
 func (c *FakeClient) GetValues(name string, allValues bool) (interface{}, error) {
 	for _, r := range c.releases {
 		if r.Name == name {
