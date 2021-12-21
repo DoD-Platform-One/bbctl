@@ -270,25 +270,31 @@ func listAuditViolations(factory bbutil.Factory, streams genericclioptions.IOStr
 			return err
 		}
 		for _, c := range constraints.Items {
+			// get violations
 			violations, _ := getConstraintViolations(&c)
-			if len(*violations) != 0 {
-				fmt.Fprintf(streams.Out, "%s\n\n", crdName)
-				violationsFound := false
-				for _, v := range *violations {
-					if namespace != "" && v.namespace != namespace {
-						continue
-					}
-					violationsFound = true
-					printViolation(&v, streams.Out)
-				}
-				if !violationsFound {
-					fmt.Fprintf(streams.Out, "No violations found in audit\n\n\n")
-				}
-			}
+			// process violations
+			processViolations(namespace, violations, crdName, streams)
 		}
 	}
 
 	return nil
+}
+
+func processViolations(namespace string, violations *[]constraintViolation, crdName string, streams genericclioptions.IOStreams) {
+	if len(*violations) != 0 {
+		fmt.Fprintf(streams.Out, "%s\n\n", crdName)
+		violationsFound := false
+		for _, v := range *violations {
+			if namespace != "" && v.namespace != namespace {
+				continue
+			}
+			violationsFound = true
+			printViolation(&v, streams.Out)
+		}
+		if !violationsFound {
+			fmt.Fprintf(streams.Out, "No violations found in audit\n\n\n")
+		}
+	}
 }
 
 func fetchGatekeeperCrds(client dynamic.Interface) (*unstructured.UnstructuredList, error) {
