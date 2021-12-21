@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	k8scorev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -35,6 +36,10 @@ var (
 	statusExample = templates.Examples(i18n.T(`
 		# Get overall status
 		bbctl status`))
+)
+
+const (
+	statusString = "namespace: %s, name: %s, status: %s\n"
 )
 
 // NewStatusCmd - new status command
@@ -217,7 +222,7 @@ func getFluxKustomizations(fc client.Client) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fkzs)))
 		for _, fkzd := range fkzs {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", fkzd.namespace, fkzd.name, fkzd.status))
+			sb.WriteString(fmt.Sprintf(statusString, fkzd.namespace, fkzd.name, fkzd.status))
 		}
 	}
 
@@ -265,7 +270,7 @@ func getFluxGitRepositories(fc client.Client) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d Flux gitrepositories that are not ready:\n", len(fgrs)))
 		for _, fgrd := range fgrs {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", fgrd.namespace, fgrd.name, fgrd.status))
+			sb.WriteString(fmt.Sprintf(statusString, fgrd.namespace, fgrd.name, fgrd.status))
 		}
 	}
 
@@ -313,7 +318,7 @@ func getFluxHelmReleases(fc client.Client) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d Flux helmreleases that are not reconciled:\n", len(fhrs)))
 		for _, fhrd := range fhrs {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", fhrd.namespace, fhrd.name, fhrd.status))
+			sb.WriteString(fmt.Sprintf(statusString, fhrd.namespace, fhrd.name, fhrd.status))
 		}
 	}
 
@@ -356,7 +361,7 @@ func getDmstStatus(clientset k8sclient.Interface) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(dmsts)))
 		for _, dmst := range dmsts {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", dmst.namespace, dmst.name, dmst.status))
+			sb.WriteString(fmt.Sprintf(statusString, dmst.namespace, dmst.name, dmst.status))
 		}
 	}
 
@@ -399,7 +404,7 @@ func getDpmtStatus(clientset k8sclient.Interface) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(dpmts)))
 		for _, dpmt := range dpmts {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", dpmt.namespace, dpmt.name, dpmt.status))
+			sb.WriteString(fmt.Sprintf(statusString, dpmt.namespace, dpmt.name, dpmt.status))
 		}
 	}
 
@@ -442,7 +447,7 @@ func getStsStatus(clientset k8sclient.Interface) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(stss)))
 		for _, sts := range stss {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", sts.namespace, sts.name, sts.status))
+			sb.WriteString(fmt.Sprintf(statusString, sts.namespace, sts.name, sts.status))
 		}
 	}
 
@@ -476,48 +481,18 @@ func getPodStatus(clientset k8sclient.Interface) string {
 		switch podObj.Status.Phase {
 		case "Running":
 			// check if all containers are ready
-			for _, cs := range podObj.Status.ContainerStatuses {
-				if !cs.Ready {
-					podready = false
-					if cs.State.Waiting != nil {
-						if pod.status != "CrashLoopBackOff" {
-							pod.status = cs.State.Waiting.Reason
-						}
-					}
-				}
-			}
-
-			if !podready {
-				if pod.status == "" {
-					pod.status = "error"
-				}
-				// add to list of bad pods
-				pods = append(pods, pod)
-			}
+			getContainerStatus(podObj.Status.ContainerStatuses, &pod, &podready, false)
+			// process pod status
+			processPodStatus(&pod, &pods, podready)
 
 		case "Succeeded":
 			// do nothing
+
 		default:
 			// evaluate status of init containers
-			for _, ics := range podObj.Status.InitContainerStatuses {
-				if !ics.Ready {
-					podready = false
-					if ics.State.Waiting != nil {
-						if pod.status != "init:CrashLoopBackOff" {
-							pod.status = "init:" + ics.State.Waiting.Reason
-						}
-					}
-				}
-			}
-
-			if !podready {
-				if pod.status == "" {
-					pod.status = "error"
-				}
-				// add to list of bad pods
-				pods = append(pods, pod)
-			}
-
+			getContainerStatus(podObj.Status.InitContainerStatuses, &pod, &podready, true)
+			// process pod status
+			processPodStatus(&pod, &pods, podready)
 		}
 	}
 
@@ -526,9 +501,44 @@ func getPodStatus(clientset k8sclient.Interface) string {
 	} else {
 		sb.WriteString(fmt.Sprintf("There are %d pods that are not ready:\n", len(pods)))
 		for _, pod := range pods {
-			sb.WriteString(fmt.Sprintf("namespace: %s, name: %s, status: %s\n", pod.namespace, pod.name, pod.status))
+			sb.WriteString(fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
 		}
 	}
 
 	return sb.String()
+}
+
+func processPodStatus(pod *podData, pods *[]podData, podReady bool) {
+	if !podReady {
+		if pod.status == "" {
+			pod.status = "error"
+		}
+		// add to list of bad pods
+		*pods = append(*pods, *pod)
+	}
+}
+
+func getContainerStatus(containerStatuses []k8scorev1.ContainerStatus, pod *podData, podReady *bool, isInit bool) {
+	var shortSts string
+	var longSts string
+
+	if isInit {
+		longSts = "init:CrashLoopBackOff"
+		shortSts = "init:"
+	} else {
+		longSts = "CrashLoopBackOff"
+		shortSts = ""
+	}
+
+	for _, cs := range containerStatuses {
+		if !cs.Ready {
+			*podReady = false
+			if cs.State.Waiting != nil {
+				if pod.status != longSts {
+					pod.status = shortSts + cs.State.Waiting.Reason
+				}
+			}
+		}
+	}
+
 }
