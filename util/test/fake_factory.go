@@ -27,7 +27,7 @@ type FakeFactory struct {
 
 // GetHelmClient - get helm client
 func (f *FakeFactory) GetHelmClient(namespace string) (helm.Client, error) {
-	return helm.NewFakeClient(f.helmReleases)
+	return NewFakeClient(f.helmReleases)
 }
 
 // GetClientSet - get clientset
