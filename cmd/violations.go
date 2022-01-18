@@ -212,6 +212,9 @@ func listDenyViolations(factory bbutil.Factory, streams genericclioptions.IOStre
 	events, err := client.CoreV1().Events("").List(context.TODO(), metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("%s=%s", "reason", "FailedAdmission"),
 	})
+	if err != nil {
+		return err
+	}
 
 	violationsFound := false
 	for _, event := range events.Items {
@@ -235,11 +238,13 @@ func listDenyViolations(factory bbutil.Factory, streams genericclioptions.IOStre
 	}
 
 	if !violationsFound {
-		fmt.Fprintf(streams.Out, "No violation events found\n\n")
+		fmt.Fprintf(streams.Out, "No events found for deny violations\n\n")
 		fmt.Fprintf(streams.Out, "Do you have the following values defined for the gatekeeper chart?\n\n")
 		fmt.Fprintf(streams.Out, "gatekeeper:\n")
 		fmt.Fprintf(streams.Out, "  emitAdmissionEvents: true\n")
-		fmt.Fprintf(streams.Out, "  logDenies: true\n")
+		fmt.Fprintf(streams.Out, "  logDenies: true\n\n")
+		fmt.Fprintf(streams.Out, "Note that violations in dryrun and warn mode are not effected by these settings.\n")
+		fmt.Fprintf(streams.Out, "To list dryrun violations, use --audit flag.\n")
 	}
 
 	return nil
@@ -329,6 +334,9 @@ func getConstraintViolations(resource *unstructured.Unstructured) (*[]constraint
 
 	var violationTimestamp string = ""
 	ts, ok, err := unstructured.NestedFieldNoCopy(resource.Object, "status", "auditTimestamp")
+	if err != nil {
+		return nil, err
+	}
 	if ok {
 		timestamp, _ := ts.(string)
 		violationTimestamp = timestamp

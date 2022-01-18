@@ -31,7 +31,7 @@ func TestGetVersion(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil)
+	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -64,7 +64,7 @@ func TestGetClientVersionOnly(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil)
+	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 

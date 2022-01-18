@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -41,7 +40,7 @@ func TestValues(t *testing.T) {
 		},
 	}
 
-	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil)
+	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil, nil)
 
 	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 
@@ -99,12 +98,11 @@ func TestGetValuesCompletion(t *testing.T) {
 	}
 
 	type test struct {
-		command *cobra.Command
-		input   string
-		output  []string
+		input  string
+		output []string
 	}
 
-	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil)
+	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil, nil)
 
 	streams, _, _, _ := genericclioptions.NewTestIOStreams()
 

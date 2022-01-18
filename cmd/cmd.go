@@ -23,7 +23,7 @@ var (
 		bbctl help`))
 )
 
-// NewRootCmd - create a new Cobra root command 
+// NewRootCmd - create a new Cobra root command
 func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
@@ -44,6 +44,7 @@ func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *co
 	cmd.AddCommand(NewStatusCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewViolationsCmd(factory, bbk8sutil.GetIOStream()))
 	cmd.AddCommand(NewPoliciesCmd(factory, bbk8sutil.GetIOStream()))
+	cmd.AddCommand(NewPreflightCheckCmd(factory, bbk8sutil.GetIOStream()))
 
 	return cmd
 }
