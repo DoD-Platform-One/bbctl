@@ -173,7 +173,7 @@ func TestAuditViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
 			cmd.Execute()
@@ -205,14 +205,14 @@ func TestDenyViolations(t *testing.T) {
 		{
 			"no violations in any namespace",
 			"",
-			"No violation events found",
+			"No events found for deny violations",
 			"Resource: foo, Kind: k1, Namespace: ns1",
 			[]runtime.Object{},
 		},
 		{
 			"no violations in given namespace",
 			"ns0",
-			"No violation events found",
+			"No events found for deny violations",
 			"Resource: foo, Kind: k1, Namespace: ns1",
 			[]runtime.Object{evt1, evt2},
 		},
@@ -234,7 +234,7 @@ func TestDenyViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil)
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil, nil)
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
 			cmd.Execute()
@@ -349,7 +349,7 @@ func TestPolicies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := policiesCmd(factory, streams, test.args)
 			cmd.Execute()
@@ -429,7 +429,7 @@ func TestPoliciesCompletion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind())
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
 			streams, _, _, _ := genericclioptions.NewTestIOStreams()
 			cmd := NewPoliciesCmd(factory, streams)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
