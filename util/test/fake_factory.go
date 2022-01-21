@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
+	fakehelm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakectlrclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -41,7 +42,7 @@ type FakeFactory struct {
 
 // GetHelmClient - get helm client
 func (f *FakeFactory) GetHelmClient(namespace string) (helm.Client, error) {
-	return NewFakeClient(f.helmReleases)
+	return fakehelm.NewFakeClient(f.helmReleases)
 }
 
 // GetClientSet - get clientset
