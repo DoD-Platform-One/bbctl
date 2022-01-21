@@ -9,26 +9,28 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace', 'kubeConfig' and 'restConfig'.
-func NewRESTClientGetter(namespace string, kubeConfig []byte, restConfig *rest.Config) *RESTClientGetter {
+// RESTClientGetter defines the values of a helm REST client
+type RESTClientGetter struct {
+	namespace  string
+	restConfig *rest.Config
+}
+
+// NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace' and 'restConfig'.
+func NewRESTClientGetter(restConfig *rest.Config, namespace string) *RESTClientGetter {
 	return &RESTClientGetter{
 		namespace:  namespace,
-		kubeConfig: kubeConfig,
 		restConfig: restConfig,
 	}
 }
 
 // ToRESTConfig returns a REST config build from a given kubeconfig
 func (c *RESTClientGetter) ToRESTConfig() (*rest.Config, error) {
-	if c.restConfig != nil {
-		return c.restConfig, nil
-	}
-
-	return clientcmd.RESTConfigFromKubeConfig(c.kubeConfig)
+	return c.restConfig, nil
 }
 
 // ToDiscoveryClient returns a CachedDiscoveryInterface that can be used as a discovery client.
 func (c *RESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+
 	config, err := c.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -40,6 +42,7 @@ func (c *RESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterfa
 	config.Burst = 100
 
 	discoveryClient, _ := discovery.NewDiscoveryClientForConfig(config)
+
 	return memory.NewMemCacheClient(discoveryClient), nil
 }
 
@@ -56,12 +59,5 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 
 // ToRawKubeConfigLoader - to raw kubeconfig loader
 func (c *RESTClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
-	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
-
-	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
-	overrides.Context.Namespace = c.namespace
-
-	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, overrides)
+	return nil
 }

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Config
+clusters:
+- name: test2
+  cluster: 
+    server: https://test2.com:6443
+contexts:
+- name: test2
+  context:
+    cluster: test2
+    user: admin@test2
+current-context: test2
+users:
+- name: admin@test2
+  user:
+    password: test2
+    username: test2

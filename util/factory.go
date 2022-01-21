@@ -2,8 +2,11 @@ package util
 
 import (
 	"io"
+	"log"
+	"os"
 
 	"github.com/spf13/pflag"
+	"helm.sh/helm/v3/pkg/action"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,21 +44,20 @@ type UtilityFactory struct {
 
 // GetHelmClient - get helm client
 func (f *UtilityFactory) GetHelmClient(namespace string) (helm.Client, error) {
-	config, err := bbk8sutil.BuildKubeConfigFromFlags(f.flags)
+
+	actionConfig, err := f.getHelmConfig(namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	opt := &helm.Options{
-		Namespace:        namespace,
-		RepositoryCache:  "/tmp/.helmcache",
-		RepositoryConfig: "/tmp/.helmrepo",
-		Debug:            true,
-		Linting:          true,
-		RestConfig:       config,
-	}
+	getReleaseClient := action.NewGet(actionConfig)
 
-	return helm.New(opt)
+	getListClient := action.NewList(actionConfig)
+
+	getValuesClient := action.NewGetValues(actionConfig)
+	getValuesClient.AllValues = true
+
+	return helm.NewClient(getReleaseClient.Run, getListClient.Run, getValuesClient.Run)
 }
 
 // GetK8sClientset - get k8s clientset
@@ -121,4 +123,31 @@ func (f *UtilityFactory) GetCommandExecutor(pod *corev1.Pod, container string, c
 	}
 
 	return remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+}
+
+func (f *UtilityFactory) getHelmConfig(namespace string) (*action.Configuration, error) {
+
+	config, err := bbk8sutil.BuildKubeConfigFromFlags(f.flags)
+	if err != nil {
+		return nil, err
+	}
+
+	clientGetter := helm.NewRESTClientGetter(config, namespace)
+
+	debugLog := func(format string, v ...interface{}) {
+		log.Printf(format, v...)
+	}
+
+	actionConfig := new(action.Configuration)
+	err = actionConfig.Init(
+		clientGetter,
+		namespace,
+		os.Getenv("HELM_DRIVER"),
+		debugLog,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return actionConfig, nil
 }
