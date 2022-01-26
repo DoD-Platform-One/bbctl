@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// CreateNamespace creates a new namespace
 func CreateNamespace(k8sinterface kubernetes.Interface, namespace string) (*corev1.Namespace, error) {
 
 	ns := &corev1.Namespace{
@@ -18,6 +19,7 @@ func CreateNamespace(k8sinterface kubernetes.Interface, namespace string) (*core
 	return k8sinterface.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 }
 
+// DeleteNamespace deletes a namespace
 func DeleteNamespace(k8sinterface kubernetes.Interface, namespace string) error {
 	return k8sinterface.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 }

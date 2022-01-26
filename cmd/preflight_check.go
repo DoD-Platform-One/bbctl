@@ -220,10 +220,10 @@ func checkMetricsServer(factory bbutil.Factory, streams genericclioptions.IOStre
 	if !metricsAPIAvailable {
 		fmt.Fprintln(streams.Out, "Check Failed - Metrics API not available.")
 		return failed
-	} else {
-		fmt.Fprintln(streams.Out, "Check Passed - Metrics API available.")
-		return passed
 	}
+
+	fmt.Fprintln(streams.Out, "Check Passed - Metrics API available.")
+	return passed
 
 }
 
@@ -253,10 +253,10 @@ func checkDefaultStorageClass(factory bbutil.Factory, streams genericclioptions.
 	if defaultStorageClassName == "" {
 		fmt.Fprintln(streams.Out, "Check Failed - Default storage class not found.")
 		return failed
-	} else {
-		fmt.Fprintf(streams.Out, "Check Passed - Default storage class %s found.\n", defaultStorageClassName)
-		return passed
 	}
+
+	fmt.Fprintf(streams.Out, "Check Passed - Default storage class %s found.\n", defaultStorageClassName)
+	return passed
 
 }
 

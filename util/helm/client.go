@@ -11,32 +11,38 @@ type Client interface {
 	GetValues(name string, allValues bool) (interface{}, error)
 }
 
+// GetReleaseFunc type
 type GetReleaseFunc func(string) (*release.Release, error)
+
+// GetListFunc type
 type GetListFunc func() ([]*release.Release, error)
+
+// GetValuesFunc type
 type GetValuesFunc func(string) (map[string]interface{}, error)
 
-type HelmClient struct {
+// helmClient is composed of functions to interact with Helm API
+type helmClient struct {
 	getRelease GetReleaseFunc
 	getList    GetListFunc
 	getValues  GetValuesFunc
 }
 
-// New returns a new Helm client with the provided configuration
+// NewClient returns a new Helm client with the provided configuration
 func NewClient(getRelease GetReleaseFunc, getList GetListFunc, getValues GetValuesFunc) (Client, error) {
-	return &HelmClient{getRelease: getRelease, getList: getList, getValues: getValues}, nil
+	return &helmClient{getRelease: getRelease, getList: getList, getValues: getValues}, nil
 }
 
 // GetRelease - GetRelease returns a release specified by name.
-func (c *HelmClient) GetRelease(name string) (*release.Release, error) {
+func (c *helmClient) GetRelease(name string) (*release.Release, error) {
 	return c.getRelease(name)
 }
 
 // GetList - getList returns a list of releases
-func (c *HelmClient) GetList() ([]*release.Release, error) {
+func (c *helmClient) GetList() ([]*release.Release, error) {
 	return c.getList()
 }
 
 // GetValues - getValues returns release values
-func (c *HelmClient) GetValues(name string, allValues bool) (interface{}, error) {
+func (c *helmClient) GetValues(name string, allValues bool) (interface{}, error) {
 	return c.getValues(name)
 }
