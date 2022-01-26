@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// JobDesc - Job Descriptor
 type JobDesc struct {
 	Name               string
 	ContainerName      string
@@ -19,6 +20,7 @@ type JobDesc struct {
 	TTLSecondsOnFinish int32
 }
 
+// CreateJob function creates a new job
 func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) (*batchv1.Job, error) {
 
 	job := &batchv1.Job{

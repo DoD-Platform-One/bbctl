@@ -27,9 +27,10 @@ type DockerConfig map[string]DockerConfigEntry
 type DockerConfigJSON struct {
 	Auths DockerConfig `json:"auths" datapolicy:"token"`
 	// +optional
-	HttpHeaders map[string]string `json:"HttpHeaders,omitempty" datapolicy:"token"`
+	HTTPHeaders map[string]string `json:"HttpHeaders,omitempty" datapolicy:"token"`
 }
 
+// CreateRegistrySecret creates a new secret for docker registry
 func CreateRegistrySecret(k8sinterface kubernetes.Interface, namespace string, name string, server string, username string, password string) (*corev1.Secret, error) {
 
 	secret := &corev1.Secret{
@@ -65,6 +66,7 @@ func CreateRegistrySecret(k8sinterface kubernetes.Interface, namespace string, n
 	return k8sinterface.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
 }
 
+// DeleteRegistrySecret deletes docker registry secret
 func DeleteRegistrySecret(k8sinterface kubernetes.Interface, namespace string, name string) error {
 	return k8sinterface.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
 }
