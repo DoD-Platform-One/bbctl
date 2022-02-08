@@ -42,7 +42,7 @@ go get -u github.com/spf13/cobra/cobra
 ```
 
 ### Add new commands with cobra
-The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subommand.
+The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subommand. Refer to [command semantics](./doc/command.md) for the practices followed in naming bbctl commands.
 
 ### Build and Install
 Execute the following to build the executable and make it available in $GOPATH/bin directory:
