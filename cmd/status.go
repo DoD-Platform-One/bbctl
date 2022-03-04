@@ -40,6 +40,7 @@ var (
 
 const (
 	statusString = "namespace: %s, name: %s, status: %s\n"
+	commandHelp = "Command Help:\n"
 )
 
 // NewStatusCmd - new status command
@@ -223,6 +224,8 @@ func getFluxKustomizations(fc client.Client) string {
 		sb.WriteString(fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fkzs)))
 		for _, fkzd := range fkzs {
 			sb.WriteString(fmt.Sprintf(statusString, fkzd.namespace, fkzd.name, fkzd.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fkzd.name, fkzd.namespace ))
 		}
 	}
 
@@ -271,6 +274,9 @@ func getFluxGitRepositories(fc client.Client) string {
 		sb.WriteString(fmt.Sprintf("There are %d Flux gitrepositories that are not ready:\n", len(fgrs)))
 		for _, fgrd := range fgrs {
 			sb.WriteString(fmt.Sprintf(statusString, fgrd.namespace, fgrd.name, fgrd.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  kubectl describe gitrepository %s -n %s\n", fgrd.name, fgrd.namespace ))
+			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fgrd.name, fgrd.namespace ))
 		}
 	}
 
@@ -319,6 +325,10 @@ func getFluxHelmReleases(fc client.Client) string {
 		sb.WriteString(fmt.Sprintf("There are %d Flux helmreleases that are not reconciled:\n", len(fhrs)))
 		for _, fhrd := range fhrs {
 			sb.WriteString(fmt.Sprintf(statusString, fhrd.namespace, fhrd.name, fhrd.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  flux suspend helmrelease %s -n %s\n", fhrd.name, fhrd.namespace ))
+			sb.WriteString(fmt.Sprintf("  flux resume helmrelease %s -n %s\n", fhrd.name, fhrd.namespace ))
+			sb.WriteString(fmt.Sprintf("  flux reconcile helmrelease %s -n %s --with-source\n", fhrd.name, fhrd.namespace ))
 		}
 	}
 
@@ -362,6 +372,9 @@ func getDmstStatus(clientset k8sclient.Interface) string {
 		sb.WriteString(fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(dmsts)))
 		for _, dmst := range dmsts {
 			sb.WriteString(fmt.Sprintf(statusString, dmst.namespace, dmst.name, dmst.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", dmst.name, dmst.namespace ))
+			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", dmst.namespace ))
 		}
 	}
 
@@ -405,6 +418,8 @@ func getDpmtStatus(clientset k8sclient.Interface) string {
 		sb.WriteString(fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(dpmts)))
 		for _, dpmt := range dpmts {
 			sb.WriteString(fmt.Sprintf(statusString, dpmt.namespace, dpmt.name, dpmt.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", dpmt.namespace))
 		}
 	}
 
@@ -448,6 +463,8 @@ func getStsStatus(clientset k8sclient.Interface) string {
 		sb.WriteString(fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(stss)))
 		for _, sts := range stss {
 			sb.WriteString(fmt.Sprintf(statusString, sts.namespace, sts.name, sts.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", sts.namespace))
 		}
 	}
 
@@ -502,6 +519,8 @@ func getPodStatus(clientset k8sclient.Interface) string {
 		sb.WriteString(fmt.Sprintf("There are %d pods that are not ready:\n", len(pods)))
 		for _, pod := range pods {
 			sb.WriteString(fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
+			sb.WriteString(commandHelp)
+			sb.WriteString(fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace ))
 		}
 	}
 
