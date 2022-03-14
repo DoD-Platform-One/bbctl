@@ -1,5 +1,5 @@
 # User Guide
-The BBCTL Command line interface(CLI) tool has been created to simplify development, deployment, auditing and troubleshooting of the BigBang product in a kubernetes cluster. The bbctl repository is mirrored to PartyBus code.il2.dso.mil where a Mission DevOps pipelne is run and a package is built and pushed back to repo1.dso.mil. The code has passed security scans and is eligible to recieve a certificate to field(CTF). 
+The BBCTL Command line interface(CLI) tool has been created to simplify development, deployment, auditing and troubleshooting of the BigBang product in a kubernetes cluster. The bbctl repository is mirrored to PartyBus code.il2.dso.mil where a Mission DevOps pipelne is run and a package is built and pushed back to repo1.dso.mil. The code has passed security scans and is eligible to recieve a certificate to field(CTF).
 
 ## Installation
 1. Navigate to the [Package Registry Page](https://repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/-/packages). 
