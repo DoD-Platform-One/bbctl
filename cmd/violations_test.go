@@ -60,27 +60,42 @@ func gvrToListKind() map[schema.GroupVersionResource]string {
 			Group:    "constraints.gatekeeper.sh",
 			Version:  "v1beta1",
 			Resource: "foos",
-		}: "fooList",
+		}: "gkPolicyList",
 		{
 			Group:    "constraints.gatekeeper.sh",
 			Version:  "v1beta1",
 			Resource: "foo",
-		}: "fooList",
-		{
-			Group:    "constraints.gatekeeper.sh",
-			Version:  "v1beta1",
-			Resource: "bar",
-		}: "fooList",
+		}: "gkPolicyList",
 		{
 			Group:    "constraints.gatekeeper.sh",
 			Version:  "v1beta1",
 			Resource: "nop",
-		}: "fooList",
+		}: "gkPolicyList",
 		{
-			Group:    "constraints.gatekeeper.sh",
-			Version:  "v1beta1",
-			Resource: "fudges",
-		}: "fudgeList",
+			Group:    "kyverno.io",
+			Version:  "v1",
+			Resource: "foos",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1",
+			Resource: "foo",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1",
+			Resource: "bars",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1",
+			Resource: "bar",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1",
+			Resource: "nop",
+		}: "kyvernoPolicyList",
 	}
 }
 
@@ -111,7 +126,7 @@ func TestAuditViolations(t *testing.T) {
 		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
 		"kind":       "foo",
 		"metadata": map[string]interface{}{
-			"name": "foo",
+			"name": "foo-1",
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "gatekeeper",
 			},
@@ -128,7 +143,7 @@ func TestAuditViolations(t *testing.T) {
 	constraintList := &unstructured.UnstructuredList{
 		Object: map[string]interface{}{
 			"apiVersion": "constraints.gatekeeper.sh/v1beta1",
-			"kind":       "fooList",
+			"kind":       "gkPolicyList",
 		},
 		Items: []unstructured.Unstructured{*constraint},
 	}
@@ -255,7 +270,7 @@ func policiesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, ar
 	return cmd
 }
 
-func TestPolicies(t *testing.T) {
+func TestGatekeeperPolicies(t *testing.T) {
 
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
@@ -282,7 +297,7 @@ func TestPolicies(t *testing.T) {
 		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
 		"kind":       "foo",
 		"metadata": map[string]interface{}{
-			"name": "foo",
+			"name": "foo-1",
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "gatekeeper",
 			},
@@ -300,7 +315,7 @@ func TestPolicies(t *testing.T) {
 		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
 		"kind":       "foo",
 		"metadata": map[string]interface{}{
-			"name": "bar",
+			"name": "foo-2",
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "gatekeeper",
 			},
@@ -316,7 +331,7 @@ func TestPolicies(t *testing.T) {
 	constraintList := &unstructured.UnstructuredList{
 		Object: map[string]interface{}{
 			"apiVersion": "constraints.gatekeeper.sh/v1beta1",
-			"kind":       "fooList",
+			"kind":       "gkPolicyList",
 		},
 		Items: []unstructured.Unstructured{*constraint1, *constraint2},
 	}
@@ -329,19 +344,19 @@ func TestPolicies(t *testing.T) {
 	}{
 		{
 			"list all policies",
-			[]string{},
+			[]string{"--gatekeeper"},
 			[]string{"foos.constraints.gatekeeper.sh", "deny", "invalid config"},
 			[]runtime.Object{crdList, constraintList},
 		},
 		{
 			"list policy with given name",
-			[]string{"foos.constraints.gatekeeper.sh"},
-			[]string{"foos.constraints.gatekeeper.sh", "foo", "bar", "deny", "dry", "invalid config"},
+			[]string{"--gatekeeper", "foos.constraints.gatekeeper.sh"},
+			[]string{"foos.constraints.gatekeeper.sh", "foo-1", "foo-2", "deny", "dry", "invalid config"},
 			[]runtime.Object{crdList, constraintList},
 		},
 		{
 			"list non existent policy",
-			[]string{"nop"},
+			[]string{"--gatekeeper", "nop"},
 			[]string{"No constraints found"},
 			[]runtime.Object{},
 		},
@@ -362,7 +377,127 @@ func TestPolicies(t *testing.T) {
 	}
 }
 
-func TestPoliciesCompletion(t *testing.T) {
+func TestKyvernoPolicies(t *testing.T) {
+
+	crd1 := &unstructured.Unstructured{}
+	crd1.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "foos.policies.kyverno.io",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+		},
+	})
+
+	crd2 := &unstructured.Unstructured{}
+	crd2.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "bars.policies.kyverno.io",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+		},
+	})
+
+	crdList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{*crd1, *crd2},
+	}
+
+	policy1 := &unstructured.Unstructured{}
+	policy1.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "kyverno.io/v1",
+		"kind":       "foo",
+		"metadata": map[string]interface{}{
+			"name": "foo-1",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+			"annotations": map[string]interface{}{
+				"policies.kyverno.io/description": "invalid config",
+			},
+		},
+		"spec": map[string]interface{}{
+			"validationFailureAction": "enforce",
+		},
+	})
+
+	policy2 := &unstructured.Unstructured{}
+	policy2.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "kyverno.io/v1",
+		"kind":       "bar",
+		"metadata": map[string]interface{}{
+			"name":      "bar-1",
+			"namespace": "demo",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+			"annotations": map[string]interface{}{
+				"policies.kyverno.io/description": "invalid config",
+			},
+		},
+		"spec": map[string]interface{}{
+			"validationFailureAction": "audit",
+		},
+	})
+
+	policyList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "kyverno.io/v1",
+			"kind":       "kyvernoPolicyList",
+		},
+		Items: []unstructured.Unstructured{*policy1, *policy2},
+	}
+
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+		objs     []runtime.Object
+	}{
+		{
+			"list all policies",
+			[]string{"--kyverno"},
+			[]string{"foos.policies.kyverno.io", "enforce", "invalid config"},
+			[]runtime.Object{crdList, policyList},
+		},
+		{
+			"list policy with given name",
+			[]string{"--kyverno", "bar-1"},
+			[]string{"bar", "bar-1", "demo", "audit", "invalid config"},
+			[]runtime.Object{crdList, policyList},
+		},
+		{
+			"list non existent policy",
+			[]string{"--kyverno", "nop"},
+			[]string{"No Matching Policy Found"},
+			[]runtime.Object{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			cmd := policiesCmd(factory, streams, test.args)
+			cmd.Execute()
+			for _, exp := range test.expected {
+				if !strings.Contains(buf.String(), exp) {
+					t.Errorf("unexpected output: %s", buf.String())
+				}
+			}
+		})
+	}
+}
+
+func TestGatekeeperPoliciesCompletion(t *testing.T) {
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -432,11 +567,124 @@ func TestPoliciesCompletion(t *testing.T) {
 			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
 			streams, _, _, _ := genericclioptions.NewTestIOStreams()
 			cmd := NewPoliciesCmd(factory, streams)
+			cmd.Flags().Lookup("gatekeeper").Value.Set("1")
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
 			}
 		})
 	}
+}
 
+func TestKyvernoPoliciesCompletion(t *testing.T) {
+
+	crd1 := &unstructured.Unstructured{}
+	crd1.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "foos.policies.kyverno.io",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+		},
+	})
+
+	crdList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{*crd1},
+	}
+
+	policy1 := &unstructured.Unstructured{}
+	policy1.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "kyverno.io/v1",
+		"kind":       "foo",
+		"metadata": map[string]interface{}{
+			"name": "fu-bar",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+			"annotations": map[string]interface{}{
+				"policies.kyverno.io/description": "invalid config",
+			},
+		},
+		"spec": map[string]interface{}{
+			"validationFailureAction": "enforce",
+		},
+	})
+
+	policy2 := &unstructured.Unstructured{}
+	policy2.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "kyverno.io/v1",
+		"kind":       "foo",
+		"metadata": map[string]interface{}{
+			"name":      "fudge-bar",
+			"namespace": "demo",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+			"annotations": map[string]interface{}{
+				"policies.kyverno.io/description": "invalid config",
+			},
+		},
+		"spec": map[string]interface{}{
+			"validationFailureAction": "audit",
+		},
+	})
+
+	policyList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "kyverno.io/v1",
+			"kind":       "kyvernoPolicyList",
+		},
+		Items: []unstructured.Unstructured{*policy1, *policy2},
+	}
+
+	var tests = []struct {
+		desc     string
+		hint     string
+		expected []string
+		objs     []runtime.Object
+	}{
+		{
+			"match all policies",
+			"",
+			[]string{"fu-bar", "fudge-bar"},
+			[]runtime.Object{crdList, policyList},
+		},
+		{
+			"match policies with given prefix",
+			"fu",
+			[]string{"fu-bar", "fudge-bar"},
+			[]runtime.Object{crdList, policyList},
+		},
+		{
+			"match policy with given prefix",
+			"fud",
+			[]string{"fudge-bar"},
+			[]runtime.Object{crdList, policyList},
+		},
+		{
+			"match no policy",
+			"z",
+			[]string{},
+			[]runtime.Object{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			streams, _, _, _ := genericclioptions.NewTestIOStreams()
+			cmd := NewPoliciesCmd(factory, streams)
+			cmd.Flags().Lookup("kyverno").Value.Set("1")
+			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
+			if !reflect.DeepEqual(test.expected, suggestions) {
+				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
+			}
+		})
+	}
 }
