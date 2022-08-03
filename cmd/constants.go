@@ -6,5 +6,5 @@ const (
 	// BigBangNamespace - Namespace where BigBang Helm Chart is deployed
 	BigBangNamespace = "bigbang"
 	// BigBangCliVersion - constance for sematic versioning
-	BigBangCliVersion = "0.5.0"
+	BigBangCliVersion = "0.6.0"
 )
