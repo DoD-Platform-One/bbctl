@@ -71,6 +71,7 @@ func (f *FakeFactory) GetK8sClientset() (kubernetes.Interface, error) {
 // GetK8sDynamicClient - get k8s dynamic client
 func (f *FakeFactory) GetK8sDynamicClient() (dynamic.Interface, error) {
 	scheme := runtime.NewScheme()
+	corev1.AddToScheme(scheme)
 	return dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, f.gvrToListKind, f.objs...), nil
 }
 

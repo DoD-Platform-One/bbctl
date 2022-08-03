@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +16,7 @@ import (
 	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
-func event(rName string, rKind string, ns string, reason string, msg string, time time.Time) *v1.Event {
+func eventGK(rName string, rKind string, ns string, reason string, msg string, time time.Time) *v1.Event {
 
 	annotations := make(map[string]string)
 	annotations["resource_name"] = rName
@@ -37,6 +36,27 @@ func event(rName string, rKind string, ns string, reason string, msg string, tim
 	return evt
 }
 
+func eventKyverno(rName string, rKind string, ns string, component string, msg string, time time.Time) *v1.Event {
+
+	evt := &v1.Event{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:              rName,
+			Namespace:         ns,
+			CreationTimestamp: meta_v1.Time{Time: time},
+		},
+		InvolvedObject: v1.ObjectReference{
+			Name: rName,
+			Kind: rKind,
+		},
+		Source: v1.EventSource{
+			Component: component,
+		},
+		Message: msg,
+	}
+
+	return evt
+}
+
 func violationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, ns string, args []string) *cobra.Command {
 	cmd := NewViolationsCmd(factory, streams)
 	cmd.Flags().StringP("namespace", "n", "", "namespace")
@@ -49,7 +69,7 @@ func violationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, 
 	return cmd
 }
 
-func gvrToListKind() map[schema.GroupVersionResource]string {
+func gvrToListKindForGatekeeper() map[schema.GroupVersionResource]string {
 	return map[schema.GroupVersionResource]string{
 		{
 			Group:    "apiextensions.k8s.io",
@@ -61,16 +81,16 @@ func gvrToListKind() map[schema.GroupVersionResource]string {
 			Version:  "v1beta1",
 			Resource: "foos",
 		}: "gkPolicyList",
+	}
+}
+
+func gvrToListKindForKyverno() map[schema.GroupVersionResource]string {
+	return map[schema.GroupVersionResource]string{
 		{
-			Group:    "constraints.gatekeeper.sh",
-			Version:  "v1beta1",
-			Resource: "foo",
-		}: "gkPolicyList",
-		{
-			Group:    "constraints.gatekeeper.sh",
-			Version:  "v1beta1",
-			Resource: "nop",
-		}: "gkPolicyList",
+			Group:    "apiextensions.k8s.io",
+			Version:  "v1",
+			Resource: "customresourcedefinitions",
+		}: "customresourcedefinitionsList",
 		{
 			Group:    "kyverno.io",
 			Version:  "v1",
@@ -81,25 +101,10 @@ func gvrToListKind() map[schema.GroupVersionResource]string {
 			Version:  "v1",
 			Resource: "foo",
 		}: "kyvernoPolicyList",
-		{
-			Group:    "kyverno.io",
-			Version:  "v1",
-			Resource: "bars",
-		}: "kyvernoPolicyList",
-		{
-			Group:    "kyverno.io",
-			Version:  "v1",
-			Resource: "bar",
-		}: "kyvernoPolicyList",
-		{
-			Group:    "kyverno.io",
-			Version:  "v1",
-			Resource: "nop",
-		}: "kyvernoPolicyList",
 	}
 }
 
-func TestAuditViolations(t *testing.T) {
+func TestGatekeeperAuditViolations(t *testing.T) {
 
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
@@ -165,7 +170,7 @@ func TestAuditViolations(t *testing.T) {
 		{
 			"no violations in any namespace",
 			"",
-			"No violations found in audit",
+			"",
 			"Resource: r1, Kind: k1, Namespace: ns1",
 			[]runtime.Object{},
 		},
@@ -188,7 +193,7 @@ func TestAuditViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForGatekeeper(), nil)
 			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
 			cmd.Execute()
@@ -202,75 +207,7 @@ func TestAuditViolations(t *testing.T) {
 	}
 }
 
-func TestDenyViolations(t *testing.T) {
-
-	layout := "Mon Jan 2 15:04:05 -0700 MST 2006"
-	ts, _ := time.Parse(layout, "Wed Dec 1 13:01:05 -0700 MST 2021")
-
-	evt1 := event("foo", "k1", "ns1", "FailedAdmission", "abc", ts)
-	evt2 := event("bar", "k2", "ns2", "FailedAdmission", "xyz", ts)
-
-	var tests = []struct {
-		desc       string
-		namespace  string
-		expected   string
-		unexpected string
-		objs       []runtime.Object
-	}{
-		{
-			"no violations in any namespace",
-			"",
-			"No events found for deny violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
-			[]runtime.Object{},
-		},
-		{
-			"no violations in given namespace",
-			"ns0",
-			"No events found for deny violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
-			[]runtime.Object{evt1, evt2},
-		},
-		{
-			"violations in given namespace",
-			"ns1",
-			"Resource: foo, Kind: k1, Namespace: ns1",
-			"Resource: bar, Kind: k2, Namespace: ns2",
-			[]runtime.Object{evt1, evt2},
-		},
-		{
-			"violations in any namespace",
-			"",
-			"Resource: bar, Kind: k2, Namespace: ns2",
-			"No violation events found",
-			[]runtime.Object{evt1, evt2},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil, nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, test.namespace, nil)
-			cmd.Execute()
-			if !strings.Contains(buf.String(), test.expected) {
-				t.Errorf("unexpected output: %s", buf.String())
-			}
-			if strings.Contains(buf.String(), test.unexpected) {
-				t.Errorf("unexpected output: %s", buf.String())
-			}
-		})
-	}
-
-}
-
-func policiesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, args []string) *cobra.Command {
-	cmd := NewPoliciesCmd(factory, streams)
-	cmd.SetArgs(args)
-	return cmd
-}
-
-func TestGatekeeperPolicies(t *testing.T) {
+func TestGatekeeperDenyViolations(t *testing.T) {
 
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
@@ -292,291 +229,66 @@ func TestGatekeeperPolicies(t *testing.T) {
 		Items: []unstructured.Unstructured{*crd},
 	}
 
-	constraint1 := &unstructured.Unstructured{}
-	constraint1.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
-		"kind":       "foo",
-		"metadata": map[string]interface{}{
-			"name": "foo-1",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "gatekeeper",
-			},
-			"annotations": map[string]interface{}{
-				"constraints.gatekeeper/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"enforcementAction": "deny",
-		},
-	})
+	layout := "Mon Jan 2 15:04:05 -0700 MST 2006"
+	ts, _ := time.Parse(layout, "Wed Dec 1 13:01:05 -0700 MST 2021")
 
-	constraint2 := &unstructured.Unstructured{}
-	constraint2.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
-		"kind":       "foo",
-		"metadata": map[string]interface{}{
-			"name": "foo-2",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "gatekeeper",
-			},
-			"annotations": map[string]interface{}{
-				"constraints.gatekeeper/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"enforcementAction": "dryrun",
-		},
-	})
-
-	constraintList := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": "constraints.gatekeeper.sh/v1beta1",
-			"kind":       "gkPolicyList",
-		},
-		Items: []unstructured.Unstructured{*constraint1, *constraint2},
-	}
+	evt1 := eventGK("foo", "k1", "ns1", "FailedAdmission", "abc", ts)
+	evt2 := eventGK("bar", "k2", "ns2", "FailedAdmission", "xyz", ts)
 
 	var tests = []struct {
-		desc     string
-		args     []string
-		expected []string
-		objs     []runtime.Object
+		desc       string
+		namespace  string
+		expected   string
+		unexpected string
+		objs       []runtime.Object
 	}{
 		{
-			"list all policies",
-			[]string{"--gatekeeper"},
-			[]string{"foos.constraints.gatekeeper.sh", "deny", "invalid config"},
-			[]runtime.Object{crdList, constraintList},
-		},
-		{
-			"list policy with given name",
-			[]string{"--gatekeeper", "foos.constraints.gatekeeper.sh"},
-			[]string{"foos.constraints.gatekeeper.sh", "foo-1", "foo-2", "deny", "dry", "invalid config"},
-			[]runtime.Object{crdList, constraintList},
-		},
-		{
-			"list non existent policy",
-			[]string{"--gatekeeper", "nop"},
-			[]string{"No constraints found"},
-			[]runtime.Object{},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
-			cmd := policiesCmd(factory, streams, test.args)
-			cmd.Execute()
-			for _, exp := range test.expected {
-				if !strings.Contains(buf.String(), exp) {
-					t.Errorf("unexpected output: %s", buf.String())
-				}
-			}
-		})
-	}
-}
-
-func TestKyvernoPolicies(t *testing.T) {
-
-	crd1 := &unstructured.Unstructured{}
-	crd1.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "apiextensions.k8s.io/v1",
-		"kind":       "customresourcedefinition",
-		"metadata": map[string]interface{}{
-			"name": "foos.policies.kyverno.io",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-		},
-	})
-
-	crd2 := &unstructured.Unstructured{}
-	crd2.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "apiextensions.k8s.io/v1",
-		"kind":       "customresourcedefinition",
-		"metadata": map[string]interface{}{
-			"name": "bars.policies.kyverno.io",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-		},
-	})
-
-	crdList := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": "apiextensions.k8s.io/v1",
-			"kind":       "customresourcedefinitionList",
-		},
-		Items: []unstructured.Unstructured{*crd1, *crd2},
-	}
-
-	policy1 := &unstructured.Unstructured{}
-	policy1.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "kyverno.io/v1",
-		"kind":       "foo",
-		"metadata": map[string]interface{}{
-			"name": "foo-1",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-			"annotations": map[string]interface{}{
-				"policies.kyverno.io/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"validationFailureAction": "enforce",
-		},
-	})
-
-	policy2 := &unstructured.Unstructured{}
-	policy2.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "kyverno.io/v1",
-		"kind":       "bar",
-		"metadata": map[string]interface{}{
-			"name":      "bar-1",
-			"namespace": "demo",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-			"annotations": map[string]interface{}{
-				"policies.kyverno.io/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"validationFailureAction": "audit",
-		},
-	})
-
-	policyList := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": "kyverno.io/v1",
-			"kind":       "kyvernoPolicyList",
-		},
-		Items: []unstructured.Unstructured{*policy1, *policy2},
-	}
-
-	var tests = []struct {
-		desc     string
-		args     []string
-		expected []string
-		objs     []runtime.Object
-	}{
-		{
-			"list all policies",
-			[]string{"--kyverno"},
-			[]string{"foos.policies.kyverno.io", "enforce", "invalid config"},
-			[]runtime.Object{crdList, policyList},
-		},
-		{
-			"list policy with given name",
-			[]string{"--kyverno", "bar-1"},
-			[]string{"bar", "bar-1", "demo", "audit", "invalid config"},
-			[]runtime.Object{crdList, policyList},
-		},
-		{
-			"list non existent policy",
-			[]string{"--kyverno", "nop"},
-			[]string{"No Matching Policy Found"},
-			[]runtime.Object{},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
-			cmd := policiesCmd(factory, streams, test.args)
-			cmd.Execute()
-			for _, exp := range test.expected {
-				if !strings.Contains(buf.String(), exp) {
-					t.Errorf("unexpected output: %s", buf.String())
-				}
-			}
-		})
-	}
-}
-
-func TestGatekeeperPoliciesCompletion(t *testing.T) {
-	crd1 := &unstructured.Unstructured{}
-	crd1.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "apiextensions.k8s.io/v1",
-		"kind":       "customresourcedefinition",
-		"metadata": map[string]interface{}{
-			"name": "foos.constraints.gatekeeper.sh",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "gatekeeper",
-			},
-		},
-	})
-
-	crd2 := &unstructured.Unstructured{}
-	crd2.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "apiextensions.k8s.io/v1",
-		"kind":       "customresourcedefinition",
-		"metadata": map[string]interface{}{
-			"name": "fudges.constraints.gatekeeper.sh",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "gatekeeper",
-			},
-		},
-	})
-
-	crdList := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": "apiextensions.k8s.io/v1",
-			"kind":       "customresourcedefinitionList",
-		},
-		Items: []unstructured.Unstructured{*crd1, *crd2},
-	}
-
-	var tests = []struct {
-		desc     string
-		hint     string
-		expected []string
-		objs     []runtime.Object
-	}{
-		{
-			"match all policies",
+			"no violations in any namespace",
 			"",
-			[]string{"foos", "fudges"},
+			"No events found for deny violations",
+			"Resource: foo, Kind: k1, Namespace: ns1",
 			[]runtime.Object{crdList},
 		},
 		{
-			"match policies with given prefix",
-			"f",
-			[]string{"foos", "fudges"},
-			[]runtime.Object{crdList},
+			"no violations in given namespace",
+			"ns0",
+			"No events found for deny violations",
+			"Resource: foo, Kind: k1, Namespace: ns1",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"match policy with given prefix",
-			"fud",
-			[]string{"fudges"},
-			[]runtime.Object{crdList},
+			"violations in given namespace",
+			"ns1",
+			"Resource: foo, Kind: k1, Namespace: ns1",
+			"Resource: bar, Kind: k2, Namespace: ns2",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"match no policy",
-			"z",
-			[]string{},
-			[]runtime.Object{},
+			"violations in any namespace",
+			"",
+			"Resource: bar, Kind: k2, Namespace: ns2",
+			"No violation events found",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
-			streams, _, _, _ := genericclioptions.NewTestIOStreams()
-			cmd := NewPoliciesCmd(factory, streams)
-			cmd.Flags().Lookup("gatekeeper").Value.Set("1")
-			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
-			if !reflect.DeepEqual(test.expected, suggestions) {
-				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForGatekeeper(), nil)
+			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, test.namespace, nil)
+			cmd.Execute()
+			if !strings.Contains(buf.String(), test.expected) {
+				t.Errorf("unexpected output: %s", buf.String())
+			}
+			if strings.Contains(buf.String(), test.unexpected) {
+				t.Errorf("unexpected output: %s", buf.String())
 			}
 		})
 	}
 }
 
-func TestKyvernoPoliciesCompletion(t *testing.T) {
+func TestKyvernoAuditViolations(t *testing.T) {
 
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
@@ -598,92 +310,141 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 		Items: []unstructured.Unstructured{*crd1},
 	}
 
-	policy1 := &unstructured.Unstructured{}
-	policy1.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "kyverno.io/v1",
-		"kind":       "foo",
-		"metadata": map[string]interface{}{
-			"name": "fu-bar",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-			"annotations": map[string]interface{}{
-				"policies.kyverno.io/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"validationFailureAction": "enforce",
-		},
-	})
+	layout := "Mon Jan 2 15:04:05 -0700 MST 2006"
+	ts, _ := time.Parse(layout, "Wed Dec 1 13:01:05 -0700 MST 2021")
 
-	policy2 := &unstructured.Unstructured{}
-	policy2.SetUnstructuredContent(map[string]interface{}{
-		"apiVersion": "kyverno.io/v1",
-		"kind":       "foo",
-		"metadata": map[string]interface{}{
-			"name":      "fudge-bar",
-			"namespace": "demo",
-			"labels": map[string]interface{}{
-				"app.kubernetes.io/name": "kyverno",
-			},
-			"annotations": map[string]interface{}{
-				"policies.kyverno.io/description": "invalid config",
-			},
-		},
-		"spec": map[string]interface{}{
-			"validationFailureAction": "audit",
-		},
-	})
-
-	policyList := &unstructured.UnstructuredList{
-		Object: map[string]interface{}{
-			"apiVersion": "kyverno.io/v1",
-			"kind":       "kyvernoPolicyList",
-		},
-		Items: []unstructured.Unstructured{*policy1, *policy2},
-	}
+	evt1 := eventKyverno("foo", "k1", "ns1", "policy-controller", "FailedAdmission", ts)
+	evt2 := eventKyverno("bar", "k2", "ns2", "policy-controller", "FailedAdmission", ts)
 
 	var tests = []struct {
-		desc     string
-		hint     string
-		expected []string
-		objs     []runtime.Object
+		desc       string
+		namespace  string
+		expected   string
+		unexpected string
+		objs       []runtime.Object
 	}{
 		{
-			"match all policies",
+			"no violations in any namespace",
 			"",
-			[]string{"fu-bar", "fudge-bar"},
-			[]runtime.Object{crdList, policyList},
+			"No events found for policy violations",
+			"Resource: foo, Kind: k1, Namespace: ns1",
+			[]runtime.Object{crdList},
 		},
 		{
-			"match policies with given prefix",
-			"fu",
-			[]string{"fu-bar", "fudge-bar"},
-			[]runtime.Object{crdList, policyList},
+			"no violations in given namespace",
+			"ns0",
+			"No events found for policy violations",
+			"Resource: foo, Kind: k1, Namespace: ns1",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"match policy with given prefix",
-			"fud",
-			[]string{"fudge-bar"},
-			[]runtime.Object{crdList, policyList},
+			"violations in given namespace",
+			"ns1",
+			"Resource: foo, Kind: k1, Namespace: ns1",
+			"Resource: bar, Kind: k2, Namespace: ns2",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"match no policy",
-			"z",
-			[]string{},
-			[]runtime.Object{},
+			"violations in any namespace",
+			"",
+			"Resource: bar, Kind: k2, Namespace: ns2",
+			"No events found for policy violations",
+			[]runtime.Object{crdList, evt1, evt2},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
-			streams, _, _, _ := genericclioptions.NewTestIOStreams()
-			cmd := NewPoliciesCmd(factory, streams)
-			cmd.Flags().Lookup("kyverno").Value.Set("1")
-			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
-			if !reflect.DeepEqual(test.expected, suggestions) {
-				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForKyverno(), nil)
+			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
+			cmd.Execute()
+			if !strings.Contains(buf.String(), test.expected) {
+				t.Errorf("unexpected output: %s", buf.String())
+			}
+			if strings.Contains(buf.String(), test.unexpected) {
+				t.Errorf("unexpected output: %s", buf.String())
+			}
+		})
+	}
+}
+
+func TestKyvernoEnforceViolations(t *testing.T) {
+
+	crd1 := &unstructured.Unstructured{}
+	crd1.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "foos.policies.kyverno.io",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+		},
+	})
+
+	crdList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{*crd1},
+	}
+
+	layout := "Mon Jan 2 15:04:05 -0700 MST 2006"
+	ts, _ := time.Parse(layout, "Wed Dec 1 13:01:05 -0700 MST 2021")
+
+	evt1 := eventKyverno("foo", "po", "ns1", "admission-controller", "FailedAdmission", ts)
+	evt2 := eventKyverno("bar", "cp", "ns2", "admission-controller", "FailedAdmission", ts)
+
+	var tests = []struct {
+		desc       string
+		namespace  string
+		expected   string
+		unexpected string
+		objs       []runtime.Object
+	}{
+		{
+			"no violations in any namespace",
+			"",
+			"No events found for policy violations",
+			"Resource: NA, Kind: po, Namespace: ns1",
+			[]runtime.Object{crdList},
+		},
+		{
+			"no violations in given namespace",
+			"ns0",
+			"No events found for policy violations",
+			"Resource: NA, Kind: po, Namespace: ns1",
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+		{
+			"violations in given namespace",
+			"ns1",
+			"Resource: NA, Kind: po, Namespace: ns1",
+			"Resource: NA, Kind: po, Namespace: ns2",
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+		{
+			"violations in any namespace",
+			"",
+			"Resource: NA, Kind: cp, Namespace: ns2",
+			"No events found for policy violations",
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForKyverno(), nil)
+			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, test.namespace, nil)
+			cmd.Execute()
+			if !strings.Contains(buf.String(), test.expected) {
+				t.Errorf("unexpected output: %s", buf.String())
+			}
+			if strings.Contains(buf.String(), test.unexpected) {
+				t.Errorf("unexpected output: %s", buf.String())
 			}
 		})
 	}
