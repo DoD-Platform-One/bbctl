@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"io"
 	"strings"
 
@@ -99,6 +100,14 @@ type FakeCommandExecutor struct {
 
 // Stream - stream command result
 func (f *FakeCommandExecutor) Stream(options remotecommand.StreamOptions) error {
+	stdout := options.Stdout
+	output := f.CommandResult[f.Command]
+	stdout.Write([]byte(output))
+	return nil
+}
+
+// Stream - stream command result
+func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options remotecommand.StreamOptions) error {
 	stdout := options.Stdout
 	output := f.CommandResult[f.Command]
 	stdout.Write([]byte(output))
