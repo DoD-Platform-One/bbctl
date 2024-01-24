@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+
 	"github.com/spf13/cobra"
 	k8scorev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,14 +18,13 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
 
 	helmv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	kustomizev1beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
 	sourcev1beta1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
+	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 )
 
 var (
@@ -40,7 +41,7 @@ var (
 
 const (
 	statusString = "namespace: %s, name: %s, status: %s\n"
-	commandHelp = "Command Help:\n"
+	commandHelp  = "Command Help:\n"
 )
 
 // NewStatusCmd - new status command
@@ -178,7 +179,7 @@ func getBigBangStatus(helmclient helm.Client) string {
 	}
 
 	sb.WriteString(fmt.Sprintf("Found %s release version %s status: %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version, release.Info.Status))
-	
+
 	return sb.String()
 }
 
@@ -225,7 +226,7 @@ func getFluxKustomizations(fc client.Client) string {
 		for _, fkzd := range fkzs {
 			sb.WriteString(fmt.Sprintf(statusString, fkzd.namespace, fkzd.name, fkzd.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fkzd.name, fkzd.namespace ))
+			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fkzd.name, fkzd.namespace))
 		}
 	}
 
@@ -275,8 +276,8 @@ func getFluxGitRepositories(fc client.Client) string {
 		for _, fgrd := range fgrs {
 			sb.WriteString(fmt.Sprintf(statusString, fgrd.namespace, fgrd.name, fgrd.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe gitrepository %s -n %s\n", fgrd.name, fgrd.namespace ))
-			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fgrd.name, fgrd.namespace ))
+			sb.WriteString(fmt.Sprintf("  kubectl describe gitrepository %s -n %s\n", fgrd.name, fgrd.namespace))
+			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fgrd.name, fgrd.namespace))
 		}
 	}
 
@@ -326,9 +327,9 @@ func getFluxHelmReleases(fc client.Client) string {
 		for _, fhrd := range fhrs {
 			sb.WriteString(fmt.Sprintf(statusString, fhrd.namespace, fhrd.name, fhrd.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux suspend helmrelease %s -n %s\n", fhrd.name, fhrd.namespace ))
-			sb.WriteString(fmt.Sprintf("  flux resume helmrelease %s -n %s\n", fhrd.name, fhrd.namespace ))
-			sb.WriteString(fmt.Sprintf("  flux reconcile helmrelease %s -n %s --with-source\n", fhrd.name, fhrd.namespace ))
+			sb.WriteString(fmt.Sprintf("  flux suspend helmrelease %s -n %s\n", fhrd.name, fhrd.namespace))
+			sb.WriteString(fmt.Sprintf("  flux resume helmrelease %s -n %s\n", fhrd.name, fhrd.namespace))
+			sb.WriteString(fmt.Sprintf("  flux reconcile helmrelease %s -n %s --with-source\n", fhrd.name, fhrd.namespace))
 		}
 	}
 
@@ -373,8 +374,8 @@ func getDmstStatus(clientset k8sclient.Interface) string {
 		for _, dmst := range dmsts {
 			sb.WriteString(fmt.Sprintf(statusString, dmst.namespace, dmst.name, dmst.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", dmst.name, dmst.namespace ))
-			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", dmst.namespace ))
+			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", dmst.name, dmst.namespace))
+			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", dmst.namespace))
 		}
 	}
 
@@ -520,7 +521,7 @@ func getPodStatus(clientset k8sclient.Interface) string {
 		for _, pod := range pods {
 			sb.WriteString(fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace ))
+			sb.WriteString(fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace))
 		}
 	}
 

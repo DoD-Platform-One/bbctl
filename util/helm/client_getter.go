@@ -1,6 +1,8 @@
 package helm
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -11,15 +13,23 @@ import (
 
 // RESTClientGetter defines the values of a helm REST client
 type RESTClientGetter struct {
-	namespace  string
-	restConfig *rest.Config
+	namespace      string
+	restConfig     *rest.Config
+	warningHandler func(string)
 }
 
-// NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace' and 'restConfig'.
-func NewRESTClientGetter(restConfig *rest.Config, namespace string) *RESTClientGetter {
+// NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace' and 'restConfig' and optiional warningHandlerOverride (default is fmt.Print).
+func NewRESTClientGetter(restConfig *rest.Config, namespace string, warningHandlerOverride func(string)) *RESTClientGetter {
+	tempWarningHandler := warningHandlerOverride
+	if tempWarningHandler == nil {
+		tempWarningHandler = func(s string) {
+			fmt.Print(s)
+		}
+	}
 	return &RESTClientGetter{
-		namespace:  namespace,
-		restConfig: restConfig,
+		namespace:      namespace,
+		restConfig:     restConfig,
+		warningHandler: tempWarningHandler,
 	}
 }
 
@@ -53,11 +63,16 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 		return nil, err
 	}
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-	expander := restmapper.NewShortcutExpander(mapper, discoveryClient)
+	expander := restmapper.NewShortcutExpander(mapper, discoveryClient, c.warningHandler)
 	return expander, nil
 }
 
 // ToRawKubeConfigLoader - to raw kubeconfig loader
 func (c *RESTClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return nil
+}
+
+// SendWarning - send warning to warning handler
+func (c *RESTClientGetter) SendWarning(warning string) {
+	c.warningHandler(warning)
 }

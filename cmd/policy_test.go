@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
 func policiesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, args []string) *cobra.Command {

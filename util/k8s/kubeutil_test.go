@@ -11,13 +11,13 @@ import (
 func TestBuildKubeConfigFromFlags(t *testing.T) {
 
 	var flags *pflag.FlagSet = &pflag.FlagSet{}
-	viper.Set("kubeconfig", "../test/data/kube-config-a")
+	viper.Set("kubeconfig", "../test/data/kube-config-a.yaml")
 
 	client, err := BuildKubeConfigFromFlags(flags)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test2.com:6443", client.Host)
 
-	flags.String("kubeconfig", "../test/data/kube-config", "")
+	flags.String("kubeconfig", "../test/data/kube-config.yaml", "")
 	client, err = BuildKubeConfigFromFlags(flags)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)
@@ -25,7 +25,7 @@ func TestBuildKubeConfigFromFlags(t *testing.T) {
 
 func TestBuildDynamicClientFromFlags(t *testing.T) {
 	var flags *pflag.FlagSet = &pflag.FlagSet{}
-	flags.String("kubeconfig", "../test/data/kube-config", "")
+	flags.String("kubeconfig", "../test/data/kube-config.yaml", "")
 	client, err := BuildDynamicClientFromFlags(flags)
 	assert.Nil(t, err)
 	assert.NotNil(t, client)
@@ -33,12 +33,12 @@ func TestBuildDynamicClientFromFlags(t *testing.T) {
 
 func TestGetKubeConfigFromPathList(t *testing.T) {
 
-	configPaths := "../test/data/kube-config"
+	configPaths := "../test/data/kube-config.yaml"
 	client, err := GetKubeConfigFromPathList(configPaths)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)
 
-	configPaths = "../test/data/kube-config:no-kube-config"
+	configPaths = "../test/data/kube-config.yaml:no-kube-config.yaml"
 	client, err = GetKubeConfigFromPathList(configPaths)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)

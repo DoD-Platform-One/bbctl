@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbk8sutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
+
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbk8sutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
 )
 
 var (

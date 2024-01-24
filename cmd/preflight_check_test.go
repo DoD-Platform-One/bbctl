@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -12,8 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
 func pod(app string, ns string, phase corev1.PodPhase) *corev1.Pod {

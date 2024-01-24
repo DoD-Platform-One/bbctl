@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,8 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
 )
 
 func eventGK(rName string, rKind string, ns string, reason string, msg string, time time.Time) *v1.Event {

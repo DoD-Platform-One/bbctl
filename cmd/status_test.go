@@ -15,7 +15,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	bbtestutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test"
+	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	helmv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	kustomizev1beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"

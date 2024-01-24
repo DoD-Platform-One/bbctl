@@ -1,9 +1,11 @@
 # bbctl
+
 CLI tool to simplify development, deployment, auditing and troubleshooting of BigBang in a kubernetes cluster.
 
 ## Contributing
+
 Code contributions from the community are welcomed. Steps to contribute:
-1. Create an issue in this project. See the [issues page](https://repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/-/issues)
+1. Create an issue in this project. See the [issues page](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/issues)
 1. Fill in relevant information about the issue so that others can understand what it is for 
 1. Assign yourself to the issue so that it is clear that you are contributing code verses just reporting an issue.
 1. View the issue in the Gitlab UI, and from there you can create a branch and a corresponding merge request.
@@ -11,88 +13,129 @@ Code contributions from the community are welcomed. Steps to contribute:
 1. When your code is ready add a ```status::review``` label to the merge request
 1. Code owners will review, test, and merge as appropriate.
 1. Code owners will create a release tag and a package will be built by the PartyBus mission devops pipeline.
+
 ### Contribution conditions
+
 1. The code must include a minimum of 80% unit test coverage
 1. The code must pass lint test
 1. Help resolve any security issues found in the mission ops pipeline
 
 ## Development Environment 
+
 The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
 ### Install Golang
+
 Follow the instructions in official Go document for the specific development platform:
 https://golang.org/doc/install
 
 Define an environment variables GOPATH and GOROOT
-```
+```bash
 export GOPATH=$HOME/go
 export GOROOT=/usr/local/go
 ```
+
 Create directories and set PATH environment variable
-```
+```bash
 mkdir -p $HOME/go/{bin,src,pkg}
 export PATH="$PATH:${GOPATH}/bin"
 ```
+
 Clone the repo such that the bbctl is available in the following location:
+```bash
+$GOPATH/src/repo1.dso.mil/big-bang/product/packages/bbctl
 ```
-$GOPATH/src/repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl
-```
-Make the environment variables permanent by setting them in your shell profile   
-~/.bash_profile
-```
+Make the environment variables permanent by setting them in your shell's rc `~/.bash_rc` or equivalent for alternative shells.
+```bash
 # support for GoLang development
 export GOPATH=$HOME/go
 export GOROOT=/usr/local/go
 export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"
 ```
-You might also have to source the bash profile in the bashrc
-~./bashrc
-```
-source ~/.bash_profile
-```
 
 ### Install cobra
-```
-go get -u github.com/spf13/cobra/cobra
+
+```bash
+go get -u github.com/spf13/cobra
 ```
 
 ### Add new commands with cobra
-The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subommand. Refer to [command semantics](./docs/command.md) for the practices followed in naming bbctl commands.
+
+The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subommand. Refer to [command semantics](/docs/command.md) for the practices followed in naming bbctl commands.
 
 ### Build only with no local install
+
 Execute the following from the project root to build the binary without local install
-```
+```bash
 go build
 ```
+
 Run the built binary using dot-slash
-```
+```bash
 ./bbctl -h
 ```
 
 ### Build and Install
+
 Execute the following from the project root to build the executable and make it available in $GOPATH/bin directory:
-```
+```bash
 go install
 ```
+
 Run the installed bbctl tool
-```
+```bash
 bbctl -h
 ```
 
 ### Run unit tests
-```
+
+```bash
 go test -v ./... -coverprofile=cover.txt
 ```
 
 ### Run lint checks
+
 Linting checks code quality based on best practice. For now the [linter tool](https://github.com/golang/lint) is the one from the golang project. To manually run the linter follow these steps.  
 1. install the tool
-    ```
+    ```bash
     go install golang.org/x/lint/golint@latest
     ```
 2. Run the linter from this project's root directory
-    ```
+    ```bash
     golint -set_exit_status ./...
     ```
 
+## Development Tasks
 
+Here some common development tasks will be laid out with common issues and solutions.
+
+### Upgrading
+
+```bash
+go get -u
+
+# You should immediately build and run tests afterwards
+go build
+go test -v ./... -coverprofile=cover.txt
+```
+
+#### Problem Packages
+
+1. `oras.land/oras-go` and `github.com/docker/docker`
+    1. If you get failures from doing that in relation to `oras.land/oras-go` check if the package `github.com/docker/docker` got upgraded. Oras seems to depend on a bunch of incompatible versions of packages and that one causes build issues.
+    1. Last seen 1/19/2024
+
+#### Debugging New Problem Packages
+
+1. If that isn't the issue use the following to find it's dependencies.
+    ```bash
+    go mod graph | grep "name/of/package/throwing/error.go"
+    ```
+1. Revert all of those, then see if it works with a build/test.
+    1. If it does commit, then start adding those upgrades back in one at a time and make a list of problem package(s)
+    1. If it doesn't
+        1. If there is a new error start this process again for that error as well
+        1. If it's the same error, ensure you reverted all of the dependencies
+            1. Most often one was simply missed from the list generated by the initial `go mod graph`
+            1. Note some may be intermediate meaning you'd need to do the `go mod graph` for the level 1 dependencies to get the level 2. This is relatively rare though.
+1. Note the new problem packages [here](#problem-packages)
