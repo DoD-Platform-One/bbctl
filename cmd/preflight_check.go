@@ -9,6 +9,9 @@ import (
 	"strings"
 	"time"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbutilk8s "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -22,8 +25,6 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	metricsapi "k8s.io/metrics/pkg/apis/metrics"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbutilk8s "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
 )
 
 var (

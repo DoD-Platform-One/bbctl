@@ -14,11 +14,12 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
+
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	"repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/gatekeeper"
-	"repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/kyverno"
 )
 
 var (

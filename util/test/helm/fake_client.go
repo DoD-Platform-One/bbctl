@@ -3,8 +3,9 @@ package test
 import (
 	"fmt"
 
+	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+
 	"helm.sh/helm/v3/pkg/release"
-	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
 )
 
 // NewFakeClient - returns a new Fale Helm client with the provided options

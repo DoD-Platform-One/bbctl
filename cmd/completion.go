@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
 )
 
 var (
@@ -52,7 +53,7 @@ var (
 		$ bbctl completion fish > ~/.config/fish/completions/bbctl.fish `))
 )
 
-// NewCompletionCmd - create a new Cobra completion command 
+// NewCompletionCmd - create a new Cobra completion command
 func NewCompletionCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   completionUse,

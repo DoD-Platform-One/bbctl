@@ -5,9 +5,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/cmd"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
-	bbk8sutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/cmd"
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbk8sutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 )
 
 func main() {

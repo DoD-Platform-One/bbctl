@@ -5,6 +5,9 @@ import (
 	"io"
 	"strings"
 
+	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	fakehelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
+
 	"helm.sh/helm/v3/pkg/release"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,8 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
-	fakehelm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/test/helm"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakectlrclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -106,7 +107,7 @@ func (f *FakeCommandExecutor) Stream(options remotecommand.StreamOptions) error 
 	return nil
 }
 
-// Stream - stream command result
+// StreamWithContext - stream command result with given context
 func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options remotecommand.StreamOptions) error {
 	stdout := options.Stdout
 	output := f.CommandResult[f.Command]

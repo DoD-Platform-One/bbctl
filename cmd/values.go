@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -12,7 +14,6 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
 )
 
 var (

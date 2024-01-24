@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 
+	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/cli/output"
@@ -10,7 +12,6 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	bbutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util"
 )
 
 var (

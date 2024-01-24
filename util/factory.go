@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/pflag"
 	"helm.sh/helm/v3/pkg/action"
 
+	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	bbk8sutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,8 +19,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/scheme"
-	helm "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/helm"
-	bbk8sutil "repo1.dso.mil/platform-one/big-bang/apps/product-tools/bbctl/util/k8s"
 	ctrl "sigs.k8s.io/controller-runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -132,7 +133,8 @@ func (f *UtilityFactory) getHelmConfig(namespace string) (*action.Configuration,
 		return nil, err
 	}
 
-	clientGetter := helm.NewRESTClientGetter(config, namespace)
+	// TODO: add support for an alternate warning handler and then just default nil
+	clientGetter := helm.NewRESTClientGetter(config, namespace, nil)
 
 	debugLog := func(format string, v ...interface{}) {
 		log.Printf(format, v...)
