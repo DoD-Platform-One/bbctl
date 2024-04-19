@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/dynamic"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
+	restClient "k8s.io/client-go/rest"
+	clientCmd "k8s.io/client-go/tools/clientcmd"
+	homeDir "k8s.io/client-go/util/homedir"
 )
 
 // BuildKubeConfigFromFlags - is a helper function that builds config object used to
@@ -21,31 +21,31 @@ import (
 // Read config from default location at $HOME/.kube/config
 //
 // If all these steps fail, fallback to default kubernetes config mechanism.
-func BuildKubeConfigFromFlags(flags *pflag.FlagSet) (*restclient.Config, error) {
-	kubeconfig, _ := flags.GetString("kubeconfig")
+func BuildKubeConfigFromFlags(flags *pFlag.FlagSet) (*restClient.Config, error) {
+	kubeConfig, _ := flags.GetString("kubeconfig")
 
-	if kubeconfig != "" {
-		_, err := os.Stat(kubeconfig)
+	if kubeConfig != "" {
+		_, err := os.Stat(kubeConfig)
 		if err != nil {
 			return nil, fmt.Errorf("%s", err)
 		}
 	}
 
-	if kubeconfig == "" {
-		kubeconfig = viper.GetString("kubeconfig")
-		if kubeconfig != "" {
-			return GetKubeConfigFromPathList(kubeconfig)
+	if kubeConfig == "" {
+		kubeConfig = viper.GetString("kubeconfig")
+		if kubeConfig != "" {
+			return GetKubeConfigFromPathList(kubeConfig)
 		}
 	}
 
-	if kubeconfig == "" {
+	if kubeConfig == "" {
 
-		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = filepath.Join(home, ".kube", "config")
+		if home := homeDir.HomeDir(); home != "" {
+			kubeConfig = filepath.Join(home, ".kube", "config")
 		}
 	}
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := clientCmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func BuildKubeConfigFromFlags(flags *pflag.FlagSet) (*restclient.Config, error) 
 
 // BuildDynamicClientFromFlags is a helper function that builds a dynamic client
 // used to interact with the k8s cluster.
-func BuildDynamicClientFromFlags(flags *pflag.FlagSet) (dynamic.Interface, error) {
+func BuildDynamicClientFromFlags(flags *pFlag.FlagSet) (dynamic.Interface, error) {
 	restConfig, err := BuildKubeConfigFromFlags(flags)
 	if err != nil {
 		return nil, err
@@ -65,14 +65,14 @@ func BuildDynamicClientFromFlags(flags *pflag.FlagSet) (dynamic.Interface, error
 
 // GetKubeConfigFromPathList is a helper function that builds config object used to
 // interact with the k8s cluster using a list of kubeconfig file(s)
-func GetKubeConfigFromPathList(configPaths string) (*restclient.Config, error) {
+func GetKubeConfigFromPathList(configPaths string) (*restClient.Config, error) {
 	configPathList := filepath.SplitList(configPaths)
-	configLoadingRules := &clientcmd.ClientConfigLoadingRules{}
+	configLoadingRules := &clientCmd.ClientConfigLoadingRules{}
 	if len(configPathList) <= 1 {
 		configLoadingRules.ExplicitPath = configPaths
 	} else {
 		configLoadingRules.Precedence = configPathList
 	}
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(configLoadingRules, nil)
+	clientConfig := clientCmd.NewNonInteractiveDeferredLoadingClientConfig(configLoadingRules, nil)
 	return clientConfig.ClientConfig()
 }

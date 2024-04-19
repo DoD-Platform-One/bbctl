@@ -3,14 +3,13 @@ package k8s
 import (
 	"testing"
 
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildKubeConfigFromFlags(t *testing.T) {
-
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	viper.Set("kubeconfig", "../test/data/kube-config-a.yaml")
 
 	client, err := BuildKubeConfigFromFlags(flags)
@@ -24,7 +23,7 @@ func TestBuildKubeConfigFromFlags(t *testing.T) {
 }
 
 func TestBuildDynamicClientFromFlags(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "../test/data/kube-config.yaml", "")
 	client, err := BuildDynamicClientFromFlags(flags)
 	assert.Nil(t, err)
@@ -32,7 +31,6 @@ func TestBuildDynamicClientFromFlags(t *testing.T) {
 }
 
 func TestGetKubeConfigFromPathList(t *testing.T) {
-
 	configPaths := "../test/data/kube-config.yaml"
 	client, err := GetKubeConfigFromPathList(configPaths)
 	assert.Nil(t, err)

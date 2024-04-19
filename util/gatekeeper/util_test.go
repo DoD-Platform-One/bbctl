@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,7 +38,6 @@ func gvrToListKind() map[schema.GroupVersionResource]string {
 }
 
 func crdList() *unstructured.UnstructuredList {
-
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -63,7 +62,6 @@ func crdList() *unstructured.UnstructuredList {
 }
 
 func constraintList() *unstructured.UnstructuredList {
-
 	constraint1 := &unstructured.Unstructured{}
 	constraint1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "constraints.gatekeeper.sh/v1beta1",
@@ -112,22 +110,21 @@ func constraintList() *unstructured.UnstructuredList {
 }
 
 func TestFetchGatekeeperCrds(t *testing.T) {
-
-	factory := bbtestutil.GetFakeFactory(nil, []runtime.Object{crdList()}, gvrToListKind(), nil)
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{crdList()})
+	factory.SetGVRToListKind(gvrToListKind())
 	client, _ := factory.GetK8sDynamicClient()
 	crds, _ := FetchGatekeeperCrds(client)
 
 	assert.Equal(t, "foos.constraints.gatekeeper.sh", crds.Items[0].GetName())
-
 }
 
 func TestFetchGatekeeperConstraints(t *testing.T) {
-
 	var tests = []struct {
 		desc     string
 		arg      string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"no constraints exist",
@@ -145,7 +142,9 @@ func TestFetchGatekeeperConstraints(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKind())
 			client, _ := factory.GetK8sDynamicClient()
 			constraints, _ := FetchGatekeeperConstraints(client, test.arg)
 			for i, constraint := range constraints.Items {

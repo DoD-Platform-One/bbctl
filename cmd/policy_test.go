@@ -5,17 +5,18 @@ import (
 	"strings"
 	"testing"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
-func policiesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, args []string) *cobra.Command {
+func policiesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) *cobra.Command {
 	cmd := NewPoliciesCmd(factory, streams)
 	cmd.SetArgs(args)
 	return cmd
@@ -141,7 +142,7 @@ func TestGatekeeperPolicies(t *testing.T) {
 		desc     string
 		args     []string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"list all policies",
@@ -165,10 +166,13 @@ func TestGatekeeperPolicies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForPolicies(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := policiesCmd(factory, streams, test.args)
-			cmd.Execute()
+			err := cmd.Execute()
+			assert.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s", buf.String())
@@ -261,7 +265,7 @@ func TestKyvernoPolicies(t *testing.T) {
 		desc     string
 		args     []string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"list all policies",
@@ -285,10 +289,13 @@ func TestKyvernoPolicies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForPolicies(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := policiesCmd(factory, streams, test.args)
-			cmd.Execute()
+			err := cmd.Execute()
+			assert.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s", buf.String())
@@ -335,7 +342,7 @@ func TestGatekeeperPoliciesCompletion(t *testing.T) {
 		desc     string
 		hint     string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"match all policies",
@@ -365,10 +372,13 @@ func TestGatekeeperPoliciesCompletion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForPolicies(), nil)
-			streams, _, _, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 			cmd := NewPoliciesCmd(factory, streams)
-			cmd.Flags().Lookup("gatekeeper").Value.Set("1")
+			err := cmd.Flags().Lookup("gatekeeper").Value.Set("1")
+			assert.NoError(t, err)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
@@ -448,7 +458,7 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 		desc     string
 		hint     string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"match all policies",
@@ -478,10 +488,13 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForPolicies(), nil)
-			streams, _, _, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 			cmd := NewPoliciesCmd(factory, streams)
-			cmd.Flags().Lookup("kyverno").Value.Set("1")
+			err := cmd.Flags().Lookup("kyverno").Value.Set("1")
+			assert.NoError(t, err)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)

@@ -7,8 +7,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/tools/clientcmd"
+	restMapper "k8s.io/client-go/restmapper"
+	clientCmd "k8s.io/client-go/tools/clientcmd"
 )
 
 // RESTClientGetter defines the values of a helm REST client
@@ -40,7 +40,6 @@ func (c *RESTClientGetter) ToRESTConfig() (*rest.Config, error) {
 
 // ToDiscoveryClient returns a CachedDiscoveryInterface that can be used as a discovery client.
 func (c *RESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-
 	config, err := c.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -62,13 +61,13 @@ func (c *RESTClientGetter) ToRESTMapper() (meta.RESTMapper, error) {
 	if err != nil {
 		return nil, err
 	}
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-	expander := restmapper.NewShortcutExpander(mapper, discoveryClient, c.warningHandler)
+	mapper := restMapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
+	expander := restMapper.NewShortcutExpander(mapper, discoveryClient, c.warningHandler)
 	return expander, nil
 }
 
 // ToRawKubeConfigLoader - to raw kubeconfig loader
-func (c *RESTClientGetter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
+func (c *RESTClientGetter) ToRawKubeConfigLoader() clientCmd.ClientConfig {
 	return nil
 }
 

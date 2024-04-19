@@ -5,30 +5,30 @@ import (
 	"testing"
 	"time"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	runtimeSchema "k8s.io/apimachinery/pkg/runtime/schema"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func eventGK(rName string, rKind string, ns string, reason string, msg string, time time.Time) *v1.Event {
-
 	annotations := make(map[string]string)
 	annotations["resource_name"] = rName
 	annotations["resource_kind"] = rKind
 	annotations["resource_namespace"] = ns
 
 	evt := &v1.Event{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:              rName,
 			Annotations:       annotations,
-			CreationTimestamp: meta_v1.Time{Time: time},
+			CreationTimestamp: metaV1.Time{Time: time},
 		},
 		Reason:  reason,
 		Message: msg,
@@ -38,12 +38,11 @@ func eventGK(rName string, rKind string, ns string, reason string, msg string, t
 }
 
 func eventKyverno(rName string, rKind string, ns string, component string, msg string, time time.Time) *v1.Event {
-
 	evt := &v1.Event{
-		ObjectMeta: meta_v1.ObjectMeta{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:              rName,
 			Namespace:         ns,
-			CreationTimestamp: meta_v1.Time{Time: time},
+			CreationTimestamp: metaV1.Time{Time: time},
 		},
 		InvolvedObject: v1.ObjectReference{
 			Name: rName,
@@ -58,7 +57,7 @@ func eventKyverno(rName string, rKind string, ns string, component string, msg s
 	return evt
 }
 
-func violationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, ns string, args []string) *cobra.Command {
+func violationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, ns string, args []string) *cobra.Command {
 	cmd := NewViolationsCmd(factory, streams)
 	cmd.Flags().StringP("namespace", "n", "", "namespace")
 	cmdArgs := []string{}
@@ -70,8 +69,8 @@ func violationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams, 
 	return cmd
 }
 
-func gvrToListKindForGatekeeper() map[schema.GroupVersionResource]string {
-	return map[schema.GroupVersionResource]string{
+func gvrToListKindForGatekeeper() map[runtimeSchema.GroupVersionResource]string {
+	return map[runtimeSchema.GroupVersionResource]string{
 		{
 			Group:    "apiextensions.k8s.io",
 			Version:  "v1",
@@ -85,8 +84,8 @@ func gvrToListKindForGatekeeper() map[schema.GroupVersionResource]string {
 	}
 }
 
-func gvrToListKindForKyverno() map[schema.GroupVersionResource]string {
-	return map[schema.GroupVersionResource]string{
+func gvrToListKindForKyverno() map[runtimeSchema.GroupVersionResource]string {
+	return map[runtimeSchema.GroupVersionResource]string{
 		{
 			Group:    "apiextensions.k8s.io",
 			Version:  "v1",
@@ -106,7 +105,6 @@ func gvrToListKindForKyverno() map[schema.GroupVersionResource]string {
 }
 
 func TestGatekeeperAuditViolations(t *testing.T) {
-
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -159,7 +157,7 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 		namespace  string
 		expected   string
 		unexpected string
-		objs       []runtime.Object
+		objects    []runtime.Object
 	}{
 		{
 			"no violations in given namespace",
@@ -194,22 +192,24 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForGatekeeper(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
-			cmd.Execute()
+			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
 			if strings.Contains(buf.String(), test.unexpected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
+			assert.Nil(t, err)
 		})
 	}
 }
 
 func TestGatekeeperDenyViolations(t *testing.T) {
-
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -241,7 +241,7 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 		namespace  string
 		expected   string
 		unexpected string
-		objs       []runtime.Object
+		objects    []runtime.Object
 	}{
 		{
 			"no violations in any namespace",
@@ -275,22 +275,24 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForGatekeeper(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
-			cmd.Execute()
+			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
 			if strings.Contains(buf.String(), test.unexpected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
+			assert.Nil(t, err)
 		})
 	}
 }
 
 func TestKyvernoAuditViolations(t *testing.T) {
-
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -322,7 +324,7 @@ func TestKyvernoAuditViolations(t *testing.T) {
 		namespace  string
 		expected   string
 		unexpected string
-		objs       []runtime.Object
+		objects    []runtime.Object
 	}{
 		{
 			"no violations in any namespace",
@@ -356,22 +358,24 @@ func TestKyvernoAuditViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForKyverno(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
-			cmd.Execute()
+			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
 			if strings.Contains(buf.String(), test.unexpected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
+			assert.Nil(t, err)
 		})
 	}
 }
 
 func TestKyvernoEnforceViolations(t *testing.T) {
-
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -403,7 +407,7 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 		namespace  string
 		expected   string
 		unexpected string
-		objs       []runtime.Object
+		objects    []runtime.Object
 	}{
 		{
 			"no violations in any namespace",
@@ -437,16 +441,19 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKindForKyverno(), nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
-			cmd.Execute()
+			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
 			if strings.Contains(buf.String(), test.unexpected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
+			assert.Nil(t, err)
 		})
 	}
 }

@@ -4,30 +4,29 @@ import (
 	"fmt"
 	"testing"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coreV1 "k8s.io/api/core/v1"
+	storageV1 "k8s.io/api/storage/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
-func pod(app string, ns string, phase corev1.PodPhase) *corev1.Pod {
-
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
+func pod(app string, ns string, phase coreV1.PodPhase) *coreV1.Pod {
+	pod := &coreV1.Pod{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-fequ", app),
 			Namespace: ns,
 			Labels: map[string]string{
 				"app": app,
 			},
 		},
-		Status: corev1.PodStatus{
+		Status: coreV1.PodStatus{
 			Phase: phase,
 		},
 	}
@@ -36,10 +35,9 @@ func pod(app string, ns string, phase corev1.PodPhase) *corev1.Pod {
 }
 
 func TestCheckMetricsServer(t *testing.T) {
-
-	arl := metav1.APIResourceList{
+	arl := metaV1.APIResourceList{
 		GroupVersion: "metrics.k8s.io/v1beta1",
-		APIResources: []metav1.APIResource{
+		APIResources: []metaV1.APIResource{
 			{
 				Name: "PodMetrics",
 			},
@@ -49,25 +47,26 @@ func TestCheckMetricsServer(t *testing.T) {
 	var tests = []struct {
 		desc      string
 		expected  string
-		resources []*metav1.APIResourceList
+		resources []*metaV1.APIResourceList
 	}{
 		{
 			"metrics server not available",
 			"Check Failed - Metrics API not available.",
-			[]*metav1.APIResourceList{},
+			[]*metaV1.APIResourceList{},
 		},
 		{
 			"metrics server available",
 			"Check Passed - Metrics API available.",
-			[]*metav1.APIResourceList{&arl},
+			[]*metaV1.APIResourceList{&arl},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, nil, nil, test.resources)
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetResources(test.resources)
 
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			checkMetricsServer(factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
@@ -76,15 +75,14 @@ func TestCheckMetricsServer(t *testing.T) {
 }
 
 func TestCheckDefaultStorageClass(t *testing.T) {
-
-	barSC := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
+	barSC := &storageV1.StorageClass{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name: "bar",
 		},
 	}
 
-	fooSC := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
+	fooSC := &storageV1.StorageClass{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name: "foo",
 			Annotations: map[string]string{
 				"storageclass.kubernetes.io/is-default-class": "true",
@@ -95,7 +93,7 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 	var tests = []struct {
 		desc     string
 		expected string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"no storage class",
@@ -116,8 +114,9 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil, nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			checkDefaultStorageClass(factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
@@ -126,20 +125,19 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 }
 
 func TestCheckFluxController(t *testing.T) {
-
-	hcPodRunning := pod("helm-controller", "flux-system", corev1.PodRunning)
-	hcPodFailed := pod("helm-controller", "flux-system", corev1.PodFailed)
-	kcPodRunning := pod("kustomize-controller", "flux-system", corev1.PodRunning)
-	kcPodFailed := pod("kustomize-controller", "flux-system", corev1.PodFailed)
-	scPodRunning := pod("source-controller", "flux-system", corev1.PodRunning)
-	scPodFailed := pod("source-controller", "flux-system", corev1.PodFailed)
-	ncPodRunning := pod("notification-controller", "flux-system", corev1.PodRunning)
-	ncPodFailed := pod("notification-controller", "flux-system", corev1.PodFailed)
+	hcPodRunning := pod("helm-controller", "flux-system", coreV1.PodRunning)
+	hcPodFailed := pod("helm-controller", "flux-system", coreV1.PodFailed)
+	kcPodRunning := pod("kustomize-controller", "flux-system", coreV1.PodRunning)
+	kcPodFailed := pod("kustomize-controller", "flux-system", coreV1.PodFailed)
+	scPodRunning := pod("source-controller", "flux-system", coreV1.PodRunning)
+	scPodFailed := pod("source-controller", "flux-system", coreV1.PodFailed)
+	ncPodRunning := pod("notification-controller", "flux-system", coreV1.PodRunning)
+	ncPodFailed := pod("notification-controller", "flux-system", coreV1.PodFailed)
 
 	var tests = []struct {
 		desc     string
 		expected string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"no helm controller pod",
@@ -165,8 +163,9 @@ func TestCheckFluxController(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, nil, nil)
-			streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			checkFluxController(factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
@@ -175,7 +174,6 @@ func TestCheckFluxController(t *testing.T) {
 }
 
 func TestCheckSystemParameters(t *testing.T) {
-
 	var tests = []struct {
 		desc          string
 		expected      string
@@ -228,19 +226,20 @@ func TestCheckSystemParameters(t *testing.T) {
 		},
 	}
 
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("registryserver", "registry.foo", "Image registry server url")
 	flags.String("registryusername", "user", "Image registry username")
 	flags.String("registrypassword", "pass", "Image registry password")
 
-	pfcPod := pod("pfc", "preflight-check", corev1.PodRunning)
+	pfcPod := pod("pfc", "preflight-check", coreV1.PodRunning)
 	pfcPod.ObjectMeta.Labels["job-name"] = "preflightcheck"
 
-	factory := bbtestutil.GetFakeFactory(nil, []runtime.Object{pfcPod}, nil, nil)
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{pfcPod})
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			bbtestutil.GetFakeCommandExecutor().CommandResult = test.commandResult
+			bbTestUtil.GetFakeCommandExecutor().CommandResult = test.commandResult
 			checkSystemParameters(factory, streams, flags)
 			assert.Contains(t, buf.String(), test.expected)
 			buf.Reset()
@@ -250,8 +249,7 @@ func TestCheckSystemParameters(t *testing.T) {
 }
 
 func TestPreflightCheckGetParameter(t *testing.T) {
-
-	type testInitFunc func() *pflag.FlagSet
+	type testInitFunc func() *pFlag.FlagSet
 
 	var tests = []struct {
 		desc     string
@@ -263,8 +261,8 @@ func TestPreflightCheckGetParameter(t *testing.T) {
 			desc:     "Check parameter",
 			input:    "registryserver",
 			expected: "registry.foo",
-			initFunc: func() *pflag.FlagSet {
-				var flags *pflag.FlagSet = &pflag.FlagSet{}
+			initFunc: func() *pFlag.FlagSet {
+				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 				flags.String("registryserver", "registry.foo", "Image registry server url")
 				viper.Set("registryserver", "registry.io")
 				return flags
@@ -274,8 +272,8 @@ func TestPreflightCheckGetParameter(t *testing.T) {
 			desc:     "Check env variable",
 			input:    "registryserver",
 			expected: "registry.io",
-			initFunc: func() *pflag.FlagSet {
-				var flags *pflag.FlagSet = &pflag.FlagSet{}
+			initFunc: func() *pFlag.FlagSet {
+				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 				viper.Set("registryserver", "registry.io")
 				return flags
 			},
@@ -284,8 +282,8 @@ func TestPreflightCheckGetParameter(t *testing.T) {
 			desc:     "Check missing value",
 			input:    "registryserver",
 			expected: "",
-			initFunc: func() *pflag.FlagSet {
-				var flags *pflag.FlagSet = &pflag.FlagSet{}
+			initFunc: func() *pFlag.FlagSet {
+				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 				viper.Set("registryserver", "")
 				return flags
 			},
@@ -302,16 +300,15 @@ func TestPreflightCheckGetParameter(t *testing.T) {
 }
 
 func TestPreflightCheck(t *testing.T) {
-
-	passFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	passFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	failFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	unknFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return unknown
 	}
 
@@ -361,12 +358,14 @@ func TestPreflightCheck(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.GetFakeFactory(nil, []runtime.Object{}, nil, nil)
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{})
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			bbPreflightCheck(factory, streams, nil, []preflightCheck{test.check})
+			err := bbPreflightCheck(factory, streams, nil, []preflightCheck{test.check})
+			assert.NoError(t, err)
 			output := buf.String()
 			assert.Contains(t, output, test.expected[0])
 			assert.Contains(t, output, test.expected[1])
@@ -377,16 +376,15 @@ func TestPreflightCheck(t *testing.T) {
 }
 
 func TestPreflightCheckCmd(t *testing.T) {
-
-	passFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	passFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	failFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
+	unknFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 		return unknown
 	}
 
@@ -411,10 +409,12 @@ func TestPreflightCheckCmd(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.GetFakeFactory(nil, []runtime.Object{}, nil, nil)
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{})
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 	cmd := NewPreflightCheckCmd(factory, streams)
-	cmd.Execute()
+	err := cmd.Execute()
+	assert.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "Foo Service Check Failed")
 	assert.Contains(t, output, "Foo Service Down")

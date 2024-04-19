@@ -3,12 +3,12 @@ package cmd
 import (
 	"fmt"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	pFlag "github.com/spf13/pflag"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -29,24 +29,24 @@ var (
 )
 
 // NewVersionCmd - new version command
-func NewVersionCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     versionUse,
 		Short:   versionShort,
 		Long:    versionLong,
 		Example: versionExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(bbVersion(factory, streams, cmd.Flags()))
+			cmdUtil.CheckErr(bbVersion(factory, streams, cmd.Flags()))
 		},
 	}
 
 	cmd.Flags().BoolP("client", "c", false, "Print bbctl version only")
+
 	return cmd
 }
 
 // query the cluster using helm module to get information on bigbang release
-func bbVersion(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) error {
-
+func bbVersion(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) error {
 	clientVersionOnly, _ := flags.GetBool("client")
 	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", BigBangCliVersion)
 

@@ -9,7 +9,7 @@ Code contributions from the community are welcomed. Steps to contribute:
 1. Fill in relevant information about the issue so that others can understand what it is for 
 1. Assign yourself to the issue so that it is clear that you are contributing code verses just reporting an issue.
 1. View the issue in the Gitlab UI, and from there you can create a branch and a corresponding merge request.
-1. A simple pipeline pipeline with linting and unit tests will automatically run for merge requets.
+1. A simple pipeline pipeline with linting and unit tests will automatically run for merge requests.
 1. When your code is ready add a ```status::review``` label to the merge request
 1. Code owners will review, test, and merge as appropriate.
 1. Code owners will create a release tag and a package will be built by the PartyBus mission devops pipeline.
@@ -41,10 +41,11 @@ mkdir -p $HOME/go/{bin,src,pkg}
 export PATH="$PATH:${GOPATH}/bin"
 ```
 
-Clone the repo such that the bbctl is available in the following location:
+Clone the repo such that the bbctl is available in the following location (clone it there or run `ln -s real-location gopath-location`):
 ```bash
 $GOPATH/src/repo1.dso.mil/big-bang/product/packages/bbctl
 ```
+
 Make the environment variables permanent by setting them in your shell's rc `~/.bash_rc` or equivalent for alternative shells.
 ```bash
 # support for GoLang development
@@ -61,49 +62,65 @@ go get -u github.com/spf13/cobra
 
 ### Add new commands with cobra
 
-The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subommand. Refer to [command semantics](/docs/command.md) for the practices followed in naming bbctl commands.
+The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subcommand. Refer to [command semantics](/docs/command.md) for the practices followed in naming bbctl commands.
 
 ### Build only with no local install
 
 Execute the following from the project root to build the binary without local install
 ```bash
+make build
+# OR
 go build
 ```
 
 Run the built binary using dot-slash
 ```bash
-./bbctl -h
+make run version
+# OR
+./bbctl version
 ```
 
 ### Build and Install
 
 Execute the following from the project root to build the executable and make it available in $GOPATH/bin directory:
 ```bash
+make install
+# OR
 go install
 ```
 
 Run the installed bbctl tool
 ```bash
-bbctl -h
+bbctl version
 ```
 
 ### Run unit tests
 
 ```bash
+make coverage
+# OR
+make test
+# OR
 go test -v ./... -coverprofile=cover.txt
 ```
 
 ### Run lint checks
 
-Linting checks code quality based on best practice. For now the [linter tool](https://github.com/golang/lint) is the one from the golang project. To manually run the linter follow these steps.  
+Linting checks code quality based on best practice. For now the [linter tool](https://golangci-lint.run/welcome/install/) is no longer [the one from the golang project](https://github.com/golang/lint) as it's deprecated. To manually run the linter follow these steps.  
 1. install the tool
     ```bash
-    go install golang.org/x/lint/golint@latest
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
     ```
 2. Run the linter from this project's root directory
     ```bash
-    golint -set_exit_status ./...
+    make lint
+    # OR
+    golangci-lint run ./...
     ```
+3. Set it up in vscode
+    1. Open User Settings (visual)
+    1. Search for golang
+    1. Change the `Go: Lint Tool` to `golangci-lint`
 
 ## Development Tasks
 
@@ -115,8 +132,10 @@ Here some common development tasks will be laid out with common issues and solut
 go get -u
 
 # You should immediately build and run tests afterwards
+make all
+# OR
 go build
-go test -v ./... -coverprofile=cover.txt
+go test -v -coverprofile=test.out -cover ./...
 ```
 
 #### Problem Packages

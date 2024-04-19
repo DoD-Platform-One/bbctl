@@ -1,4 +1,4 @@
-package test
+package helm
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-// NewFakeClient - returns a new Fale Helm client with the provided options
+// NewFakeClient - returns a new Fake Helm client with the provided options
 func NewFakeClient(releases []*release.Release) (helm.Client, error) {
 	return &FakeClient{releases: releases}, nil
 }

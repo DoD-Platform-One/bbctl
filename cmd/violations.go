@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	pFlag "github.com/spf13/pflag"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
 
@@ -69,16 +69,15 @@ type policyViolation struct {
 	timestamp  string // utc time
 }
 
-// NewViolationsCmd - new violations commmand
-func NewViolationsCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-
+// NewViolationsCmd - new violations command
+func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     violationsUse,
 		Short:   violationsShort,
 		Long:    violationsLong,
 		Example: violationsExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(getViolations(factory, streams, cmd.Flags()))
+			cmdUtil.CheckErr(getViolations(factory, streams, cmd.Flags()))
 		},
 	}
 
@@ -87,8 +86,7 @@ func NewViolationsCmd(factory bbutil.Factory, streams genericclioptions.IOStream
 	return cmd
 }
 
-func getViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) error {
-
+func getViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) error {
 	namespace, _ := flags.GetString("namespace")
 
 	audit, _ := flags.GetBool("audit")
@@ -117,8 +115,7 @@ func getViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, 
 	return nil
 }
 
-func kyvernoExists(factory bbutil.Factory, streams genericclioptions.IOStreams) (bool, error) {
-
+func kyvernoExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return false, err
@@ -130,17 +127,15 @@ func kyvernoExists(factory bbutil.Factory, streams genericclioptions.IOStreams) 
 	}
 
 	return len(kyvernoCrds.Items) != 0, nil
-
 }
 
-func listKyvernoViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, namespace string, listAuditViolations bool) error {
-
+func listKyvernoViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, listAuditViolations bool) error {
 	client, err := factory.GetK8sClientset()
 	if err != nil {
 		return err
 	}
 
-	events, err := client.CoreV1().Events("").List(context.TODO(), metav1.ListOptions{
+	events, err := client.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
 		FieldSelector: fmt.Sprintf("%s=%s", "reason", "PolicyViolation"),
 	})
 	if err != nil {
@@ -154,7 +149,7 @@ func listKyvernoViolations(factory bbutil.Factory, streams genericclioptions.IOS
 			continue
 		}
 
-		// Kyverno doesn't currectly report the InvoledObject attributes in the Event
+		// Kyverno doesn't correctly report the InvolvedObject attributes in the Event
 		// object that is generated as a result of policy violation.
 		// InvolvedObject is of kind Policy or ClusterPolicy when admission control denies request
 		// InvolvedObject is actual kind when event is generated during background scan
@@ -202,8 +197,7 @@ func listKyvernoViolations(factory bbutil.Factory, streams genericclioptions.IOS
 	return nil
 }
 
-func gatekeeperExists(factory bbutil.Factory, streams genericclioptions.IOStreams) (bool, error) {
-
+func gatekeeperExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return false, err
@@ -215,11 +209,9 @@ func gatekeeperExists(factory bbutil.Factory, streams genericclioptions.IOStream
 	}
 
 	return len(gkCrds.Items) != 0, nil
-
 }
 
-func listGkViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, namespace string, audit bool) error {
-
+func listGkViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, audit bool) error {
 	if audit {
 		return listGkAuditViolations(factory, streams, namespace)
 	}
@@ -227,14 +219,13 @@ func listGkViolations(factory bbutil.Factory, streams genericclioptions.IOStream
 	return listGkDenyViolations(factory, streams, namespace)
 }
 
-func listGkDenyViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, namespace string) error {
-
+func listGkDenyViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
 	client, err := factory.GetK8sClientset()
 	if err != nil {
 		return err
 	}
 
-	events, err := client.CoreV1().Events("").List(context.TODO(), metav1.ListOptions{
+	events, err := client.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
 		FieldSelector: fmt.Sprintf("%s=%s", "reason", "FailedAdmission"),
 	})
 	if err != nil {
@@ -276,8 +267,7 @@ func listGkDenyViolations(factory bbutil.Factory, streams genericclioptions.IOSt
 }
 
 // query the cluster using dynamic client to get audit violation information from gatekeeper constraint crds
-func listGkAuditViolations(factory bbutil.Factory, streams genericclioptions.IOStreams, namespace string) error {
-
+func listGkAuditViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return err
@@ -311,7 +301,6 @@ func listGkAuditViolations(factory bbutil.Factory, streams genericclioptions.IOS
 }
 
 func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyViolation, error) {
-
 	var violationTimestamp string = ""
 	ts, ok, err := unstructured.NestedFieldNoCopy(resource.Object, "status", "auditTimestamp")
 	if err != nil {
@@ -344,7 +333,7 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 	return &violations, nil
 }
 
-func processGkViolations(namespace string, violations *[]policyViolation, crdName string, streams genericclioptions.IOStreams) {
+func processGkViolations(namespace string, violations *[]policyViolation, crdName string, streams genericIOOptions.IOStreams) {
 	if len(*violations) != 0 {
 		fmt.Fprintf(streams.Out, "%s\n\n", crdName)
 		violationsFound := false
