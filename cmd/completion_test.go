@@ -4,16 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestBashCompletion(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewCompletionCmd(factory, streams)
 	cmd.Run(cmd, []string{"bash"})
@@ -24,10 +23,9 @@ func TestBashCompletion(t *testing.T) {
 }
 
 func TestZshCompletion(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewCompletionCmd(factory, streams)
 	cmd.Run(cmd, []string{"zsh"})
@@ -38,10 +36,9 @@ func TestZshCompletion(t *testing.T) {
 }
 
 func TestFishCompletion(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewCompletionCmd(factory, streams)
 	cmd.Run(cmd, []string{"fish"})
@@ -52,10 +49,9 @@ func TestFishCompletion(t *testing.T) {
 }
 
 func TestFooCompletion(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewCompletionCmd(factory, streams)
 	cmd.Run(cmd, []string{"foo"})

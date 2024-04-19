@@ -1,13 +1,13 @@
 package cmd
 
 import (
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbk8sutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
-
 	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+	deploy "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/deploy"
+	k3d "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/k3d"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 )
 
 // NewRootCmd - create a new Cobra root command
-func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     cmdUse,
@@ -38,14 +38,17 @@ func NewRootCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *co
 	cmd.CompletionOptions.DisableNoDescFlag = true
 	cmd.CompletionOptions.DisableDescriptions = false
 
-	cmd.AddCommand(NewCompletionCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewVersionCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewReleasesCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewValuesCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewStatusCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewViolationsCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewPoliciesCmd(factory, bbk8sutil.GetIOStream()))
-	cmd.AddCommand(NewPreflightCheckCmd(factory, bbk8sutil.GetIOStream()))
+	cmd.AddCommand(NewCompletionCmd(factory, streams))
+	cmd.AddCommand(NewVersionCmd(factory, streams))
+	cmd.AddCommand(NewReleasesCmd(factory, streams))
+	cmd.AddCommand(NewValuesCmd(factory, streams))
+	cmd.AddCommand(NewStatusCmd(factory, streams))
+	cmd.AddCommand(NewViolationsCmd(factory, streams))
+	cmd.AddCommand(NewPoliciesCmd(factory, streams))
+	cmd.AddCommand(NewPreflightCheckCmd(factory, streams))
+
+	cmd.AddCommand(k3d.NewK3dCmd(factory, streams))
+	cmd.AddCommand(deploy.NewDeployCmd(factory, streams))
 
 	return cmd
 }

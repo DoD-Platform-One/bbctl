@@ -4,19 +4,20 @@ import (
 	"context"
 	"testing"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/stretchr/testify/assert"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestCreateNamespace(t *testing.T) {
+	objects := []runtime.Object{}
+	cs := fake.NewSimpleClientset(objects...)
 
-	objs := []runtime.Object{}
-	cs := fake.NewSimpleClientset(objs...)
+	_, err := CreateNamespace(cs, "ns1")
+	assert.Nil(t, err)
 
-	CreateNamespace(cs, "ns1")
-
-	ns, _ := cs.CoreV1().Namespaces().Get(context.TODO(), "ns1", meta_v1.GetOptions{})
+	ns, _ := cs.CoreV1().Namespaces().Get(context.TODO(), "ns1", metaV1.GetOptions{})
 
 	if ns.Name != "ns1" {
 		t.Errorf("unexpected output: %s", ns.Name)
@@ -24,17 +25,17 @@ func TestCreateNamespace(t *testing.T) {
 }
 
 func TestDeleteNamespace(t *testing.T) {
+	objects := []runtime.Object{}
+	cs := fake.NewSimpleClientset(objects...)
 
-	objs := []runtime.Object{}
-	cs := fake.NewSimpleClientset(objs...)
+	_, err := CreateNamespace(cs, "ns1")
+	assert.Nil(t, err)
+	err = DeleteNamespace(cs, "ns1")
+	assert.Nil(t, err)
 
-	CreateNamespace(cs, "ns1")
-	DeleteNamespace(cs, "ns1")
-
-	ns, err := cs.CoreV1().Namespaces().Get(context.TODO(), "ns1", meta_v1.GetOptions{})
+	ns, err := cs.CoreV1().Namespaces().Get(context.TODO(), "ns1", metaV1.GetOptions{})
 
 	if err == nil {
 		t.Errorf("unexpected output: %v", ns)
 	}
-
 }

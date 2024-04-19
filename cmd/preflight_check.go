@@ -9,31 +9,31 @@ import (
 	"strings"
 	"time"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbutilk8s "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtilK8s "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	corev1 "k8s.io/api/core/v1"
+	coreV1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/remotecommand"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	remoteCommand "k8s.io/client-go/tools/remotecommand"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-	metricsapi "k8s.io/metrics/pkg/apis/metrics"
+	metricsApi "k8s.io/metrics/pkg/apis/metrics"
 )
 
 var (
 	preflightCheckUse = `preflight-check`
 
-	preflightCheckShort = i18n.T(`Check cluster for expected configuration before installing bigbang.`)
+	preflightCheckShort = i18n.T(`Check cluster for expected configuration before installing big bang.`)
 
 	preflightCheckLong = templates.LongDesc(i18n.T(`
-		Check cluster for expected configuration before installing bigbang.
+		Check cluster for expected configuration before installing big bang.
 		This command creates a job in preflight-check namespace to check system parameters.
 		User needs to have RBAC permissions to create and delete namespace, secret and job resources.`))
 
@@ -57,7 +57,7 @@ var (
 	fluxNamespace = "flux-system"
 )
 
-type preflightCheckFunc func(bbutil.Factory, genericclioptions.IOStreams, *pflag.FlagSet) preflightCheckStatus
+type preflightCheckFunc func(bbUtil.Factory, genericIOOptions.IOStreams, *pFlag.FlagSet) preflightCheckStatus
 
 type preflightCheckStatus string
 
@@ -80,9 +80,9 @@ var preflightChecks []preflightCheck = []preflightCheck{
 		desc:     "Metrics Server Check",
 		function: checkMetricsServer,
 		failureMessage: templates.LongDesc(i18n.T(`
-			Metrics Server needs to be running in the cluser for Horizontal Pod Autoscaler to work.`)),
+			Metrics Server needs to be running in the cluster for Horizontal Pod Autoscaler to work.`)),
 		successMessage: templates.LongDesc(i18n.T(`
-			Metrics Server is running in the cluser for Horizontal Pod Autoscaler to work.`)),
+			Metrics Server is running in the cluster for Horizontal Pod Autoscaler to work.`)),
 	},
 	{
 		desc:     "Default Storage Class Check",
@@ -97,20 +97,20 @@ var preflightChecks []preflightCheck = []preflightCheck{
 		desc:     "Flux Controller Check",
 		function: checkFluxController,
 		failureMessage: templates.LongDesc(i18n.T(`
-			Flux Controller is required for successful installation of BigBang packages using GitOps.`)),
+			Flux Controller is required for successful installation of Big Bang packages using GitOps.`)),
 		successMessage: templates.LongDesc(i18n.T(`
-			Flux Controller is running and allows for successful installation of BigBang packages using GitOps.`)),
+			Flux Controller is running and allows for successful installation of Big Bang packages using GitOps.`)),
 	},
 	{
 		desc:     "System Parameters Check",
 		function: checkSystemParameters,
 		failureMessage: templates.LongDesc(i18n.T(`
-			Some packages installed by BigBang require system parameters to be equal or greater than the recommended value. 
-			You can ignore this error if not plannning to install packages that failed the check.
+			Some packages installed by Big Bang require system parameters to be equal or greater than the recommended value. 
+			You can ignore this error if not planning to install packages that failed the check.
 			For more information refer to https://repo1.dso.mil/platform-one/big-bang/bigbang/-/blob/master/docs/guides/prerequisites/os_preconfiguration.md`)),
 		successMessage: templates.LongDesc(i18n.T(`
 			System parameters determined to be equal or greater than the recommended value. 
-			This will allow for succcesful installation of packages that passed the check.
+			This will allow for successful installation of packages that passed the check.
 			For more information refer to https://repo1.dso.mil/platform-one/big-bang/bigbang/-/blob/master/docs/guides/prerequisites/os_preconfiguration.md`)),
 	},
 }
@@ -173,14 +173,14 @@ var fluxControllerPods []string = []string{
 }
 
 // NewPreflightCheckCmd - new preflight check command
-func NewPreflightCheckCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewPreflightCheckCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     preflightCheckUse,
 		Short:   preflightCheckShort,
 		Long:    preflightCheckLong,
 		Example: preflightCheckExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(bbPreflightCheck(factory, streams, cmd.Flags(), preflightChecks))
+			cmdUtil.CheckErr(bbPreflightCheck(factory, streams, cmd.Flags(), preflightChecks))
 		},
 	}
 
@@ -192,7 +192,7 @@ func NewPreflightCheckCmd(factory bbutil.Factory, streams genericclioptions.IOSt
 }
 
 // run sequence of predefined checks and summarize results
-func bbPreflightCheck(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet, preflightChecks []preflightCheck) error {
+func bbPreflightCheck(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet, preflightChecks []preflightCheck) error {
 	for i, check := range preflightChecks {
 		status := check.function(factory, streams, flags)
 		preflightChecks[i].status = status
@@ -201,8 +201,7 @@ func bbPreflightCheck(factory bbutil.Factory, streams genericclioptions.IOStream
 	return nil
 }
 
-func checkMetricsServer(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
-
+func checkMetricsServer(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking metrics server...")
 
 	client, err := factory.GetK8sClientset()
@@ -228,8 +227,7 @@ func checkMetricsServer(factory bbutil.Factory, streams genericclioptions.IOStre
 
 }
 
-func checkDefaultStorageClass(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
-
+func checkDefaultStorageClass(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking default storage class...")
 
 	client, err := factory.GetK8sClientset()
@@ -238,7 +236,7 @@ func checkDefaultStorageClass(factory bbutil.Factory, streams genericclioptions.
 		return unknown
 	}
 
-	storageClasses, err := client.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+	storageClasses, err := client.StorageV1().StorageClasses().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -261,8 +259,7 @@ func checkDefaultStorageClass(factory bbutil.Factory, streams genericclioptions.
 
 }
 
-func checkFluxController(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
-
+func checkFluxController(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking flux installation...")
 
 	client, err := factory.GetK8sClientset()
@@ -272,7 +269,7 @@ func checkFluxController(factory bbutil.Factory, streams genericclioptions.IOStr
 	}
 
 	fluxStatus := make(map[string]string)
-	pods, err := client.CoreV1().Pods(fluxNamespace).List(context.TODO(), metav1.ListOptions{})
+	pods, err := client.CoreV1().Pods(fluxNamespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -286,7 +283,7 @@ func checkFluxController(factory bbutil.Factory, streams genericclioptions.IOStr
 	for _, fluxPod := range fluxControllerPods {
 		podStatus := fluxStatus[fluxPod]
 		if podStatus != "" {
-			if podStatus != string(corev1.PodRunning) {
+			if podStatus != string(coreV1.PodRunning) {
 				fmt.Fprintf(streams.Out, "Check Failed - flux %s pod not in running state.\n", fluxPod)
 				status = failed
 			} else {
@@ -301,8 +298,7 @@ func checkFluxController(factory bbutil.Factory, streams genericclioptions.IOStr
 	return status
 }
 
-func checkSystemParameters(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) preflightCheckStatus {
-
+func checkSystemParameters(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
 	pod, err := createResourcesForCommandExecution(factory, streams, flags)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
@@ -329,13 +325,16 @@ func checkSystemParameters(factory bbutil.Factory, streams genericclioptions.IOS
 		}
 	}
 
-	deleteResourcesForCommandExecution(factory, streams)
+	err = deleteResourcesForCommandExecution(factory, streams)
+	if err != nil {
+		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
+		return unknown
+	}
 
 	return status
 }
 
-func checkSystemParameter(streams genericclioptions.IOStreams, bbPackage string, param string, value string, desc string, threshold int) bool {
-
+func checkSystemParameter(streams genericIOOptions.IOStreams, bbPackage string, param string, value string, _ string, threshold int) bool {
 	fmt.Fprintf(streams.Out, "%s = %s\n", param, value)
 
 	if value == "unlimited" {
@@ -361,12 +360,11 @@ func checkSystemParameter(streams genericclioptions.IOStreams, bbPackage string,
 
 }
 
-func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metav1.APIGroupList) bool {
-
+func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metaV1.APIGroupList) bool {
 	supportedMetricsAPIVersions := []string{"v1beta1"}
 
 	for _, discoveredAPIGroup := range discoveredAPIGroups.Groups {
-		if discoveredAPIGroup.Name != metricsapi.GroupName {
+		if discoveredAPIGroup.Name != metricsApi.GroupName {
 			continue
 		}
 		for _, version := range discoveredAPIGroup.Versions {
@@ -381,8 +379,7 @@ func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metav1.APIGroupLis
 	return false
 }
 
-func createResourcesForCommandExecution(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) (*corev1.Pod, error) {
-
+func createResourcesForCommandExecution(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) (*coreV1.Pod, error) {
 	client, err := factory.GetK8sClientset()
 	if err != nil {
 		return nil, err
@@ -403,26 +400,24 @@ func createResourcesForCommandExecution(factory bbutil.Factory, streams genericc
 }
 
 func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer) error {
-
 	fmt.Fprintln(w, "Creating namespace for command execution...")
 
-	_, err := bbutilk8s.CreateNamespace(client, preflightPodNamespace)
+	_, err := bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 	if err != nil {
 		if api_errors.IsAlreadyExists(err) {
 			fmt.Fprintf(w, "Namespace %s already exists...It will be recreated\n", preflightPodNamespace)
-			err = bbutilk8s.DeleteNamespace(client, preflightPodNamespace)
+			err = bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 			if err != nil {
 				return err
 			}
-			_, err = bbutilk8s.CreateNamespace(client, preflightPodNamespace)
+			_, err = bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 		}
 	}
 
 	return err
 }
 
-func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.Writer, flags *pflag.FlagSet) (*corev1.Secret, error) {
-
+func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.Writer, flags *pFlag.FlagSet) (*coreV1.Secret, error) {
 	fmt.Fprintln(w, "Creating registry secret for command execution...")
 
 	server := getParameter(flags, "registryserver")
@@ -440,15 +435,14 @@ func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.W
 		return nil, fmt.Errorf("registrypassword is a required parameter")
 	}
 
-	return bbutilk8s.CreateRegistrySecret(client, preflightPodNamespace,
+	return bbUtilK8s.CreateRegistrySecret(client, preflightPodNamespace,
 		preflightPodImagePullSecret, server, username, password)
 }
 
-func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secret *corev1.Secret) (*corev1.Pod, error) {
-
+func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secret *coreV1.Secret) (*coreV1.Pod, error) {
 	fmt.Fprintln(w, "Creating job for command execution...")
 
-	jobDesc := &bbutilk8s.JobDesc{
+	jobDesc := &bbUtilK8s.JobDesc{
 		Name:               preflightPodName,
 		ContainerName:      "executor",
 		ContainerImage:     preflightPodImage,
@@ -458,7 +452,7 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 		TTLSecondsOnFinish: 0,
 	}
 
-	job, err := bbutilk8s.CreateJob(client, preflightPodNamespace, jobDesc)
+	job, err := bbUtilK8s.CreateJob(client, preflightPodNamespace, jobDesc)
 	if err != nil {
 		return nil, err
 	}
@@ -466,9 +460,9 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 	fmt.Fprintf(w, "Waiting for job %s to be ready...\n", job.Name)
 
 	for i := 0; i < 10; i++ {
-		pods, _ := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: "job-name=preflightcheck"})
+		pods, _ := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: "job-name=preflightcheck"})
 		for _, pod := range pods.Items {
-			if pod.Status.Phase == corev1.PodRunning {
+			if pod.Status.Phase == coreV1.PodRunning {
 				return &pod, nil
 			}
 		}
@@ -478,8 +472,7 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 	return nil, fmt.Errorf("timeout waiting for command execution job to be ready")
 }
 
-func deleteResourcesForCommandExecution(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
-
+func deleteResourcesForCommandExecution(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetK8sClientset()
 	if err != nil {
 		return err
@@ -487,17 +480,17 @@ func deleteResourcesForCommandExecution(factory bbutil.Factory, streams genericc
 
 	fmt.Fprintln(streams.Out, "Deleting namespace for command execution...")
 
-	return bbutilk8s.DeleteNamespace(client, preflightPodNamespace)
+	return bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 }
 
-func execCommand(factory bbutil.Factory, out io.Writer, errOut io.Writer, pod *corev1.Pod, command []string) error {
+func execCommand(factory bbUtil.Factory, out io.Writer, errOut io.Writer, pod *coreV1.Pod, command []string) error {
 
 	exec, err := factory.GetCommandExecutor(pod, "", command, out, errOut)
 	if err != nil {
 		return err
 	}
 
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.TODO(), remoteCommand.StreamOptions{
 		Stdin:  nil,
 		Stdout: out,
 		Stderr: errOut,
@@ -506,8 +499,7 @@ func execCommand(factory bbutil.Factory, out io.Writer, errOut io.Writer, pod *c
 	return err
 }
 
-func printPreflightCheckSummary(streams genericclioptions.IOStreams, preflightChecks []preflightCheck) {
-
+func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChecks []preflightCheck) {
 	fmt.Fprintf(streams.Out, "\n\n***Preflight Check Summary***\n\n")
 
 	for _, check := range preflightChecks {
@@ -521,7 +513,7 @@ func printPreflightCheckSummary(streams genericclioptions.IOStreams, preflightCh
 	}
 }
 
-func getParameter(flags *pflag.FlagSet, key string) string {
+func getParameter(flags *pFlag.FlagSet, key string) string {
 	value, _ := flags.GetString(key)
 	if value == "" {
 		value = viper.GetString(key)

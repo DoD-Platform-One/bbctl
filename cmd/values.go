@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/cli/output"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -30,8 +30,7 @@ var (
 )
 
 // NewValuesCmd - new values command
-func NewValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-
+func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     valuesUse,
 		Short:   valuesShort,
@@ -45,7 +44,7 @@ func NewValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *
 			return matchingReleaseNames(factory, hint)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(getHelmValues(factory, streams, cmd.Flags(), args[0]))
+			cmdUtil.CheckErr(getHelmValues(factory, streams, cmd.Flags(), args[0]))
 		},
 	}
 
@@ -54,9 +53,8 @@ func NewValuesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *
 	return cmd
 }
 
-// query the cluster using helm module to get information on bigbang release values
-func getHelmValues(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet, name string) error {
-
+// query the cluster using helm module to get information on big bang release values
+func getHelmValues(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet, name string) error {
 	client, err := factory.GetHelmClient(BigBangNamespace)
 	if err != nil {
 		return err
@@ -75,8 +73,7 @@ func getHelmValues(factory bbutil.Factory, streams genericclioptions.IOStreams, 
 }
 
 // find helm releases with given prefix for command completion
-func matchingReleaseNames(factory bbutil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-
+func matchingReleaseNames(factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	client, err := factory.GetHelmClient(BigBangNamespace)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault

@@ -7,21 +7,21 @@ import (
 	"strings"
 	"time"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	k8scorev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sCoreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	k8sclient "k8s.io/client-go/kubernetes"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	k8sClient "k8s.io/client-go/kubernetes"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 
-	helmv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
-	kustomizev1beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
-	sourcev1beta1 "github.com/fluxcd/source-controller/api/v1beta1"
+	helmV2Beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
+	kustomizeV1Beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
+	sourceV1Beta1 "github.com/fluxcd/source-controller/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -30,9 +30,9 @@ import (
 var (
 	statusUse = `status`
 
-	statusShort = i18n.T(`Show status of BigBang deployment.`)
+	statusShort = i18n.T(`Show status of Big Bang deployment.`)
 
-	statusLong = templates.LongDesc(i18n.T(`Show status of BigBang deployment.`))
+	statusLong = templates.LongDesc(i18n.T(`Show status of Big Bang deployment.`))
 
 	statusExample = templates.Examples(i18n.T(`
 		# Get overall status
@@ -45,15 +45,14 @@ const (
 )
 
 // NewStatusCmd - new status command
-func NewStatusCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-
+func NewStatusCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     statusUse,
 		Short:   statusShort,
 		Long:    statusLong,
 		Example: statusExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(bbStatus(factory, streams))
+			cmdUtil.CheckErr(bbStatus(factory, streams))
 		},
 	}
 
@@ -68,7 +67,7 @@ type podData struct {
 }
 
 // StatefulSet
-type stsData struct {
+type statefulSetData struct {
 	namespace string
 	name      string
 	replicas  int32
@@ -77,7 +76,7 @@ type stsData struct {
 }
 
 // deployments
-type dpmtData struct {
+type deploymentData struct {
 	namespace string
 	name      string
 	replicas  int32
@@ -86,7 +85,7 @@ type dpmtData struct {
 }
 
 // Daemonsets
-type dmstData struct {
+type daemonSetData struct {
 	namespace string
 	name      string
 	desired   int32
@@ -115,8 +114,7 @@ type fluxKZData struct {
 	status    string
 }
 
-func bbStatus(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
-
+func bbStatus(factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
 	// get client-go client
 	clientset, err := factory.GetK8sClientset()
 	if err != nil {
@@ -126,55 +124,54 @@ func bbStatus(factory bbutil.Factory, streams genericclioptions.IOStreams) error
 	// get runtime controller client
 	// register the GitOps Toolkit schema definitions
 	scheme := runtime.NewScheme()
-	_ = sourcev1beta1.AddToScheme(scheme)
-	_ = helmv2beta1.AddToScheme(scheme)
-	_ = kustomizev1beta1.AddToScheme(scheme)
+	_ = sourceV1Beta1.AddToScheme(scheme)
+	_ = helmV2Beta1.AddToScheme(scheme)
+	_ = kustomizeV1Beta1.AddToScheme(scheme)
 
-	fluxclient, err := factory.GetRuntimeClient(scheme)
+	fluxClient, err := factory.GetRuntimeClient(scheme)
 	if err != nil {
 		return err
 	}
 
 	// get helm client
-	helmclient, err := factory.GetHelmClient(BigBangNamespace)
+	helmClient, err := factory.GetHelmClient(BigBangNamespace)
 	if err != nil {
 		return err
 	}
 
-	// get BigBang helm release status
-	fmt.Println(getBigBangStatus(helmclient))
+	// get Big Bang helm release status
+	fmt.Println(getBigBangStatus(helmClient))
 
 	// get k8s pod status
 	fmt.Println(getPodStatus(clientset))
 
 	// get k8s statefulset status
-	fmt.Println(getStsStatus(clientset))
+	fmt.Println(getStatefulSetStatus(clientset))
 
 	// get k8s deployment status
-	fmt.Println(getDpmtStatus(clientset))
+	fmt.Println(getDeploymentStatus(clientset))
 
 	// get k8s daemonset status
-	fmt.Println(getDmstStatus(clientset))
+	fmt.Println(getDaemonSetsStatus(clientset))
 
-	// get flux helmrelease status
-	fmt.Println(getFluxHelmReleases(fluxclient))
+	// get flux helm release status
+	fmt.Println(getFluxHelmReleases(fluxClient))
 
-	// get flux gitrepository status
-	fmt.Println(getFluxGitRepositories(fluxclient))
+	// get flux git repository status
+	fmt.Println(getFluxGitRepositories(fluxClient))
 
 	// get flux kustomization status
-	fmt.Println(getFluxKustomizations(fluxclient))
+	fmt.Println(getFluxKustomizations(fluxClient))
 
 	return nil
 }
 
-func getBigBangStatus(helmclient helm.Client) string {
-
+func getBigBangStatus(helmClient helm.Client) string {
 	var sb strings.Builder
 
-	release, err := helmclient.GetRelease(BigBangHelmReleaseName)
+	release, err := helmClient.GetRelease(BigBangHelmReleaseName)
 	if err != nil {
-		sb.WriteString("No BigBang release was found.\n")
+		sb.WriteString("No Big Bang release was found.\n")
 		return sb.String()
 	}
 
@@ -184,341 +181,334 @@ func getBigBangStatus(helmclient helm.Client) string {
 }
 
 func getFluxKustomizations(fc client.Client) string {
-
 	var sb strings.Builder
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	kzl := &kustomizev1beta1.KustomizationList{}
+	kustomizationsList := &kustomizeV1Beta1.KustomizationList{}
 
-	listErr := fc.List(ctx, kzl, &client.ListOptions{})
+	listErr := fc.List(ctx, kustomizationsList, &client.ListOptions{})
 	if listErr != nil {
 		sb.WriteString(listErr.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of fluxKZData
-	var fkzs = []fluxKZData{}
+	var fluxKZs = []fluxKZData{}
 
-	for _, fkzObj := range kzl.Items {
-		// initalize fluxKZData
-		var fkzd fluxKZData
-		fkzd.namespace = fkzObj.ObjectMeta.Namespace
-		fkzd.name = fkzObj.ObjectMeta.Name
+	for _, fkzObj := range kustomizationsList.Items {
+		// initialize fluxKZDataObj
+		var fluxKZDataObj fluxKZData
+		fluxKZDataObj.namespace = fkzObj.ObjectMeta.Namespace
+		fluxKZDataObj.name = fkzObj.ObjectMeta.Name
 
-		for _, cndtn := range fkzObj.Status.Conditions {
-			if cndtn.Type == "Ready" && cndtn.Status != "True" {
-				fkzd.status = cndtn.Message
+		for _, condition := range fkzObj.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status != "True" {
+				fluxKZDataObj.status = condition.Message
 				// add to list of not ready flux kustomizations
-				fkzs = append(fkzs, fkzd)
+				fluxKZs = append(fluxKZs, fluxKZDataObj)
 			}
 		}
 	}
 
-	if len(kzl.Items) == 0 {
+	if len(kustomizationsList.Items) == 0 {
 		sb.WriteString("No Flux kustomizations were found.\n")
-	} else if len(fkzs) == 0 {
+	} else if len(fluxKZs) == 0 {
 		sb.WriteString("All Flux kustomizations are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fkzs)))
-		for _, fkzd := range fkzs {
-			sb.WriteString(fmt.Sprintf(statusString, fkzd.namespace, fkzd.name, fkzd.status))
+		sb.WriteString(fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fluxKZs)))
+		for _, fluxKZDataObj := range fluxKZs {
+			sb.WriteString(fmt.Sprintf(statusString, fluxKZDataObj.namespace, fluxKZDataObj.name, fluxKZDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fkzd.name, fkzd.namespace))
+			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fluxKZDataObj.name, fluxKZDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getFluxGitRepositories(fc client.Client) string {
-
+func getFluxGitRepositories(fluxClient client.Client) string {
 	var sb strings.Builder
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	grl := &sourcev1beta1.GitRepositoryList{}
+	fluxGRList := &sourceV1Beta1.GitRepositoryList{}
 
-	listErr := fc.List(ctx, grl, &client.ListOptions{})
+	listErr := fluxClient.List(ctx, fluxGRList, &client.ListOptions{})
 	if listErr != nil {
 		sb.WriteString(listErr.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of fluxGRData
-	var fgrs = []fluxGRData{}
+	var fluxGRs = []fluxGRData{}
 
-	for _, fgrObj := range grl.Items {
-		// initalize fluxGRData
-		var fgrd fluxGRData
-		fgrd.namespace = fgrObj.ObjectMeta.Namespace
-		fgrd.name = fgrObj.ObjectMeta.Name
+	for _, fluxGR := range fluxGRList.Items {
+		// initialize fluxGRDataObj
+		var fluxGRDataObj fluxGRData
+		fluxGRDataObj.namespace = fluxGR.ObjectMeta.Namespace
+		fluxGRDataObj.name = fluxGR.ObjectMeta.Name
 
-		for _, cndtn := range fgrObj.Status.Conditions {
-			if cndtn.Type == "Ready" && cndtn.Status != "True" {
-				fgrd.status = cndtn.Message
-				// add to list of not ready flux gitrepositories
-				fgrs = append(fgrs, fgrd)
+		for _, condition := range fluxGR.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status != "True" {
+				fluxGRDataObj.status = condition.Message
+				// add to list of not ready flux git repositories
+				fluxGRs = append(fluxGRs, fluxGRDataObj)
 			}
 		}
 	}
 
-	if len(grl.Items) == 0 {
-		sb.WriteString("No Flux gitrepositories were found.\n")
-	} else if len(fgrs) == 0 {
-		sb.WriteString("All Flux gitrepositories are ready.\n")
+	if len(fluxGRList.Items) == 0 {
+		sb.WriteString("No Flux git repositories were found.\n")
+	} else if len(fluxGRs) == 0 {
+		sb.WriteString("All Flux git repositories are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux gitrepositories that are not ready:\n", len(fgrs)))
-		for _, fgrd := range fgrs {
-			sb.WriteString(fmt.Sprintf(statusString, fgrd.namespace, fgrd.name, fgrd.status))
+		sb.WriteString(fmt.Sprintf("There are %d Flux git repositories that are not ready:\n", len(fluxGRs)))
+		for _, fluxGRDataObj := range fluxGRs {
+			sb.WriteString(fmt.Sprintf(statusString, fluxGRDataObj.namespace, fluxGRDataObj.name, fluxGRDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe gitrepository %s -n %s\n", fgrd.name, fgrd.namespace))
-			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fgrd.name, fgrd.namespace))
+			sb.WriteString(fmt.Sprintf("  kubectl describe git repository %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
+			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getFluxHelmReleases(fc client.Client) string {
-
+func getFluxHelmReleases(fluxClient client.Client) string {
 	var sb strings.Builder
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	hrl := &helmv2beta1.HelmReleaseList{}
+	helmReleaseList := &helmV2Beta1.HelmReleaseList{}
 
-	listErr := fc.List(ctx, hrl, &client.ListOptions{})
+	listErr := fluxClient.List(ctx, helmReleaseList, &client.ListOptions{})
 	if listErr != nil {
 		sb.WriteString(listErr.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of fluxHRData
-	var fhrs = []fluxHRData{}
+	var fluxHRs = []fluxHRData{}
 
-	for _, fhrObj := range hrl.Items {
-		// initalize fluxHRData
-		var fhrd fluxHRData
-		fhrd.namespace = fhrObj.ObjectMeta.Namespace
-		fhrd.name = fhrObj.ObjectMeta.Name
+	for _, fluxHRObj := range helmReleaseList.Items {
+		// initialize fluxHRDataObj
+		var fluxHRDataObj fluxHRData
+		fluxHRDataObj.namespace = fluxHRObj.ObjectMeta.Namespace
+		fluxHRDataObj.name = fluxHRObj.ObjectMeta.Name
 
-		for _, cndtn := range fhrObj.Status.Conditions {
-			if cndtn.Type == "Ready" && cndtn.Status != "True" {
-				fhrd.status = cndtn.Message
-				// add to list of not ready flux helmreleases
-				fhrs = append(fhrs, fhrd)
+		for _, condition := range fluxHRObj.Status.Conditions {
+			if condition.Type == "Ready" && condition.Status != "True" {
+				fluxHRDataObj.status = condition.Message
+				// add to list of not ready flux helm releases
+				fluxHRs = append(fluxHRs, fluxHRDataObj)
 			}
 		}
 	}
 
-	if len(hrl.Items) == 0 {
-		sb.WriteString("No Flux helmreleases were found.\n")
-	} else if len(fhrs) == 0 {
-		sb.WriteString("All Flux helmreleases are reconciled.\n")
+	if len(helmReleaseList.Items) == 0 {
+		sb.WriteString("No Flux helm releases were found.\n")
+	} else if len(fluxHRs) == 0 {
+		sb.WriteString("All Flux helm releases are reconciled.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux helmreleases that are not reconciled:\n", len(fhrs)))
-		for _, fhrd := range fhrs {
-			sb.WriteString(fmt.Sprintf(statusString, fhrd.namespace, fhrd.name, fhrd.status))
+		sb.WriteString(fmt.Sprintf("There are %d Flux helm releases that are not reconciled:\n", len(fluxHRs)))
+		for _, fluxHRDataObj := range fluxHRs {
+			sb.WriteString(fmt.Sprintf(statusString, fluxHRDataObj.namespace, fluxHRDataObj.name, fluxHRDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux suspend helmrelease %s -n %s\n", fhrd.name, fhrd.namespace))
-			sb.WriteString(fmt.Sprintf("  flux resume helmrelease %s -n %s\n", fhrd.name, fhrd.namespace))
-			sb.WriteString(fmt.Sprintf("  flux reconcile helmrelease %s -n %s --with-source\n", fhrd.name, fhrd.namespace))
+			sb.WriteString(fmt.Sprintf("  flux suspend helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
+			sb.WriteString(fmt.Sprintf("  flux resume helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
+			sb.WriteString(fmt.Sprintf("  flux reconcile helm release %s -n %s --with-source\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getDmstStatus(clientset k8sclient.Interface) string {
-
+func getDaemonSetsStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
-	dmstObj, err := clientset.AppsV1().DaemonSets("").List(context.TODO(), metav1.ListOptions{})
+	daemonSetList, err := clientset.AppsV1().DaemonSets("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		sb.WriteString(err.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of DmstData
-	var dmsts = []dmstData{}
+	var daemonSetDataList = []daemonSetData{}
 
 	// iterate daemonsets
-	for _, dmstObj := range dmstObj.Items {
-		// initialize dmstData
-		var dmst dmstData
-		dmst.namespace = dmstObj.ObjectMeta.Namespace
-		dmst.name = dmstObj.ObjectMeta.Name
-		dmst.desired = dmstObj.Status.DesiredNumberScheduled
-		dmst.available = dmstObj.Status.NumberAvailable
+	for _, daemonSetObj := range daemonSetList.Items {
+		// initialize daemonSetData
+		var daemonSetDataObj daemonSetData
+		daemonSetDataObj.namespace = daemonSetObj.ObjectMeta.Namespace
+		daemonSetDataObj.name = daemonSetObj.ObjectMeta.Name
+		daemonSetDataObj.desired = daemonSetObj.Status.DesiredNumberScheduled
+		daemonSetDataObj.available = daemonSetObj.Status.NumberAvailable
 
-		if dmst.available < dmst.desired {
-			dmst.status = "Not Available " + strconv.FormatInt(int64(dmst.available), 10) + "/" + strconv.FormatInt(int64(dmst.desired), 10)
+		if daemonSetDataObj.available < daemonSetDataObj.desired {
+			daemonSetDataObj.status = "Not Available " + strconv.FormatInt(int64(daemonSetDataObj.available), 10) + "/" + strconv.FormatInt(int64(daemonSetDataObj.desired), 10)
 			// add to list of not ready daemonsets
-			dmsts = append(dmsts, dmst)
+			daemonSetDataList = append(daemonSetDataList, daemonSetDataObj)
 		}
 	}
 
-	if len(dmstObj.Items) == 0 {
+	if len(daemonSetList.Items) == 0 {
 		sb.WriteString("No Daemonsets were found.\n")
-	} else if len(dmsts) == 0 {
+	} else if len(daemonSetDataList) == 0 {
 		sb.WriteString("All Daemonsets are available.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(dmsts)))
-		for _, dmst := range dmsts {
-			sb.WriteString(fmt.Sprintf(statusString, dmst.namespace, dmst.name, dmst.status))
+		sb.WriteString(fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(daemonSetDataList)))
+		for _, daemonSetDataObj := range daemonSetDataList {
+			sb.WriteString(fmt.Sprintf(statusString, daemonSetDataObj.namespace, daemonSetDataObj.name, daemonSetDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", dmst.name, dmst.namespace))
-			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", dmst.namespace))
+			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", daemonSetDataObj.name, daemonSetDataObj.namespace))
+			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", daemonSetDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getDpmtStatus(clientset k8sclient.Interface) string {
-
+func getDeploymentStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
-	dpmtObj, err := clientset.AppsV1().Deployments("").List(context.TODO(), metav1.ListOptions{})
+	deploymentList, err := clientset.AppsV1().Deployments("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		sb.WriteString(err.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of DpmtData
-	var dpmts = []dpmtData{}
+	var deploymentDataList = []deploymentData{}
 
 	// iterate deployments to determine if requested replicas equal ready replicas
-	for _, dpmtObj := range dpmtObj.Items {
-		// initialize dpmtData
-		var dpmt dpmtData
-		dpmt.namespace = dpmtObj.ObjectMeta.Namespace
-		dpmt.name = dpmtObj.ObjectMeta.Name
-		dpmt.replicas = dpmtObj.Status.Replicas
-		dpmt.ready = dpmtObj.Status.ReadyReplicas
+	for _, deploymentObject := range deploymentList.Items {
+		// initialize deploymentData
+		var deploymentDataObj deploymentData
+		deploymentDataObj.namespace = deploymentObject.ObjectMeta.Namespace
+		deploymentDataObj.name = deploymentObject.ObjectMeta.Name
+		deploymentDataObj.replicas = deploymentObject.Status.Replicas
+		deploymentDataObj.ready = deploymentObject.Status.ReadyReplicas
 
-		if dpmt.ready < dpmt.replicas {
-			dpmt.status = "Not Ready " + strconv.FormatInt(int64(dpmt.ready), 10) + "/" + strconv.FormatInt(int64(dpmt.replicas), 10)
+		if deploymentDataObj.ready < deploymentDataObj.replicas {
+			deploymentDataObj.status = "Not Ready " + strconv.FormatInt(int64(deploymentDataObj.ready), 10) + "/" + strconv.FormatInt(int64(deploymentDataObj.replicas), 10)
 			// add to list of not ready Deployments
-			dpmts = append(dpmts, dpmt)
+			deploymentDataList = append(deploymentDataList, deploymentDataObj)
 		}
 	}
 
-	if len(dpmtObj.Items) == 0 {
+	if len(deploymentList.Items) == 0 {
 		sb.WriteString("No Deployments were found.\n")
-	} else if len(dpmts) == 0 {
+	} else if len(deploymentDataList) == 0 {
 		sb.WriteString("All Deployments are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(dpmts)))
-		for _, dpmt := range dpmts {
-			sb.WriteString(fmt.Sprintf(statusString, dpmt.namespace, dpmt.name, dpmt.status))
+		sb.WriteString(fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(deploymentDataList)))
+		for _, deploymentDataObj := range deploymentDataList {
+			sb.WriteString(fmt.Sprintf(statusString, deploymentDataObj.namespace, deploymentDataObj.name, deploymentDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", dpmt.namespace))
+			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", deploymentDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getStsStatus(clientset k8sclient.Interface) string {
-
+func getStatefulSetStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
-	stsObj, err := clientset.AppsV1().StatefulSets("").List(context.TODO(), metav1.ListOptions{})
+	statefulSetList, err := clientset.AppsV1().StatefulSets("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		sb.WriteString(err.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of StsData
-	var stss = []stsData{}
+	var statefulSetDataList = []statefulSetData{}
 
 	// iterate statefulsets to determine if requested replicas equal ready replicas
-	for _, stsObj := range stsObj.Items {
+	for _, statefulSetObj := range statefulSetList.Items {
 		// initialize podData
-		var sts stsData
-		sts.namespace = stsObj.ObjectMeta.Namespace
-		sts.name = stsObj.ObjectMeta.Name
-		sts.replicas = stsObj.Status.Replicas
-		sts.ready = stsObj.Status.ReadyReplicas
+		var statefulSetDataObj statefulSetData
+		statefulSetDataObj.namespace = statefulSetObj.ObjectMeta.Namespace
+		statefulSetDataObj.name = statefulSetObj.ObjectMeta.Name
+		statefulSetDataObj.replicas = statefulSetObj.Status.Replicas
+		statefulSetDataObj.ready = statefulSetObj.Status.ReadyReplicas
 
-		if sts.ready < sts.replicas {
-			sts.status = "Not Ready " + strconv.FormatInt(int64(sts.ready), 10) + "/" + strconv.FormatInt(int64(sts.replicas), 10)
+		if statefulSetDataObj.ready < statefulSetDataObj.replicas {
+			statefulSetDataObj.status = "Not Ready " + strconv.FormatInt(int64(statefulSetDataObj.ready), 10) + "/" + strconv.FormatInt(int64(statefulSetDataObj.replicas), 10)
 			// add to list of not ready sts
-			stss = append(stss, sts)
+			statefulSetDataList = append(statefulSetDataList, statefulSetDataObj)
 		}
 	}
 
-	if len(stsObj.Items) == 0 {
+	if len(statefulSetList.Items) == 0 {
 		sb.WriteString("No StatefulSets were found.\n")
-	} else if len(stss) == 0 {
+	} else if len(statefulSetDataList) == 0 {
 		sb.WriteString("All StatefulSets are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(stss)))
-		for _, sts := range stss {
-			sb.WriteString(fmt.Sprintf(statusString, sts.namespace, sts.name, sts.status))
+		sb.WriteString(fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(statefulSetDataList)))
+		for _, statefulSetDataObj := range statefulSetDataList {
+			sb.WriteString(fmt.Sprintf(statusString, statefulSetDataObj.namespace, statefulSetDataObj.name, statefulSetDataObj.status))
 			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", sts.namespace))
+			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", statefulSetDataObj.namespace))
 		}
 	}
 
 	return sb.String()
 }
 
-func getPodStatus(clientset k8sclient.Interface) string {
-
+func getPodStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
-	podsObj, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	podsList, err := clientset.CoreV1().Pods("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		sb.WriteString(err.Error())
 		return sb.String()
 	}
 
 	// declare empty slice of podData
-	var pods = []podData{}
+	var podDataList = []podData{}
 
 	// iterate bad pods to extract status
-	for _, podObj := range podsObj.Items {
+	for _, podObj := range podsList.Items {
 		// initialize podData
-		var pod podData
-		pod.namespace = podObj.Namespace
-		pod.name = podObj.Name
+		var podDataObj podData
+		podDataObj.namespace = podObj.Namespace
+		podDataObj.name = podObj.Name
 
-		podready := true
+		podReady := true
 
 		// add bad pods to slice of podData
 		// there are 5 possible phases: Pending, Running, Succeeded, Failed, Unknown
 		switch podObj.Status.Phase {
 		case "Running":
 			// check if all containers are ready
-			getContainerStatus(podObj.Status.ContainerStatuses, &pod, &podready, false)
+			getContainerStatus(podObj.Status.ContainerStatuses, &podDataObj, &podReady, false)
 			// process pod status
-			processPodStatus(&pod, &pods, podready)
+			processPodStatus(&podDataObj, &podDataList, podReady)
 
 		case "Succeeded":
 			// do nothing
 
 		default:
 			// evaluate status of init containers
-			getContainerStatus(podObj.Status.InitContainerStatuses, &pod, &podready, true)
+			getContainerStatus(podObj.Status.InitContainerStatuses, &podDataObj, &podReady, true)
 			// process pod status
-			processPodStatus(&pod, &pods, podready)
+			processPodStatus(&podDataObj, &podDataList, podReady)
 		}
 	}
 
-	if len(pods) == 0 {
+	if len(podDataList) == 0 {
 		sb.WriteString("All pods are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d pods that are not ready:\n", len(pods)))
-		for _, pod := range pods {
+		sb.WriteString(fmt.Sprintf("There are %d pods that are not ready:\n", len(podDataList)))
+		for _, pod := range podDataList {
 			sb.WriteString(fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
 			sb.WriteString(commandHelp)
 			sb.WriteString(fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace))
@@ -538,27 +528,26 @@ func processPodStatus(pod *podData, pods *[]podData, podReady bool) {
 	}
 }
 
-func getContainerStatus(containerStatuses []k8scorev1.ContainerStatus, pod *podData, podReady *bool, isInit bool) {
-	var shortSts string
-	var longSts string
+func getContainerStatus(containerStatuses []k8sCoreV1.ContainerStatus, pod *podData, podReady *bool, isInit bool) {
+	var shortStatus string
+	var longStatus string
 
 	if isInit {
-		longSts = "init:CrashLoopBackOff"
-		shortSts = "init:"
+		longStatus = "init:CrashLoopBackOff"
+		shortStatus = "init:"
 	} else {
-		longSts = "CrashLoopBackOff"
-		shortSts = ""
+		longStatus = "CrashLoopBackOff"
+		shortStatus = ""
 	}
 
 	for _, cs := range containerStatuses {
 		if !cs.Ready {
 			*podReady = false
 			if cs.State.Waiting != nil {
-				if pod.status != longSts {
-					pod.status = shortSts + cs.State.Waiting.Reason
+				if pod.status != longStatus {
+					pod.status = shortStatus + cs.State.Waiting.Reason
 				}
 			}
 		}
 	}
-
 }

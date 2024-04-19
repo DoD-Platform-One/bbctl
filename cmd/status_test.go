@@ -8,38 +8,36 @@ import (
 	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
-	helmv2beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
-	kustomizev1beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
-	sourcev1beta1 "github.com/fluxcd/source-controller/api/v1beta1"
+	helmV2Beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
+	kustomizeV1Beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
+	sourceV1Beta1 "github.com/fluxcd/source-controller/api/v1beta1"
 )
 
 func TestGetStatus(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewStatusCmd(factory, streams)
 	cmd.Run(cmd, []string{})
 
 	response := strings.Split(buf.String(), "\n")
 
-	// fuctionality is tested separately.
+	// functionality is tested separately.
 	// only checking for not nil to get code coverage for cobra cmd
 	assert.NotNil(t, response)
 }
 
 func TestGetBigBangStatus(t *testing.T) {
-
 	// prepare mock data for helm
 	chartBB := &chart.Chart{
 		Metadata: &chart.Metadata{
@@ -61,35 +59,35 @@ func TestGetBigBangStatus(t *testing.T) {
 	}
 
 	// prepare the helm client with no data
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
-	helmclient, _ := factory.GetHelmClient(BigBangNamespace)
-	var response = getBigBangStatus(helmclient)
-	assert.Contains(t, response, "No BigBang release was found")
+	factory := bbTestUtil.GetFakeFactory()
+	helmClient, _ := factory.GetHelmClient(BigBangNamespace)
+	var response = getBigBangStatus(helmClient)
+	assert.Contains(t, response, "No Big Bang release was found")
 
-	// prepare the helm client with bigbang release
-	factory = bbtestutil.GetFakeFactory(releaseFixture, nil, nil, nil)
-	helmclient, _ = factory.GetHelmClient(BigBangNamespace)
-	response = getBigBangStatus(helmclient)
+	// prepare the helm client with big bang release
+	factory = bbTestUtil.GetFakeFactory()
+	factory.SetHelmReleases(releaseFixture)
+	helmClient, _ = factory.GetHelmClient(BigBangNamespace)
+	response = getBigBangStatus(helmClient)
 	assert.Contains(t, response, "Found bigbang release version")
 }
 
 func TestGetFluxKustomizations(t *testing.T) {
-
 	// prepare the client
 	// get runtime controller client
 	// register the GitOps Toolkit schema definitions
 	scheme := runtime.NewScheme()
-	_ = kustomizev1beta1.AddToScheme(scheme)
+	_ = kustomizeV1Beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
 	// prepare mock data for flux kustomization
-	readyK := kustomizev1beta1.Kustomization{
+	readyK := kustomizeV1Beta1.Kustomization{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "readyK",
 		},
-		Status: kustomizev1beta1.KustomizationStatus{
+		Status: kustomizeV1Beta1.KustomizationStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -99,11 +97,11 @@ func TestGetFluxKustomizations(t *testing.T) {
 		},
 	}
 
-	notReadyK := kustomizev1beta1.Kustomization{
+	notReadyK := kustomizeV1Beta1.Kustomization{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "notReadyK",
 		},
-		Status: kustomizev1beta1.KustomizationStatus{
+		Status: kustomizeV1Beta1.KustomizationStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -113,38 +111,39 @@ func TestGetFluxKustomizations(t *testing.T) {
 		},
 	}
 
-	// test with no flux gitrepositories
+	// test with no flux git repositories
 	var response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response, "No Flux kustomizations were found")
 
-	// test with reconciled flux gitrepositories
-	fluxClient.Create(context.TODO(), &readyK)
+	// test with reconciled flux git repositories
+	err := fluxClient.Create(context.TODO(), &readyK)
+	assert.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response, "All Flux kustomizations are ready")
 
-	// test with unreconciled flux gitrepositories
-	fluxClient.Create(context.TODO(), &notReadyK)
+	// test with unreconciled flux git repositories
+	err = fluxClient.Create(context.TODO(), &notReadyK)
+	assert.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response, "There are 1 Flux kustomizations that are not ready")
 }
 
 func TestGetFluxGitRepositories(t *testing.T) {
-
 	// prepare the client
 	// get runtime controller client
 	// register the GitOps Toolkit schema definitions
 	scheme := runtime.NewScheme()
-	_ = sourcev1beta1.AddToScheme(scheme)
+	_ = sourceV1Beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
-	// prepare mock data for flux gitrepository
-	readyGR := sourcev1beta1.GitRepository{
+	// prepare mock data for flux git repository
+	readyGR := sourceV1Beta1.GitRepository{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "readyGR",
 		},
-		Status: sourcev1beta1.GitRepositoryStatus{
+		Status: sourceV1Beta1.GitRepositoryStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -154,11 +153,11 @@ func TestGetFluxGitRepositories(t *testing.T) {
 		},
 	}
 
-	notReadyGR := sourcev1beta1.GitRepository{
+	notReadyGR := sourceV1Beta1.GitRepository{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "notReadyGR",
 		},
-		Status: sourcev1beta1.GitRepositoryStatus{
+		Status: sourceV1Beta1.GitRepositoryStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -168,38 +167,39 @@ func TestGetFluxGitRepositories(t *testing.T) {
 		},
 	}
 
-	// test with no flux gitrepositories
+	// test with no flux git repositories
 	var response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "No Flux gitrepositories were found")
+	assert.Contains(t, response, "No Flux git repositories were found")
 
-	// test with reconciled flux gitrepositories
-	fluxClient.Create(context.TODO(), &readyGR)
+	// test with reconciled flux git repositories
+	err := fluxClient.Create(context.TODO(), &readyGR)
+	assert.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "All Flux gitrepositories are ready")
+	assert.Contains(t, response, "All Flux git repositories are ready")
 
-	// test with unreconciled flux gitrepositories
-	fluxClient.Create(context.TODO(), &notReadyGR)
+	// test with unreconciled flux git repositories
+	err = fluxClient.Create(context.TODO(), &notReadyGR)
+	assert.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "There are 1 Flux gitrepositories that are not ready")
+	assert.Contains(t, response, "There are 1 Flux git repositories that are not ready")
 }
 
 func TestGetFluxHelmReleases(t *testing.T) {
-
 	// prepare the client
 	// get runtime controller client
 	// register the GitOps Toolkit schema definitions
 	scheme := runtime.NewScheme()
-	_ = helmv2beta1.AddToScheme(scheme)
+	_ = helmV2Beta1.AddToScheme(scheme)
 
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	fluxClient, _ := factory.GetRuntimeClient(scheme)
 
-	// prepare mock data for flux helmrelease
-	reconciledHR := helmv2beta1.HelmRelease{
+	// prepare mock data for flux helm release
+	reconciledHR := helmV2Beta1.HelmRelease{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "reconciledHR",
 		},
-		Status: helmv2beta1.HelmReleaseStatus{
+		Status: helmV2Beta1.HelmReleaseStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -209,11 +209,11 @@ func TestGetFluxHelmReleases(t *testing.T) {
 		},
 	}
 
-	unreconciledHR := helmv2beta1.HelmRelease{
+	unreconciledHR := helmV2Beta1.HelmRelease{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "unreconciledHR",
 		},
-		Status: helmv2beta1.HelmReleaseStatus{
+		Status: helmV2Beta1.HelmReleaseStatus{
 			Conditions: []metaV1.Condition{
 				{
 					Type:   "Ready",
@@ -223,31 +223,32 @@ func TestGetFluxHelmReleases(t *testing.T) {
 		},
 	}
 
-	// test with no flux helmreleases
+	// test with no flux helm releases
 	var response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "No Flux helmreleases were found")
+	assert.Contains(t, response, "No Flux helm releases were found")
 
-	// test with reconciled flux helmrelease
-	fluxClient.Create(context.TODO(), &reconciledHR)
+	// test with reconciled flux helm release
+	err := fluxClient.Create(context.TODO(), &reconciledHR)
+	assert.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "All Flux helmreleases are reconciled")
+	assert.Contains(t, response, "All Flux helm releases are reconciled")
 
-	// test with unreconciled flux helmrelease
-	fluxClient.Create(context.TODO(), &unreconciledHR)
+	// test with unreconciled flux helm release
+	err = fluxClient.Create(context.TODO(), &unreconciledHR)
+	assert.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "There are 1 Flux helmreleases that are not reconciled")
+	assert.Contains(t, response, "There are 1 Flux helm releases that are not reconciled")
 }
 
-func TestGetDmstStatus(t *testing.T) {
-
+func TestGetDaemonSetStatus(t *testing.T) {
 	// prepare the client
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
-	availDmst := &appsV1.DaemonSet{
+	availDaemonSet := &appsV1.DaemonSet{
 		ObjectMeta: metaV1.ObjectMeta{
-			Name: "availDmst",
+			Name: "availDaemonSet",
 		},
 		Status: appsV1.DaemonSetStatus{
 			DesiredNumberScheduled: 1,
@@ -255,9 +256,9 @@ func TestGetDmstStatus(t *testing.T) {
 		},
 	}
 
-	notAvailDmst := &appsV1.DaemonSet{
+	notAvailDaemonSet := &appsV1.DaemonSet{
 		ObjectMeta: metaV1.ObjectMeta{
-			Name: "notAvailDmst",
+			Name: "notAvailDaemonSet",
 		},
 		Status: appsV1.DaemonSetStatus{
 			DesiredNumberScheduled: 1,
@@ -266,36 +267,35 @@ func TestGetDmstStatus(t *testing.T) {
 	}
 
 	// test with no daemonset data
-	var response = getDmstStatus(clientSet)
+	var response = getDaemonSetsStatus(clientSet)
 	assert.Contains(t, response, "No Daemonsets were found")
 
 	// test with available daemonset
-	_, err1 := clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), availDmst, metaV1.CreateOptions{})
+	_, err1 := clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), availDaemonSet, metaV1.CreateOptions{})
 	if err1 != nil {
 		t.Errorf("error injecting daemonset add: %v", err1)
 	}
-	response = getDmstStatus(clientSet)
+	response = getDaemonSetsStatus(clientSet)
 	assert.Contains(t, response, "All Daemonsets are available")
 
 	// test with not available daemonset
-	_, err1 = clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), notAvailDmst, metaV1.CreateOptions{})
+	_, err1 = clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), notAvailDaemonSet, metaV1.CreateOptions{})
 	if err1 != nil {
 		t.Errorf("error injecting daemonset add: %v", err1)
 	}
-	response = getDmstStatus(clientSet)
+	response = getDaemonSetsStatus(clientSet)
 	assert.Contains(t, response, "There are 1 DaemonSets that are not available")
 }
 
-func TestGetDpmtStatus(t *testing.T) {
-
+func TestGetDeploymentStatus(t *testing.T) {
 	// prepare the client
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
-	readyDpmt := &appsV1.Deployment{
+	readyD := &appsV1.Deployment{
 		ObjectMeta: metaV1.ObjectMeta{
-			Name: "readyDpmt",
+			Name: "readyD",
 		},
 		Status: appsV1.DeploymentStatus{
 			Replicas:      1,
@@ -303,9 +303,9 @@ func TestGetDpmtStatus(t *testing.T) {
 		},
 	}
 
-	notReadyDpmt := &appsV1.Deployment{
+	notReadyD := &appsV1.Deployment{
 		ObjectMeta: metaV1.ObjectMeta{
-			Name: "notReadyDpmt",
+			Name: "notReadyD",
 		},
 		Status: appsV1.DeploymentStatus{
 			Replicas:      1,
@@ -314,30 +314,29 @@ func TestGetDpmtStatus(t *testing.T) {
 	}
 
 	// test with no deployment data
-	var response = getDpmtStatus(clientSet)
+	var response = getDeploymentStatus(clientSet)
 	assert.Contains(t, response, "No Deployments were found")
 
 	// test with ready deployment
-	_, err1 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), readyDpmt, metaV1.CreateOptions{})
+	_, err1 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), readyD, metaV1.CreateOptions{})
 	if err1 != nil {
 		t.Errorf("error injecting deployment add: %v", err1)
 	}
-	response = getDpmtStatus(clientSet)
+	response = getDeploymentStatus(clientSet)
 	assert.Contains(t, response, "All Deployments are ready")
 
 	// test with not ready deployment
-	_, err2 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), notReadyDpmt, metaV1.CreateOptions{})
+	_, err2 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), notReadyD, metaV1.CreateOptions{})
 	if err2 != nil {
 		t.Errorf("error injecting Deployment add: %v", err1)
 	}
-	response = getDpmtStatus(clientSet)
+	response = getDeploymentStatus(clientSet)
 	assert.Contains(t, response, "There are 1 k8s Deployments that are not ready")
 }
 
-func TestGetStsStatus(t *testing.T) {
-
+func TestGetStatefulSetStatus(t *testing.T) {
 	// prepare the client
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset
@@ -362,7 +361,7 @@ func TestGetStsStatus(t *testing.T) {
 	}
 
 	// test with no statefulset data
-	var response = getStsStatus(clientSet)
+	var response = getStatefulSetStatus(clientSet)
 	assert.Contains(t, response, "No StatefulSets were found")
 
 	// test with ready statefulset
@@ -370,22 +369,21 @@ func TestGetStsStatus(t *testing.T) {
 	if err1 != nil {
 		t.Errorf("error injecting statefulset add: %v", err1)
 	}
-	response = getStsStatus(clientSet)
+	response = getStatefulSetStatus(clientSet)
 	assert.Contains(t, response, "All StatefulSets are ready")
 
-	// test with not ready statufulset
+	// test with not ready statefulset
 	_, err2 := clientSet.AppsV1().StatefulSets("test-ns").Create(context.TODO(), notReadySts, metaV1.CreateOptions{})
 	if err2 != nil {
 		t.Errorf("error injecting statefulset add: %v", err1)
 	}
-	response = getStsStatus(clientSet)
+	response = getStatefulSetStatus(clientSet)
 	assert.Contains(t, response, "There are 1 StatefulSets that are not ready")
 }
 
 func TestGetPodStatus(t *testing.T) {
-
 	// prepare the client
-	factory := bbtestutil.GetFakeFactory(nil, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
 	clientSet, _ := factory.GetClientSet()
 
 	// prepare mock data for k8s clientset

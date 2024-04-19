@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/stretchr/testify/assert"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestCreateJob(t *testing.T) {
-
 	jobDesc := &JobDesc{
 		Name:               "foo",
 		ContainerName:      "bar",
@@ -21,12 +21,13 @@ func TestCreateJob(t *testing.T) {
 		TTLSecondsOnFinish: 1,
 	}
 
-	objs := []runtime.Object{}
-	cs := fake.NewSimpleClientset(objs...)
+	objects := []runtime.Object{}
+	cs := fake.NewSimpleClientset(objects...)
 
-	CreateJob(cs, "default", jobDesc)
+	_, err := CreateJob(cs, "default", jobDesc)
+	assert.Nil(t, err)
 
-	job, _ := cs.BatchV1().Jobs("default").Get(context.TODO(), "foo", meta_v1.GetOptions{})
+	job, _ := cs.BatchV1().Jobs("default").Get(context.TODO(), "foo", metaV1.GetOptions{})
 
 	if job.Name != "foo" {
 		t.Errorf("unexpected output: %s", job.Name)

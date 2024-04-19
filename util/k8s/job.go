@@ -3,9 +3,9 @@ package k8s
 import (
 	"context"
 
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	batchV1 "k8s.io/api/batch/v1"
+	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -21,18 +21,17 @@ type JobDesc struct {
 }
 
 // CreateJob function creates a new job
-func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) (*batchv1.Job, error) {
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
+func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) (*batchV1.Job, error) {
+	job := &batchV1.Job{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name: jobDesc.Name,
 		},
-		Spec: batchv1.JobSpec{
+		Spec: batchV1.JobSpec{
 			TTLSecondsAfterFinished: &jobDesc.TTLSecondsOnFinish,
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					Containers: []corev1.Container{
+			Template: coreV1.PodTemplateSpec{
+				Spec: coreV1.PodSpec{
+					RestartPolicy: coreV1.RestartPolicyNever,
+					Containers: []coreV1.Container{
 						{
 							Name:    jobDesc.ContainerName,
 							Image:   jobDesc.ContainerImage,
@@ -40,7 +39,7 @@ func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) 
 							Args:    jobDesc.Args,
 						},
 					},
-					ImagePullSecrets: []corev1.LocalObjectReference{
+					ImagePullSecrets: []coreV1.LocalObjectReference{
 						{
 							Name: jobDesc.ImagePullSecret,
 						},
@@ -50,5 +49,5 @@ func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) 
 		},
 	}
 
-	return client.BatchV1().Jobs(namespace).Create(context.TODO(), job, metav1.CreateOptions{})
+	return client.BatchV1().Jobs(namespace).Create(context.TODO(), job, metaV1.CreateOptions{})
 }

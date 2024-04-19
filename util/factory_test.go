@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetHelmClient(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "./test/data/kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetHelmClient("foo")
@@ -22,7 +22,7 @@ func TestGetHelmClient(t *testing.T) {
 }
 
 func TestGetHelmClientBadConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "no-kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetHelmClient("foo")
@@ -31,7 +31,7 @@ func TestGetHelmClientBadConfig(t *testing.T) {
 }
 
 func TestGetK8sClientset(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "./test/data/kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetK8sClientset()
@@ -40,7 +40,7 @@ func TestGetK8sClientset(t *testing.T) {
 }
 
 func TestGetK8sClientsetBadConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "no-kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetK8sClientset()
@@ -49,7 +49,7 @@ func TestGetK8sClientsetBadConfig(t *testing.T) {
 }
 
 func TestGetK8sDynamicClient(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "./test/data/kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetK8sDynamicClient()
@@ -58,7 +58,7 @@ func TestGetK8sDynamicClient(t *testing.T) {
 }
 
 func TestGetK8sDynamicClientBadConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "no-kube-config.yaml", "")
 	factory := NewFactory(flags)
 	client, err := factory.GetK8sDynamicClient()
@@ -67,7 +67,7 @@ func TestGetK8sDynamicClientBadConfig(t *testing.T) {
 }
 
 func TestGetRestConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "./test/data/kube-config.yaml", "")
 	factory := NewFactory(flags)
 	config, err := factory.GetRestConfig()
@@ -76,7 +76,7 @@ func TestGetRestConfig(t *testing.T) {
 }
 
 func TestGetRestConfigBadConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "no-kube-config.yaml", "")
 	factory := NewFactory(flags)
 	config, err := factory.GetRestConfig()
@@ -85,11 +85,11 @@ func TestGetRestConfigBadConfig(t *testing.T) {
 }
 
 func TestGetCommandExecutor(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "./test/data/kube-config.yaml", "")
 	factory := NewFactory(flags)
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
+	pod := &coreV1.Pod{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:      "test",
 			Namespace: "test",
 		},
@@ -101,10 +101,16 @@ func TestGetCommandExecutor(t *testing.T) {
 }
 
 func TestGetCommandExecutorBadConfig(t *testing.T) {
-	var flags *pflag.FlagSet = &pflag.FlagSet{}
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
 	flags.String("kubeconfig", "no-kube-config.yaml", "")
 	factory := NewFactory(flags)
 	executor, err := factory.GetCommandExecutor(nil, "", nil, nil, nil)
 	assert.NotNil(t, err)
 	assert.Nil(t, executor)
+}
+
+func TestFlagsVisible(t *testing.T) {
+	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
+	factory := NewFactory(flags)
+	assert.NotNil(t, factory.flags)
 }

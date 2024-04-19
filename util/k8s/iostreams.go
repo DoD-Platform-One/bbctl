@@ -3,13 +3,12 @@ package k8s
 import (
 	"os"
 
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 // GetIOStream - get io stream
-func GetIOStream() genericclioptions.IOStreams {
-
-	streams := genericclioptions.IOStreams{
+func GetIOStream() genericIOOptions.IOStreams {
+	streams := genericIOOptions.IOStreams{
 		In:     os.Stdin,
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,

@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -25,24 +25,23 @@ type DockerConfig map[string]DockerConfigEntry
 // DockerConfigJSON represents a local docker auth config file
 // for pulling images.
 type DockerConfigJSON struct {
-	Auths DockerConfig `json:"auths" datapolicy:"token"`
+	Authorizations DockerConfig `json:"auths" datapolicy:"token"`
 	// +optional
 	HTTPHeaders map[string]string `json:"HttpHeaders,omitempty" datapolicy:"token"`
 }
 
 // CreateRegistrySecret creates a new secret for docker registry
-func CreateRegistrySecret(k8sinterface kubernetes.Interface, namespace string, name string, server string, username string, password string) (*corev1.Secret, error) {
-
-	secret := &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: corev1.SchemeGroupVersion.String(),
+func CreateRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string, server string, username string, password string) (*coreV1.Secret, error) {
+	secret := &coreV1.Secret{
+		TypeMeta: metaV1.TypeMeta{
+			APIVersion: coreV1.SchemeGroupVersion.String(),
 			Kind:       "Secret",
 		},
-		ObjectMeta: metav1.ObjectMeta{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
-		Type: corev1.SecretTypeDockerConfigJson,
+		Type: coreV1.SecretTypeDockerConfigJson,
 		Data: map[string][]byte{},
 	}
 
@@ -53,7 +52,7 @@ func CreateRegistrySecret(k8sinterface kubernetes.Interface, namespace string, n
 	}
 
 	dockerConfigJSON := DockerConfigJSON{
-		Auths: map[string]DockerConfigEntry{server: dockerConfigAuth},
+		Authorizations: map[string]DockerConfigEntry{server: dockerConfigAuth},
 	}
 
 	bytes, err := json.Marshal(dockerConfigJSON)
@@ -61,12 +60,12 @@ func CreateRegistrySecret(k8sinterface kubernetes.Interface, namespace string, n
 		return nil, err
 	}
 
-	secret.Data[corev1.DockerConfigJsonKey] = bytes
+	secret.Data[coreV1.DockerConfigJsonKey] = bytes
 
-	return k8sinterface.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metav1.CreateOptions{})
+	return k8sInterface.CoreV1().Secrets(namespace).Create(context.TODO(), secret, metaV1.CreateOptions{})
 }
 
 // DeleteRegistrySecret deletes docker registry secret
-func DeleteRegistrySecret(k8sinterface kubernetes.Interface, namespace string, name string) error {
-	return k8sinterface.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metav1.DeleteOptions{})
+func DeleteRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string) error {
+	return k8sInterface.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
 }

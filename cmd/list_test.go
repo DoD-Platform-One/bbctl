@@ -4,15 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestGetList(t *testing.T) {
-
 	chartFoo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "foo",
@@ -48,9 +47,10 @@ func TestGetList(t *testing.T) {
 		},
 	}
 
-	factory := bbtestutil.GetFakeFactory(releaseFixture, nil, nil, nil)
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewReleasesCmd(factory, streams)
 	cmd.Run(cmd, []string{})

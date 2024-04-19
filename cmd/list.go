@@ -3,13 +3,13 @@ package cmd
 import (
 	"fmt"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/cli/output"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -28,15 +28,14 @@ var (
 )
 
 // NewReleasesCmd - new releases command
-func NewReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-
+func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     listUse,
 		Short:   listShort,
 		Long:    listLong,
 		Example: listExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdutil.CheckErr(listHelmReleases(factory, streams))
+			cmdUtil.CheckErr(listHelmReleases(factory, streams))
 		},
 	}
 
@@ -44,8 +43,7 @@ func NewReleasesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams)
 }
 
 // query the cluster using helm module to get information on bigbang release
-func listHelmReleases(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
-
+func listHelmReleases(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetHelmClient(BigBangNamespace)
 	if err != nil {
 		return err

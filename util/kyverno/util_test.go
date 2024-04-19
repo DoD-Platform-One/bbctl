@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	bbtestutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -48,7 +48,6 @@ func gvrToListKind() map[schema.GroupVersionResource]string {
 }
 
 func crdList() *unstructured.UnstructuredList {
-
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -85,7 +84,6 @@ func crdList() *unstructured.UnstructuredList {
 }
 
 func policyList() *unstructured.UnstructuredList {
-
 	policy1 := &unstructured.Unstructured{}
 	policy1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "kyverno.io/v1",
@@ -139,7 +137,7 @@ func TestFetchKyvernoCrds(t *testing.T) {
 	var tests = []struct {
 		desc     string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"no crd exist",
@@ -155,7 +153,9 @@ func TestFetchKyvernoCrds(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKind())
 			client, _ := factory.GetK8sDynamicClient()
 			crds, _ := FetchKyvernoCrds(client)
 			assert.Len(t, crds.Items, len(test.expected))
@@ -164,16 +164,14 @@ func TestFetchKyvernoCrds(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestFetchKyvernoPolicies(t *testing.T) {
-
 	var tests = []struct {
 		desc     string
 		arg      string
 		expected []string
-		objs     []runtime.Object
+		objects  []runtime.Object
 	}{
 		{
 			"no policies exist",
@@ -191,7 +189,9 @@ func TestFetchKyvernoPolicies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			factory := bbtestutil.GetFakeFactory(nil, test.objs, gvrToListKind(), nil)
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKind())
 			client, _ := factory.GetK8sDynamicClient()
 			policies, _ := FetchKyvernoPolicies(client, test.arg)
 			assert.Len(t, policies.Items, len(test.expected))
@@ -200,5 +200,4 @@ func TestFetchKyvernoPolicies(t *testing.T) {
 			}
 		})
 	}
-
 }

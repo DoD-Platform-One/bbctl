@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
+	pFlag "github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
 
@@ -25,8 +25,8 @@ var (
 	policyShort = i18n.T(`Describe policy implemented by Gatekeeper or Kyverno.`)
 
 	policyLong = templates.LongDesc(i18n.T(`
-		Describe policy implemented by Gatekeeper or Kyverno.	
-		Use either --gatekeeper or --kyverno flag to select the policy provider.	
+		Describe policy implemented by Gatekeeper or Kyverno.
+		Use either --gatekeeper or --kyverno flag to select the policy provider.
 	`))
 
 	policyExample = templates.Examples(i18n.T(`
@@ -53,8 +53,7 @@ type policyDescriptor struct {
 }
 
 // NewPoliciesCmd - new policies command
-func NewPoliciesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
-
+func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     policyUse,
 		Short:   policyShort,
@@ -68,9 +67,9 @@ func NewPoliciesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 1 {
-				cmdutil.CheckErr(listPoliciesByName(factory, streams, args[0], cmd.Flags()))
+				cmdUtil.CheckErr(listPoliciesByName(factory, streams, args[0], cmd.Flags()))
 			} else {
-				cmdutil.CheckErr(listAllPolicies(factory, streams, cmd.Flags()))
+				cmdUtil.CheckErr(listAllPolicies(factory, streams, cmd.Flags()))
 			}
 		},
 	}
@@ -85,7 +84,7 @@ func NewPoliciesCmd(factory bbutil.Factory, streams genericclioptions.IOStreams)
 }
 
 // find policies with given prefix for command completion
-func matchingPolicyNames(factory bbutil.Factory, hint string, flags *pflag.FlagSet) ([]string, cobra.ShellCompDirective) {
+func matchingPolicyNames(factory bbUtil.Factory, hint string, flags *pFlag.FlagSet) ([]string, cobra.ShellCompDirective) {
 
 	// either --kyverno or --gatekeeper must be specified.
 	// No option default value is 1 for either of these flags.
@@ -105,8 +104,7 @@ func matchingPolicyNames(factory bbutil.Factory, hint string, flags *pflag.FlagS
 }
 
 // find policies with given prefix for command completion
-func matchingGatekeeperPolicyNames(factory bbutil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-
+func matchingGatekeeperPolicyNames(factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
@@ -131,7 +129,7 @@ func matchingGatekeeperPolicyNames(factory bbutil.Factory, hint string) ([]strin
 	return matches, cobra.ShellCompDirectiveNoFileComp
 }
 
-func matchingKyvernoPolicyNames(factory bbutil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
+func matchingKyvernoPolicyNames(factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
@@ -163,12 +161,10 @@ func matchingKyvernoPolicyNames(factory bbutil.Factory, hint string) ([]string, 
 
 // query the cluster using dynamic client to get information on the following:
 // gatekeeper constraint crds
-// kyverno clusterpolicy crds
-func listPoliciesByName(factory bbutil.Factory, streams genericclioptions.IOStreams, name string, flags *pflag.FlagSet) error {
-
+// kyverno cluster policy crds
+func listPoliciesByName(factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string, flags *pFlag.FlagSet) error {
 	// either --kyverno or --gatekeeper must be specified.
 	// No option default value is 1 for either of these flags.
-
 	kyverno, _ := flags.GetInt("kyverno")
 	gatekeeper, _ := flags.GetInt("gatekeeper")
 
@@ -184,8 +180,7 @@ func listPoliciesByName(factory bbutil.Factory, streams genericclioptions.IOStre
 }
 
 // query the cluster using dynamic client to get information on gatekeeper constraint crds
-func listGatekeeperPoliciesByName(factory bbutil.Factory, streams genericclioptions.IOStreams, name string) error {
-
+func listGatekeeperPoliciesByName(factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return err
@@ -216,8 +211,7 @@ func listGatekeeperPoliciesByName(factory bbutil.Factory, streams genericcliopti
 }
 
 // query the cluster using dynamic client to get information on kyverno policies
-func listKyvernoPoliciesByName(factory bbutil.Factory, streams genericclioptions.IOStreams, name string) error {
-
+func listKyvernoPoliciesByName(factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return nil
@@ -254,8 +248,7 @@ func listKyvernoPoliciesByName(factory bbutil.Factory, streams genericclioptions
 
 // query the cluster using dynamic client to get information on gatekeeper constraint crds
 // and kyverno cluster policy crds
-func listAllPolicies(factory bbutil.Factory, streams genericclioptions.IOStreams, flags *pflag.FlagSet) error {
-
+func listAllPolicies(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) error {
 	kyverno, _ := flags.GetInt("kyverno")
 	gatekeeper, _ := flags.GetInt("gatekeeper")
 
@@ -271,8 +264,7 @@ func listAllPolicies(factory bbutil.Factory, streams genericclioptions.IOStreams
 }
 
 // query the cluster using dynamic client to get information on gatekeeper constraint crds
-func listAllGatekeeperPolicies(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
-
+func listAllGatekeeperPolicies(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return err
@@ -311,8 +303,7 @@ func listAllGatekeeperPolicies(factory bbutil.Factory, streams genericclioptions
 	return nil
 }
 
-func listAllKyvernoPolicies(factory bbutil.Factory, streams genericclioptions.IOStreams) error {
-
+func listAllKyvernoPolicies(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetK8sDynamicClient()
 	if err != nil {
 		return err
@@ -352,7 +343,6 @@ func listAllKyvernoPolicies(factory bbutil.Factory, streams genericclioptions.IO
 }
 
 func getGatekeeperPolicyDescriptor(resource *unstructured.Unstructured) (*policyDescriptor, error) {
-
 	kind, _, err := unstructured.NestedString(resource.Object, "kind")
 	if err != nil {
 		return nil, err
@@ -384,7 +374,6 @@ func getGatekeeperPolicyDescriptor(resource *unstructured.Unstructured) (*policy
 }
 
 func getKyvernoPolicyDescriptor(resource *unstructured.Unstructured) (*policyDescriptor, error) {
-
 	kind, _, err := unstructured.NestedString(resource.Object, "kind")
 	if err != nil {
 		return nil, err

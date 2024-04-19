@@ -5,15 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestValues(t *testing.T) {
-
 	chartFoo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "foo",
@@ -41,9 +40,10 @@ func TestValues(t *testing.T) {
 		},
 	}
 
-	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil, nil)
+	factory := bbUtil.GetFakeFactory()
+	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, buf, _ := genericclioptions.NewTestIOStreams()
+	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewValuesCmd(factory, streams)
 	cmd.Run(cmd, []string{"foo"})
@@ -54,7 +54,6 @@ func TestValues(t *testing.T) {
 }
 
 func TestGetValuesCompletion(t *testing.T) {
-
 	chartFoo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "foo",
@@ -103,9 +102,10 @@ func TestGetValuesCompletion(t *testing.T) {
 		output []string
 	}
 
-	factory := bbutil.GetFakeFactory(releaseFixture, nil, nil, nil)
+	factory := bbUtil.GetFakeFactory()
+	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, _, _ := genericclioptions.NewTestIOStreams()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewValuesCmd(factory, streams)
 

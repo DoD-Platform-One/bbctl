@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	bbutil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -54,25 +54,27 @@ var (
 )
 
 // NewCompletionCmd - create a new Cobra completion command
-func NewCompletionCmd(factory bbutil.Factory, streams genericclioptions.IOStreams) *cobra.Command {
+func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+	var err error
 	cmd := &cobra.Command{
 		Use:                   completionUse,
 		Short:                 completionShort,
 		Long:                  completionLong,
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish"},
-		Args:                  cobra.ExactValidArgs(1),
+		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Run: func(cmd *cobra.Command, args []string) {
 			switch args[0] {
 			case "bash":
-				cmd.Root().GenBashCompletion(streams.Out)
+				err = cmd.Root().GenBashCompletion(streams.Out)
 			case "zsh":
-				cmd.Root().GenZshCompletion(streams.Out)
+				err = cmd.Root().GenZshCompletion(streams.Out)
 			case "fish":
-				cmd.Root().GenFishCompletion(streams.Out, true)
+				err = cmd.Root().GenFishCompletion(streams.Out, true)
 			}
 		},
 	}
+	factory.GetLoggingClient().HandleError("Unable to generate completion script: %v", err)
 
 	return cmd
 }
