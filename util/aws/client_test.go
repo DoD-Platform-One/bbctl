@@ -34,7 +34,7 @@ func createTestClient(t *testing.T, stringBuilder strings.Builder) testClientObj
 	reservationID := "r-1234567890abcdef0"
 	instanceID := "i-1234567890abcdef0"
 	config := aws.Config{
-		Region: "us-west-2",
+		Region: "us-gov-west-1",
 	}
 	clusterIPs := []ClusterIP{
 		{
