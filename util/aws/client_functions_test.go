@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -16,15 +17,17 @@ import (
 	bbUtilTestLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 )
 
+const region = "us-gov-west-1"
+
 // GenerateTestConfig - generate a test config file and set the AWS_CONFIG_FILE environment variable
 func GenerateTestConfig(t *testing.T, config *string) {
 	testConfigName := "bbctlTestConfig" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	testConfigPath := path.Join("/tmp", testConfigName)
 	var testConfig string
 	if config == nil {
-		testConfig = `[default]
-region = us-west-2
-output = json`
+		testConfig = fmt.Sprintf(`[default]
+region = %v
+output = json`, region)
 	} else {
 		testConfig = *config
 	}
@@ -166,7 +169,7 @@ func TestEnsureConfigNil(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cfg)
 	assert.NotEmpty(t, cfg.Region)
-	assert.Equal(t, "us-west-2", cfg.Region)
+	assert.Equal(t, region, cfg.Region)
 	assert.Empty(t, stringBuilder.String())
 }
 
@@ -185,7 +188,7 @@ func TestEnsureConfigNotNil(t *testing.T) {
 	cfg := ensureConfig(context.TODO(), loggingClient, origCfg)
 	// Assert
 	assert.NotNil(t, origCfg)
-	assert.Equal(t, "us-west-2", origCfg.Region)
+	assert.Equal(t, region, origCfg.Region)
 	assert.Equal(t, origCfg, cfg)
 	assert.Empty(t, stringBuilder.String())
 }
@@ -257,7 +260,7 @@ func TestConfigPass(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cfg)
 	assert.NotEmpty(t, cfg.Region)
-	assert.Equal(t, "us-west-2", cfg.Region)
+	assert.Equal(t, region, cfg.Region)
 	assert.Empty(t, stringBuilder.String())
 }
 

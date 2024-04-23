@@ -3,6 +3,19 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.7.1] - 2024-04-19
+### Changed
+- Fixing some tests that fail in the post pipeline
+
+## [0.7.0] - 2024-04-19
+### Changed
+- Added deploy and k3d commands
+- linted
+- formatted
+- refactored into more factories
+- added a lot of testing
+- added the Makefile
+
 ## [0.6.0] - 2023-10-24
 ### Changed
 - Update Contributing Guidelines
