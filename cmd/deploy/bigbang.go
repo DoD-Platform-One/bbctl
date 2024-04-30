@@ -6,12 +6,12 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 )
 
 var (
@@ -25,10 +25,6 @@ var (
 	    # Deploy big bang product to your cluster
 		bbctl deploy big bang
 		`))
-
-	bbUseK3d bool
-
-	bbAddonList []string
 )
 
 // NewDeployBigBangCmd - deploy big bang to your cluster
@@ -38,36 +34,46 @@ func NewDeployBigBangCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 		Short:   bigBangShort,
 		Long:    bigBangLong,
 		Example: bigBangExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployBigBangToCluster(factory, streams, args))
+		Run: func(command *cobra.Command, args []string) {
+			cmdUtil.CheckErr(deployBigBangToCluster(command, factory, streams, args))
 		},
 	}
 
-	cmd.Flags().BoolVar(&bbUseK3d,
-		"k3d",
-		false,
-		"Include some boilerplate suitable for deploying into k3d")
-	cmd.Flags().StringSliceVar(&bbAddonList,
-		"addon",
-		nil,
-		"Enable this bigbang addon in the deployment")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("error getting config client", err)
+	loggingClient.HandleError(
+		"error setting k3dflag",
+		configClient.SetAndBindFlag(
+			"k3d",
+			false,
+			"Include some boilerplate suitable for deploying into k3d",
+		),
+	)
+	loggingClient.HandleError(
+		"error setting addon flag",
+		configClient.SetAndBindFlag(
+			"addon",
+			[]string(nil),
+			"Enable this bigbang addon in the deployment",
+		),
+	)
 
 	return cmd
 }
 
-func getChartRelativePath(factory bbUtil.Factory, pathCmp ...string) string {
-	repoPath := viper.GetString("big-bang-repo")
-	if repoPath == "" {
-		factory.GetLoggingClient().Error("Big bang repository location not defined (\"big-bang-repo\")")
-	}
+func getChartRelativePath(factory bbUtil.Factory, configClient *schemas.GlobalConfiguration, pathCmp ...string) string {
+	repoPath := configClient.BigBangRepo
 	return path.Join(slices.Insert(pathCmp, 0, repoPath)...)
 }
 
-func insertHelmOptForExampleConfig(factory bbUtil.Factory, helmOpts []string, chartName string) []string {
+func insertHelmOptForExampleConfig(factory bbUtil.Factory, config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
-		getChartRelativePath(factory,
+		getChartRelativePath(
+			factory,
+			config,
 			"docs",
 			"assets",
 			"configs",
@@ -77,29 +83,38 @@ func insertHelmOptForExampleConfig(factory bbUtil.Factory, helmOpts []string, ch
 	)
 }
 
-func insertHelmOptForRelativeChart(factory bbUtil.Factory, helmOpts []string, chartName string) []string {
+func insertHelmOptForRelativeChart(factory bbUtil.Factory, config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
 		getChartRelativePath(factory,
+			config,
 			"chart",
 			chartName,
 		),
 	)
 }
 
-func deployBigBangToCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
+func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(command)
+	if err != nil {
+		return err
+	}
+	config := configClient.GetConfig(factory.GetViper())
 	credentialHelper := factory.GetCredentialHelper()
 	username := credentialHelper("username", "registry1.dso.mil")
 	password := credentialHelper("password", "registry1.dso.mil")
 
-	chartPath := getChartRelativePath(factory, "chart")
+	chartPath := getChartRelativePath(factory, config, "chart")
 	helmOpts := slices.Clone(args)
-	if bbUseK3d {
-		helmOpts = insertHelmOptForExampleConfig(factory, helmOpts, "policy-overrides-k3d.yaml")
-		helmOpts = insertHelmOptForRelativeChart(factory, helmOpts, "ingress-certs.yaml")
+	loggingClient.Info(fmt.Sprintf("preparing to deploy big bang to cluster, k3d=%v", config.DeployBigBangConfiguration.K3d))
+	if config.DeployBigBangConfiguration.K3d {
+		loggingClient.Info("Using k3d configuration")
+		helmOpts = insertHelmOptForExampleConfig(factory, config, helmOpts, "policy-overrides-k3d.yaml")
+		helmOpts = insertHelmOptForRelativeChart(factory, config, helmOpts, "ingress-certs.yaml")
 	}
-	for _, x := range bbAddonList {
+	for _, x := range config.DeployBigBangConfiguration.Addon {
 		helmOpts = slices.Insert(helmOpts,
 			0,
 			"--set",
@@ -124,6 +139,6 @@ func deployBigBangToCluster(factory bbUtil.Factory, streams genericIOOptions.IOS
 	cmd := factory.GetCommandWrapper("helm", helmOpts...)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
-	err := cmd.Run()
+	err = cmd.Run()
 	return err
 }

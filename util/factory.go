@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/spf13/cobra"
 	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -15,6 +16,7 @@ import (
 
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -46,6 +48,8 @@ type Factory interface {
 	GetCommandFlags() *pFlag.FlagSet
 	GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
+	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
+	GetViper() *viper.Viper
 }
 
 // NewFactory - new factory method
@@ -281,4 +285,20 @@ func (f *UtilityFactory) GetCommandWrapper(name string, args ...string) *bbUtilA
 func (f *UtilityFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
 	clientSet, err := versioned.NewForConfig(cfg)
 	return clientSet, err
+}
+
+// GetConfigClient - get config client
+func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
+	clientGetter := bbConfig.ClientGetter{}
+	loggingClient := f.GetLoggingClient()
+	client, err := clientGetter.GetClient(command, &loggingClient)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+// GetViper returns the viper instance.
+func (f *UtilityFactory) GetViper() *viper.Viper {
+	return viper.GetViper()
 }

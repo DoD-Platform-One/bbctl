@@ -115,6 +115,12 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 	kubeResourceBuilderFlags := genericCliOptions.NewResourceBuilderFlags()
 	kubeResourceBuilderFlags.AddFlags(flags)
 
+	// Bind the flags to viper
+	factory.GetLoggingClient().HandleError("error binding flags to viper: %v", viper.BindPFlags(flags))
+
+	// echo the flags
+	factory.GetLoggingClient().Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
+
 	cobra.CheckErr(bbctlCmd.Execute())
 }
 
