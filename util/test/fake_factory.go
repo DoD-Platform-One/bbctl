@@ -9,6 +9,7 @@ import (
 
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	fakeApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -19,7 +20,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/spf13/cobra"
 	pFlag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"helm.sh/helm/v3/pkg/release"
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	coreV1 "k8s.io/api/core/v1"
@@ -101,14 +104,14 @@ func (f *FakeFactory) SetEC2Client(ec2Client *ec2.Client) {
 }
 
 // SetLoggingFunc - set logging function
-func (f *FakeFactory) SetLoggingFunc(loggingFunc *fakeLog.LoggingFunction) {
+func (f *FakeFactory) SetLoggingFunc(loggingFunc fakeLog.LoggingFunction) {
 	var loggingFuncToUse fakeLog.LoggingFunction
 	if loggingFunc == nil {
 		loggingFuncToUse = func(args ...string) {
 			fmt.Println(args)
 		}
 	} else {
-		loggingFuncToUse = *loggingFunc
+		loggingFuncToUse = loggingFunc
 	}
 	f.loggingFunc = loggingFuncToUse
 }
@@ -263,4 +266,17 @@ func (f *FakeFactory) GetCommandWrapper(name string, args ...string) *bbUtilApiW
 // GetIstioClientSet - get istio clientset
 func (f *FakeFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
 	return fakeApiWrappers.NewFakeIstioClientSet(f.virtualServiceList), nil
+}
+
+// GetConfigClient - get config client
+func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
+	clientGetter := bbConfig.ClientGetter{}
+	loggingClient := f.GetLoggingClient()
+	client, err := clientGetter.GetClient(command, &loggingClient)
+	return client, err
+}
+
+// GetViper - get viper
+func (f *FakeFactory) GetViper() *viper.Viper {
+	return viper.GetViper()
 }
