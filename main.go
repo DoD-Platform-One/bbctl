@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -74,6 +75,13 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 			".bbctl"))
 		viper.AddConfigPath("/etc/bbctl")
 		viper.AddConfigPath(".")
+		// Support XDG_CONFIG_HOME standard, default to $HOME/.config/bbctl
+		xdgConfigHome, exists := os.LookupEnv("XDG_CONFIG_HOME")
+		if !exists {
+			xdgConfigHome = filepath.Join(homeDirname, ".config")
+		}
+		viper.AddConfigPath(filepath.Join(xdgConfigHome, "bbctl"))
+
 		if err := viper.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 				// Config file not found; ignore error if desired
