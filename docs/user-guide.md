@@ -60,7 +60,7 @@ bbctl completion -h
 
 NOTE: If you are using this, you should be encrypting your home directory at a minimum
 
-You can define a configuration file named `config` in `~/.bbctl`, `/etc/bbctl`, or `./`. This file should be valid YAML, will only contain root level key-value-pairs, and will be read to provide environment variables.
+You can define a configuration file named `config` in `~/.bbctl`, `/etc/bbctl`, `~/.config/bbctl`, `$XDG_CONFIG_HOME/bbctl`, or `./`. This file should be valid YAML, will only contain root level key-value-pairs, and will be read to provide environment variables.
 
 Example:
 
