@@ -62,17 +62,16 @@ func NewDeployBigBangCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	return cmd
 }
 
-func getChartRelativePath(factory bbUtil.Factory, configClient *schemas.GlobalConfiguration, pathCmp ...string) string {
+func getChartRelativePath(configClient *schemas.GlobalConfiguration, pathCmp ...string) string {
 	repoPath := configClient.BigBangRepo
 	return path.Join(slices.Insert(pathCmp, 0, repoPath)...)
 }
 
-func insertHelmOptForExampleConfig(factory bbUtil.Factory, config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
+func insertHelmOptForExampleConfig(config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
 		getChartRelativePath(
-			factory,
 			config,
 			"docs",
 			"assets",
@@ -83,11 +82,11 @@ func insertHelmOptForExampleConfig(factory bbUtil.Factory, config *schemas.Globa
 	)
 }
 
-func insertHelmOptForRelativeChart(factory bbUtil.Factory, config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
+func insertHelmOptForRelativeChart(config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
-		getChartRelativePath(factory,
+		getChartRelativePath(
 			config,
 			"chart",
 			chartName,
@@ -101,18 +100,18 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, stre
 	if err != nil {
 		return err
 	}
-	config := configClient.GetConfig(factory.GetViper())
+	config := configClient.GetConfig()
 	credentialHelper := factory.GetCredentialHelper()
 	username := credentialHelper("username", "registry1.dso.mil")
 	password := credentialHelper("password", "registry1.dso.mil")
 
-	chartPath := getChartRelativePath(factory, config, "chart")
+	chartPath := getChartRelativePath(config, "chart")
 	helmOpts := slices.Clone(args)
 	loggingClient.Info(fmt.Sprintf("preparing to deploy big bang to cluster, k3d=%v", config.DeployBigBangConfiguration.K3d))
 	if config.DeployBigBangConfiguration.K3d {
 		loggingClient.Info("Using k3d configuration")
-		helmOpts = insertHelmOptForExampleConfig(factory, config, helmOpts, "policy-overrides-k3d.yaml")
-		helmOpts = insertHelmOptForRelativeChart(factory, config, helmOpts, "ingress-certs.yaml")
+		helmOpts = insertHelmOptForExampleConfig(config, helmOpts, "policy-overrides-k3d.yaml")
+		helmOpts = insertHelmOptForRelativeChart(config, helmOpts, "ingress-certs.yaml")
 	}
 	for _, x := range config.DeployBigBangConfiguration.Addon {
 		helmOpts = slices.Insert(helmOpts,

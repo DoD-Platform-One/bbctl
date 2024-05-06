@@ -34,6 +34,7 @@ func TestGetVersion(t *testing.T) {
 
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
+	factory.GetViper().Set("big-bang-repo", "test")
 
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
@@ -67,11 +68,12 @@ func TestGetClientVersionOnly(t *testing.T) {
 
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
+	factory.GetViper().Set("big-bang-repo", "test")
 
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewVersionCmd(factory, streams)
-	cmd.SetArgs([]string{"-c"})
+	cmd.SetArgs([]string{"--client"})
 	err := cmd.Execute()
 	assert.NoError(t, err)
 

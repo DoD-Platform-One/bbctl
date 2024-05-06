@@ -156,7 +156,7 @@ func TestFetchKyvernoCrds(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKind())
-			client, _ := factory.GetK8sDynamicClient()
+			client, _ := factory.GetK8sDynamicClient(nil)
 			crds, _ := FetchKyvernoCrds(client)
 			assert.Len(t, crds.Items, len(test.expected))
 			for _, crd := range crds.Items {
@@ -192,7 +192,7 @@ func TestFetchKyvernoPolicies(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKind())
-			client, _ := factory.GetK8sDynamicClient()
+			client, _ := factory.GetK8sDynamicClient(nil)
 			policies, _ := FetchKyvernoPolicies(client, test.arg)
 			assert.Len(t, policies.Items, len(test.expected))
 			for i, policy := range policies.Items {

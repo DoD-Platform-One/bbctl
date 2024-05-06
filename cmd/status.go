@@ -52,7 +52,7 @@ func NewStatusCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 		Long:    statusLong,
 		Example: statusExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbStatus(factory, streams))
+			cmdUtil.CheckErr(bbStatus(cmd, factory, streams))
 		},
 	}
 
@@ -114,9 +114,9 @@ type fluxKZData struct {
 	status    string
 }
 
-func bbStatus(factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
+func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
 	// get client-go client
-	clientset, err := factory.GetK8sClientset()
+	clientset, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func bbStatus(factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
 	}
 
 	// get helm client
-	helmClient, err := factory.GetHelmClient(BigBangNamespace)
+	helmClient, err := factory.GetHelmClient(cmd, BigBangNamespace)
 	if err != nil {
 		return err
 	}

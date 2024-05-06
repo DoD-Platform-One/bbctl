@@ -4,7 +4,6 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -37,7 +36,7 @@ func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStr
 		Long:    destroyLong,
 		Example: destroyExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(destroyCluster(factory, streams, args))
+			cmdUtil.CheckErr(destroyCluster(factory, cmd, streams, args))
 		},
 	}
 
@@ -45,12 +44,13 @@ func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStr
 }
 
 // destroyCluster - pass through options to the k3d-dev script to destroy a cluster
-func destroyCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
-	repoPath := viper.GetString("big-bang-repo")
-	if repoPath == "" {
-		factory.GetLoggingClient().Error("Big bang repository location not defined (\"big-bang-repo\")")
+func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+	configClient, err := factory.GetConfigClient(cobraCmd)
+	if err != nil {
+		return err
 	}
-	command := path.Join(repoPath,
+	config := configClient.GetConfig()
+	command := path.Join(config.BigBangRepo,
 		"docs",
 		"assets",
 		"scripts",
@@ -62,6 +62,6 @@ func destroyCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, 
 	cmd.SetStderr(streams.ErrOut)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStdin(streams.In)
-	err := cmd.Run()
+	err = cmd.Run()
 	return err
 }

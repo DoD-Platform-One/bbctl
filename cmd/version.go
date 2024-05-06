@@ -6,7 +6,6 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -25,7 +24,7 @@ var (
 		bbctl version
 		
 		# Print client version only
-		bbctl -c`))
+		bbctl --client`))
 )
 
 // NewVersionCmd - new version command
@@ -36,25 +35,40 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 		Long:    versionLong,
 		Example: versionExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbVersion(factory, streams, cmd.Flags()))
+			cmdUtil.CheckErr(bbVersion(cmd, factory, streams))
 		},
 	}
 
-	cmd.Flags().BoolP("client", "c", false, "Print bbctl version only")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("error getting config client: %v", err)
+
+	loggingClient.HandleError(
+		"error setting and binding flags: %v",
+		configClient.SetAndBindFlag(
+			"client",
+			false,
+			"Print bbctl version only",
+		),
+	)
 
 	return cmd
 }
 
 // query the cluster using helm module to get information on bigbang release
-func bbVersion(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) error {
-	clientVersionOnly, _ := flags.GetBool("client")
+func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", BigBangCliVersion)
+	configClient, err := factory.GetConfigClient(cmd)
+	if err != nil {
+		return err
+	}
+	config := configClient.GetConfig()
 
-	if clientVersionOnly {
+	if config.VersionConfiguration.Client {
 		return nil
 	}
 
-	client, err := factory.GetHelmClient(BigBangNamespace)
+	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
 	if err != nil {
 		return err
 	}

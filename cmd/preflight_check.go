@@ -10,11 +10,10 @@ import (
 	"time"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbUtilK8s "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	coreV1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +56,7 @@ var (
 	fluxNamespace = "flux-system"
 )
 
-type preflightCheckFunc func(bbUtil.Factory, genericIOOptions.IOStreams, *pFlag.FlagSet) preflightCheckStatus
+type preflightCheckFunc func(*cobra.Command, bbUtil.Factory, genericIOOptions.IOStreams, *schemas.GlobalConfiguration) preflightCheckStatus
 
 type preflightCheckStatus string
 
@@ -180,31 +179,60 @@ func NewPreflightCheckCmd(factory bbUtil.Factory, streams genericIOOptions.IOStr
 		Long:    preflightCheckLong,
 		Example: preflightCheckExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbPreflightCheck(factory, streams, cmd.Flags(), preflightChecks))
+			cmdUtil.CheckErr(bbPreflightCheck(cmd, factory, streams, cmd, preflightChecks))
 		},
 	}
 
-	cmd.Flags().String("registryserver", "", "Image registry server url")
-	cmd.Flags().String("registryusername", "", "Image registry username")
-	cmd.Flags().String("registrypassword", "", "Image registry password")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("error getting config client", err)
+
+	loggingClient.HandleError(
+		"error setting registryserver flag: %v",
+		configClient.SetAndBindFlag(
+			"registryserver",
+			"",
+			"Image registry server url",
+		),
+	)
+	loggingClient.HandleError(
+		"error setting registryusername flag: %v",
+		configClient.SetAndBindFlag(
+			"registryusername",
+			"",
+			"Image registry username",
+		),
+	)
+	loggingClient.HandleError(
+		"error setting registrypassword flag: %v",
+		configClient.SetAndBindFlag(
+			"registrypassword",
+			"",
+			"Image registry password",
+		),
+	)
 
 	return cmd
 }
 
 // run sequence of predefined checks and summarize results
-func bbPreflightCheck(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet, preflightChecks []preflightCheck) error {
+func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, command *cobra.Command, preflightChecks []preflightCheck) error {
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(command)
+	loggingClient.HandleError("error getting config client", err)
+	config := configClient.GetConfig()
 	for i, check := range preflightChecks {
-		status := check.function(factory, streams, flags)
+		status := check.function(cmd, factory, streams, config)
 		preflightChecks[i].status = status
 	}
 	printPreflightCheckSummary(streams, preflightChecks)
 	return nil
 }
 
-func checkMetricsServer(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking metrics server...")
 
-	client, err := factory.GetK8sClientset()
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -227,10 +255,10 @@ func checkMetricsServer(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 
 }
 
-func checkDefaultStorageClass(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking default storage class...")
 
-	client, err := factory.GetK8sClientset()
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -259,10 +287,10 @@ func checkDefaultStorageClass(factory bbUtil.Factory, streams genericIOOptions.I
 
 }
 
-func checkFluxController(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 	fmt.Fprintln(streams.Out, "Checking flux installation...")
 
-	client, err := factory.GetK8sClientset()
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -298,8 +326,8 @@ func checkFluxController(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	return status
 }
 
-func checkSystemParameters(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
-	pod, err := createResourcesForCommandExecution(factory, streams, flags)
+func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	pod, err := createResourcesForCommandExecution(cmd, factory, streams, config)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -311,7 +339,7 @@ func checkSystemParameters(factory bbUtil.Factory, streams genericIOOptions.IOSt
 	for _, param := range sysParams {
 		fmt.Fprintf(streams.Out, "Checking %s\n", param.name)
 		var stdout, stderr bytes.Buffer
-		err := execCommand(factory, &stdout, &stderr, pod, param.command)
+		err := execCommand(cmd, factory, &stdout, &stderr, pod, param.command)
 		if err != nil {
 			fmt.Fprintf(streams.ErrOut, "%s", err)
 			status = unknown
@@ -325,7 +353,7 @@ func checkSystemParameters(factory bbUtil.Factory, streams genericIOOptions.IOSt
 		}
 	}
 
-	err = deleteResourcesForCommandExecution(factory, streams)
+	err = deleteResourcesForCommandExecution(cmd, factory, streams)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
 		return unknown
@@ -379,8 +407,8 @@ func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metaV1.APIGroupLis
 	return false
 }
 
-func createResourcesForCommandExecution(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) (*coreV1.Pod, error) {
-	client, err := factory.GetK8sClientset()
+func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) (*coreV1.Pod, error) {
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +418,7 @@ func createResourcesForCommandExecution(factory bbUtil.Factory, streams genericI
 		return nil, err
 	}
 
-	secret, err := createRegistrySecretForCommandExecution(client, streams.Out, flags)
+	secret, err := createRegistrySecretForCommandExecution(client, streams.Out, config)
 	if err != nil {
 		return nil, err
 	}
@@ -417,23 +445,12 @@ func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer
 	return err
 }
 
-func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.Writer, flags *pFlag.FlagSet) (*coreV1.Secret, error) {
+func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.Writer, config *schemas.GlobalConfiguration) (*coreV1.Secret, error) {
 	fmt.Fprintln(w, "Creating registry secret for command execution...")
 
-	server := getParameter(flags, "registryserver")
-	if server == "" {
-		return nil, fmt.Errorf("registryserver is a required parameter")
-	}
-
-	username := getParameter(flags, "registryusername")
-	if username == "" {
-		return nil, fmt.Errorf("registryusername is a required parameter")
-	}
-
-	password := getParameter(flags, "registrypassword")
-	if password == "" {
-		return nil, fmt.Errorf("registrypassword is a required parameter")
-	}
+	server := config.PreflightCheckConfiguration.RegistryServer
+	username := config.PreflightCheckConfiguration.RegistryUsername
+	password := config.PreflightCheckConfiguration.RegistryPassword
 
 	return bbUtilK8s.CreateRegistrySecret(client, preflightPodNamespace,
 		preflightPodImagePullSecret, server, username, password)
@@ -472,8 +489,8 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 	return nil, fmt.Errorf("timeout waiting for command execution job to be ready")
 }
 
-func deleteResourcesForCommandExecution(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	client, err := factory.GetK8sClientset()
+func deleteResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
 	}
@@ -483,9 +500,9 @@ func deleteResourcesForCommandExecution(factory bbUtil.Factory, streams genericI
 	return bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 }
 
-func execCommand(factory bbUtil.Factory, out io.Writer, errOut io.Writer, pod *coreV1.Pod, command []string) error {
+func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errOut io.Writer, pod *coreV1.Pod, command []string) error {
 
-	exec, err := factory.GetCommandExecutor(pod, "", command, out, errOut)
+	exec, err := factory.GetCommandExecutor(cmd, pod, "", command, out, errOut)
 	if err != nil {
 		return err
 	}
@@ -511,12 +528,4 @@ func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChe
 		}
 		fmt.Fprintf(streams.Out, "%s %s...\n%s\n\n", check.desc, check.status, message)
 	}
-}
-
-func getParameter(flags *pFlag.FlagSet, key string) string {
-	value, _ := flags.GetString(key)
-	if value == "" {
-		value = viper.GetString(key)
-	}
-	return value
 }

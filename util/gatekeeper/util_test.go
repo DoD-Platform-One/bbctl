@@ -113,7 +113,7 @@ func TestFetchGatekeeperCrds(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{crdList()})
 	factory.SetGVRToListKind(gvrToListKind())
-	client, _ := factory.GetK8sDynamicClient()
+	client, _ := factory.GetK8sDynamicClient(nil)
 	crds, _ := FetchGatekeeperCrds(client)
 
 	assert.Equal(t, "foos.constraints.gatekeeper.sh", crds.Items[0].GetName())
@@ -145,7 +145,7 @@ func TestFetchGatekeeperConstraints(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKind())
-			client, _ := factory.GetK8sDynamicClient()
+			client, _ := factory.GetK8sDynamicClient(nil)
 			constraints, _ := FetchGatekeeperConstraints(client, test.arg)
 			for i, constraint := range constraints.Items {
 				assert.Equal(t, test.expected[i], constraint.GetName())

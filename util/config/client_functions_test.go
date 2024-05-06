@@ -91,7 +91,27 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			CredentialHelper: "echo test",
 		},
 		UtilK8sConfiguration: schemas.UtilK8sConfiguration{
+			CacheDir:   "/tmp/bbctl-test/cache",
 			Kubeconfig: "/tmp/bbctl-test.yaml",
+
+			ClusterName:        "test",
+			AuthInfoName:       "test",
+			Context:            "test",
+			Namespace:          "test",
+			APIServer:          "test",
+			TLSServerName:      "test",
+			Insecure:           true,
+			CertFile:           "test",
+			KeyFile:            "test",
+			CAFile:             "test",
+			BearerToken:        "test",
+			Impersonate:        "test",
+			ImpersonateUID:     "test",
+			ImpersonateGroup:   []string{"test"},
+			Username:           "test",
+			Password:           "test",
+			Timeout:            "test",
+			DisableCompression: true,
 		},
 	}
 }
@@ -213,12 +233,13 @@ func TestSetAndBindFlag(t *testing.T) {
 		}
 		loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 		command := &cobra.Command{}
+		v := viper.New()
 		configClient := ConfigClient{
 			command:       command,
 			loggingClient: &loggingClient,
+			viperInstance: v,
 		}
 		var result interface{}
-		v := viper.New()
 		// Act
 		primaryErr := SetAndBindFlag(&configClient, name, tt.arg, description)
 		err := v.BindPFlags(command.PersistentFlags())
@@ -244,6 +265,26 @@ func TestSetAndBindFlag(t *testing.T) {
 	}
 }
 
+func TestSetAndBindFlagFail(t *testing.T) {
+	// Arrange
+	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
+	var loggingFunc = func(args ...string) {
+		_, err := streams.ErrOut.Write([]byte(args[0]))
+		assert.NoError(t, err)
+	}
+	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
+	configClient := ConfigClient{
+		loggingClient: &loggingClient,
+	}
+	// Act
+	err := SetAndBindFlag(&configClient, "test", map[string]interface{}{"test": "test"}, "test")
+	// Assert
+	assert.Error(t, err)
+	assert.Empty(t, in.String())
+	assert.Empty(t, out.String())
+	assert.Empty(t, errOut.String())
+}
+
 func TestGetConfig(t *testing.T) {
 	// Arrange
 	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
@@ -252,15 +293,16 @@ func TestGetConfig(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
+	v := viper.New()
+	v.Set("big-bang-repo", "test")
 	command := &cobra.Command{}
 	configClient := ConfigClient{
 		command:       command,
 		loggingClient: &loggingClient,
+		viperInstance: v,
 	}
-	v := viper.New()
-	v.Set("big-bang-repo", "test")
 	// Act
-	config := getConfig(&configClient, v)
+	config := getConfig(&configClient)
 	// Assert
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
@@ -278,13 +320,14 @@ func TestGetConfigFailValidation(t *testing.T) {
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 	command := &cobra.Command{}
+	v := viper.New()
 	configClient := ConfigClient{
 		command:       command,
 		loggingClient: &loggingClient,
+		viperInstance: v,
 	}
-	v := viper.New()
 	// Act
-	assert.Panics(t, func() { getConfig(&configClient, v) })
+	assert.Panics(t, func() { getConfig(&configClient) })
 	// Assert
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
@@ -300,14 +343,9 @@ func TestReadConfig(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
-	configClient := ConfigClient{
-		getConfig:     getConfig,
-		loggingClient: &loggingClient,
-	}
-
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	v.AutomaticEnv()
+	// v.AutomaticEnv() // don't set this because it will read from the environment
 	randomString := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	configDir := fmt.Sprintf("/tmp/bbctl-test-%s/", randomString)
 	assert.NoError(t, os.Mkdir(configDir, 0755))
@@ -317,9 +355,15 @@ func TestReadConfig(t *testing.T) {
 	v.SetConfigType("yaml")
 	v.AddConfigPath(configDir)
 	assert.NoError(t, v.ReadInConfig())
+
+	configClient := ConfigClient{
+		getConfig:     getConfig,
+		loggingClient: &loggingClient,
+		viperInstance: v,
+	}
 	// Act
 	allSettings := v.AllSettings()
-	resultConfig := getConfig(&configClient, v)
+	resultConfig := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
 	assert.NotEmpty(t, allSettings)
@@ -338,11 +382,6 @@ func TestReadConfigAndOverride(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
-	configClient := ConfigClient{
-		getConfig:     getConfig,
-		loggingClient: &loggingClient,
-	}
-
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	v.AutomaticEnv()
@@ -356,9 +395,15 @@ func TestReadConfigAndOverride(t *testing.T) {
 	v.AddConfigPath(configDir)
 	assert.NoError(t, v.ReadInConfig())
 	v.Set("big-bang-repo", "test2")
+
+	configClient := ConfigClient{
+		getConfig:     getConfig,
+		loggingClient: &loggingClient,
+		viperInstance: v,
+	}
 	// Act
 	allSettings := v.AllSettings()
-	resultConfig := getConfig(&configClient, v)
+	resultConfig := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
 	assert.NotEmpty(t, allSettings)

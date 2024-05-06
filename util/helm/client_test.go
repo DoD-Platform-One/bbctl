@@ -55,7 +55,7 @@ func TestGetValues(t *testing.T) {
 
 	client, _ := NewClient(nil, nil, f)
 
-	value, err := client.GetValues("foo", true)
+	value, err := client.GetValues("foo")
 
 	assert.Equal(t, value, map[string]interface{}{"kind": "foo"})
 	assert.Nil(t, err)

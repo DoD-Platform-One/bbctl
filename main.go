@@ -22,7 +22,7 @@ import (
 
 func main() {
 	flags := pFlag.NewFlagSet("bbctl", pFlag.ExitOnError)
-	factory := bbUtil.NewFactory(flags)
+	factory := bbUtil.NewFactory()
 	streams := bbK8sUtil.GetIOStream()
 	injectableMain(factory, flags, streams)
 }
@@ -57,32 +57,33 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 	}
 	// logs to stderr
 	initLogger := slog.New(slog.NewJSONHandler(streams.ErrOut, &initSlogHandlerOptions))
+	viperInstance := factory.GetViper()
 
 	cobra.OnInitialize(func() {
 		// automatically read in environment variables that match supported flags
 		// e.g. kubeconfig is a recognized flag so the corresponding env variable is KUBECONFIG
-		viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-		viper.AutomaticEnv()
+		viperInstance.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+		viperInstance.AutomaticEnv()
 
 		homeDirname, err := os.UserHomeDir()
 		if err != nil {
 			initLogger.Error("Error getting user home directory: %v", err)
 			panic(err)
 		}
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath(path.Join(homeDirname,
+		viperInstance.SetConfigName("config")
+		viperInstance.SetConfigType("yaml")
+		viperInstance.AddConfigPath(path.Join(homeDirname,
 			".bbctl"))
-		viper.AddConfigPath("/etc/bbctl")
-		viper.AddConfigPath(".")
+		viperInstance.AddConfigPath("/etc/bbctl")
+		viperInstance.AddConfigPath(".")
 		// Support XDG_CONFIG_HOME standard, default to $HOME/.config/bbctl
 		xdgConfigHome, exists := os.LookupEnv("XDG_CONFIG_HOME")
 		if !exists {
 			xdgConfigHome = filepath.Join(homeDirname, ".config")
 		}
-		viper.AddConfigPath(filepath.Join(xdgConfigHome, "bbctl"))
+		viperInstance.AddConfigPath(filepath.Join(xdgConfigHome, "bbctl"))
 
-		if err := viper.ReadInConfig(); err != nil {
+		if err := viperInstance.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 				// Config file not found; ignore error if desired
 				initLogger.Warn("Config file not found (~/.bbctl/config, /etc/bbctl/config, or ./config).")
@@ -92,16 +93,28 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 				panic(err)
 			}
 		}
+
+		err = viperInstance.BindPFlags(flags)
+		if err != nil {
+			initLogger.Error("Error binding flags to viper: %v", err)
+			panic(err)
+		}
+		configClient, err := factory.GetConfigClient(nil)
+		if err != nil {
+			initLogger.Error("Error getting config client: %v", err)
+			panic(err)
+		}
+		config := configClient.GetConfig()
 		logger := setupSlog(initLogger,
 			streams,
-			viper.GetBool("bbctl-log-add-source"),
-			strings.ToLower(viper.GetString("bbctl-log-file")),
-			strings.ToLower(viper.GetString("bbctl-log-format")),
-			strings.ToLower(viper.GetString("bbctl-log-level")),
-			strings.ToLower(viper.GetString("bbctl-log-output")),
+			config.LogAddSource,
+			config.LogFile,
+			config.LogFormat,
+			config.LogLevel,
+			config.LogOutput,
 		)
 		logger.Debug("Logger setup complete")
-		allSettings, err := json.Marshal(viper.AllSettings())
+		allSettings, err := json.Marshal(viperInstance.AllSettings())
 		if err != nil {
 			logger.Error("Error marshalling all settings: %v", err)
 			panic(err)
@@ -124,7 +137,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 	kubeResourceBuilderFlags.AddFlags(flags)
 
 	// Bind the flags to viper
-	factory.GetLoggingClient().HandleError("error binding flags to viper: %v", viper.BindPFlags(flags))
+	factory.GetLoggingClient().HandleError("error binding flags to viper: %v", viperInstance.BindPFlags(flags))
 
 	// echo the flags
 	factory.GetLoggingClient().Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))

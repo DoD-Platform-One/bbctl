@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -27,8 +27,6 @@ var (
 	sshExample = templates.Examples(i18n.T(`
 	    # Open an SSH session to your K3d cluster
 		bbctl k3d ssh`))
-
-	sshUsername = ""
 )
 
 // NewSSHCmd - command to ssh to your k3d cluster
@@ -39,24 +37,24 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 		Long:    sshLong,
 		Example: sshExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(sshToK3dCluster(factory, args))
+			cmdUtil.CheckErr(sshToK3dCluster(factory, cmd, args))
 		},
 	}
 
-	cmd.Flags().StringVar(&sshUsername, "ssh-username", "", "Username to use for SSH connection")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("Unable to get config client: %v", err)
+
+	loggingClient.HandleError("Unable to bind flags: %v",
+		// make sure to sync this default with the one in the configuration schema
+		configClient.SetAndBindFlag("ssh-username", "ubuntu", "Username to use for SSH connection"),
+	)
 
 	return cmd
 }
 
 // sshToK3dCluster - Open an SSH session to your cluster
-func sshToK3dCluster(factory bbUtil.Factory, args []string) error {
-	if sshUsername != "" {
-		viper.Set("ssh-username", sshUsername)
-	}
-	username := viper.GetString("ssh-username")
-	if username == "" {
-		username = "ubuntu"
-	}
+func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
 	awsClient := factory.GetAWSClient()
 	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
@@ -65,6 +63,11 @@ func sshToK3dCluster(factory bbUtil.Factory, args []string) error {
 	ec2Client := awsClient.GetEc2Client(context.TODO(), cfg)
 	ips, err := awsClient.GetClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposurePublic)
 	loggingClient.HandleError("Unable to fetch cluster information: %v", err)
+	configClient, err := factory.GetConfigClient(command)
+	loggingClient.HandleError("Unable to get config client: %v", err)
+	config := configClient.GetConfig()
+
+	loggingClient.Debug(fmt.Sprintf("Args: %v", strings.Join(args, " ")))
 	sshOpts := slices.Clone(args)
 	sshOpts = append(sshOpts,
 		"-o",
@@ -75,8 +78,9 @@ func sshToK3dCluster(factory bbUtil.Factory, args []string) error {
 		"UserKnownHostsFile=/dev/null",
 		"-o",
 		"StrictHostKeyChecking=no",
-		fmt.Sprintf("%v@%v", username, *ips[0].IP),
+		fmt.Sprintf("%v@%v", config.K3dSshConfiguration.User, *ips[0].IP),
 	)
+	loggingClient.Debug(fmt.Sprintf("Running ssh command: %v", strings.Join(sshOpts, " ")))
 	cmd := exec.Command("ssh", sshOpts...)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin

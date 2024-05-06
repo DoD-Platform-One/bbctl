@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	apiV1Beta1 "istio.io/api/networking/v1beta1"
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -89,9 +88,11 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
 	factory.SetVirtualServices(&vsList)
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	cmd := NewHostsCmd(factory, streams)
-	viper.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-	cmd.SetArgs([]string{"--private"})
+	cmd.SetArgs([]string{"--private-ip"})
 	// Act
 	assert.Nil(t, cmd.Execute())
 	// Assert

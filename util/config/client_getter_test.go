@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -30,8 +31,8 @@ func TestClientGetter_GetClient(t *testing.T) {
 			desc:        "only log is used",
 			useLog:      true,
 			useCommand:  false,
-			willError:   true,
-			expectedErr: "is required",
+			willError:   false,
+			expectedErr: "",
 		},
 		{
 			desc:        "only command is used",
@@ -60,8 +61,9 @@ func TestClientGetter_GetClient(t *testing.T) {
 		if test.useCommand {
 			command = &cobra.Command{}
 		}
+		v := viper.New()
 		// Act
-		client, err := clientGetter.GetClient(command, loggingClient)
+		client, err := clientGetter.GetClient(command, loggingClient, v)
 		// Assert
 		if test.willError {
 			assert.Nil(t, client)
