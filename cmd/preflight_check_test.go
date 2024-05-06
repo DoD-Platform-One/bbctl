@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
-	pFlag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	coreV1 "k8s.io/api/core/v1"
 	storageV1 "k8s.io/api/storage/v1"
@@ -67,7 +67,7 @@ func TestCheckMetricsServer(t *testing.T) {
 			factory.SetResources(test.resources)
 
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			checkMetricsServer(factory, streams, nil)
+			checkMetricsServer(nil, factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
 	}
@@ -117,7 +117,7 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			checkDefaultStorageClass(factory, streams, nil)
+			checkDefaultStorageClass(nil, factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
 	}
@@ -166,7 +166,7 @@ func TestCheckFluxController(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			checkFluxController(factory, streams, nil)
+			checkFluxController(nil, factory, streams, nil)
 			assert.Contains(t, buf.String(), test.expected)
 		})
 	}
@@ -226,21 +226,27 @@ func TestCheckSystemParameters(t *testing.T) {
 		},
 	}
 
-	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-	flags.String("registryserver", "registry.foo", "Image registry server url")
-	flags.String("registryusername", "user", "Image registry username")
-	flags.String("registrypassword", "pass", "Image registry password")
-
 	pfcPod := pod("pfc", "preflight-check", coreV1.PodRunning)
 	pfcPod.ObjectMeta.Labels["job-name"] = "preflightcheck"
 
+	command := &cobra.Command{}
 	factory := bbTestUtil.GetFakeFactory()
+	configClient, err := factory.GetConfigClient(command)
+	assert.Nil(t, err)
+	viperInstance := factory.GetViper()
+	assert.Nil(t, configClient.SetAndBindFlag("big-bang-repo", "/tmp", "Location on the filesystem where the bigbang product repo is checked out"))
+	assert.Nil(t, configClient.SetAndBindFlag("registryserver", "registry.foo", "Image registry server url"))
+	assert.Nil(t, configClient.SetAndBindFlag("registryusername", "user", "Image registry username"))
+	assert.Nil(t, configClient.SetAndBindFlag("registrypassword", "pass", "Image registry password"))
+	assert.Nil(t, viperInstance.BindPFlags(command.Flags()))
+
+	config := configClient.GetConfig()
 	factory.SetObjects([]runtime.Object{pfcPod})
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			bbTestUtil.GetFakeCommandExecutor().CommandResult = test.commandResult
-			checkSystemParameters(factory, streams, flags)
+			checkSystemParameters(nil, factory, streams, config)
 			assert.Contains(t, buf.String(), test.expected)
 			buf.Reset()
 		})
@@ -248,67 +254,16 @@ func TestCheckSystemParameters(t *testing.T) {
 
 }
 
-func TestPreflightCheckGetParameter(t *testing.T) {
-	type testInitFunc func() *pFlag.FlagSet
-
-	var tests = []struct {
-		desc     string
-		input    string
-		expected string
-		initFunc testInitFunc
-	}{
-		{
-			desc:     "Check parameter",
-			input:    "registryserver",
-			expected: "registry.foo",
-			initFunc: func() *pFlag.FlagSet {
-				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-				flags.String("registryserver", "registry.foo", "Image registry server url")
-				viper.Set("registryserver", "registry.io")
-				return flags
-			},
-		},
-		{
-			desc:     "Check env variable",
-			input:    "registryserver",
-			expected: "registry.io",
-			initFunc: func() *pFlag.FlagSet {
-				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-				viper.Set("registryserver", "registry.io")
-				return flags
-			},
-		},
-		{
-			desc:     "Check missing value",
-			input:    "registryserver",
-			expected: "",
-			initFunc: func() *pFlag.FlagSet {
-				var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-				viper.Set("registryserver", "")
-				return flags
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.desc, func(t *testing.T) {
-			value := getParameter(test.initFunc(), test.input)
-			assert.Equal(t, test.expected, value)
-		})
-	}
-
-}
-
 func TestPreflightCheck(t *testing.T) {
-	passFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return unknown
 	}
 
@@ -361,10 +316,12 @@ func TestPreflightCheck(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	factory.GetViper().Set("big-bang-repo", "/tmp")
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			err := bbPreflightCheck(factory, streams, nil, []preflightCheck{test.check})
+			command := &cobra.Command{}
+			err := bbPreflightCheck(nil, factory, streams, command, []preflightCheck{test.check})
 			assert.NoError(t, err)
 			output := buf.String()
 			assert.Contains(t, output, test.expected[0])
@@ -376,15 +333,15 @@ func TestPreflightCheck(t *testing.T) {
 }
 
 func TestPreflightCheckCmd(t *testing.T) {
-	passFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) preflightCheckStatus {
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return unknown
 	}
 
@@ -412,6 +369,7 @@ func TestPreflightCheckCmd(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	factory.GetViper().Set("big-bang-repo", "/tmp")
 	cmd := NewPreflightCheckCmd(factory, streams)
 	err := cmd.Execute()
 	assert.NoError(t, err)

@@ -4,7 +4,6 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -40,7 +39,7 @@ func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 		Long:    createLong,
 		Example: createExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(createCluster(factory, streams, args))
+			cmdUtil.CheckErr(createCluster(factory, cmd, streams, args))
 		},
 	}
 
@@ -48,12 +47,13 @@ func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 }
 
 // createCluster - pass through options to the k3d-dev script to create a cluster
-func createCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
-	repoPath := viper.GetString("big-bang-repo")
-	if repoPath == "" {
-		factory.GetLoggingClient().Error("Big bang repository location not defined (\"big-bang-repo\")")
+func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+	configClient, err := factory.GetConfigClient(cobraCmd)
+	if err != nil {
+		return err
 	}
-	command := path.Join(repoPath,
+	config := configClient.GetConfig()
+	command := path.Join(config.BigBangRepo,
 		"docs",
 		"assets",
 		"scripts",
@@ -64,6 +64,6 @@ func createCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, a
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
 	cmd.SetStdin(streams.In)
-	err := cmd.Run()
+	err = cmd.Run()
 	return err
 }

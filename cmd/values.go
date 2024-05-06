@@ -7,7 +7,6 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/cli/output"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
@@ -41,29 +40,25 @@ func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return matchingReleaseNames(factory, hint)
+			return matchingReleaseNames(cmd, factory, hint)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(getHelmValues(factory, streams, cmd.Flags(), args[0]))
+			cmdUtil.CheckErr(getHelmValues(cmd, factory, streams, args[0]))
 		},
 	}
-
-	cmd.Flags().BoolP("all", "a", false, "dump all (computed) values")
 
 	return cmd
 }
 
 // query the cluster using helm module to get information on big bang release values
-func getHelmValues(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet, name string) error {
-	client, err := factory.GetHelmClient(BigBangNamespace)
+func getHelmValues(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
+	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
 	if err != nil {
 		return err
 	}
 
-	allValues, _ := flags.GetBool("all")
-
 	// use helm get values to get release values
-	releases, err := client.GetValues(name, allValues)
+	releases, err := client.GetValues(name)
 	if err != nil {
 		return fmt.Errorf("error getting helm release values in namespace %s: %s",
 			BigBangNamespace, err.Error())
@@ -73,8 +68,8 @@ func getHelmValues(factory bbUtil.Factory, streams genericIOOptions.IOStreams, f
 }
 
 // find helm releases with given prefix for command completion
-func matchingReleaseNames(factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-	client, err := factory.GetHelmClient(BigBangNamespace)
+func matchingReleaseNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
+	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

@@ -3,29 +3,40 @@ package k8s
 import (
 	"testing"
 
-	pFlag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+
+	bbTestUtils "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
-func TestBuildKubeConfigFromFlags(t *testing.T) {
-	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-	viper.Set("kubeconfig", "../test/data/kube-config-a.yaml")
+func TestBuildKubeConfig(t *testing.T) {
+	factory := bbTestUtils.GetFakeFactory()
+	v := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("kubeconfig", "../test/data/kube-config-a.yaml")
+	configClient, err := factory.GetConfigClient(nil)
+	assert.Nil(t, err)
+	config := configClient.GetConfig()
 
-	client, err := BuildKubeConfigFromFlags(flags)
+	client, err := BuildKubeConfig(config)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test2.com:6443", client.Host)
 
-	flags.String("kubeconfig", "../test/data/kube-config.yaml", "")
-	client, err = BuildKubeConfigFromFlags(flags)
+	v.Set("kubeconfig", "../test/data/kube-config.yaml")
+	config = configClient.GetConfig()
+	client, err = BuildKubeConfig(config)
 	assert.Nil(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)
 }
 
-func TestBuildDynamicClientFromFlags(t *testing.T) {
-	var flags *pFlag.FlagSet = &pFlag.FlagSet{}
-	flags.String("kubeconfig", "../test/data/kube-config.yaml", "")
-	client, err := BuildDynamicClientFromFlags(flags)
+func TestBuildDynamicClient(t *testing.T) {
+	factory := bbTestUtils.GetFakeFactory()
+	v := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("kubeconfig", "../test/data/kube-config.yaml")
+	configClient, err := factory.GetConfigClient(nil)
+	assert.Nil(t, err)
+	config := configClient.GetConfig()
+	client, err := BuildDynamicClient(config)
 	assert.Nil(t, err)
 	assert.NotNil(t, client)
 }

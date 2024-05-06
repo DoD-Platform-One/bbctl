@@ -25,15 +25,29 @@ type GlobalConfiguration struct {
 	LogLevel string `mapstructure:"bbctl-log-level" yaml:"bbctl-log-level"`
 	// Log output: stdout, stderr
 	LogOutput string `mapstructure:"bbctl-log-output" yaml:"bbctl-log-output"`
+	// Policy configuration: object
+	PolicyConfiguration PolicyConfiguration `mapstructure:"policy" yaml:"policy"`
 	// Preflight check configuration: object
 	PreflightCheckConfiguration PreflightCheckConfiguration `mapstructure:"preflight-check" yaml:"preflight-check"`
 	// Util credential helper configuration: object
 	UtilCredentialHelperConfiguration UtilCredentialHelperConfiguration `mapstructure:"util-credential-helper" yaml:"util-credential-helper"`
-	UtilK8sConfiguration              UtilK8sConfiguration              `mapstructure:"util-k8s" yaml:"util-k8s"`
+	// Util k8s configuration: object
+	UtilK8sConfiguration UtilK8sConfiguration `mapstructure:"util-k8s" yaml:"util-k8s"`
+	// Version configuration: object
+	VersionConfiguration VersionConfiguration `mapstructure:"version" yaml:"version"`
+	// Violations configuration: object
+	ViolationsConfiguration ViolationsConfiguration `mapstructure:"violation" yaml:"violation"`
 }
 
 // ReconcileConfiguration recursively reconciles the configurations.
 func (g *GlobalConfiguration) ReconcileConfiguration(instance *viper.Viper) error {
+	g.BigBangRepo = instance.GetString("big-bang-repo")
+	g.LogAddSource = instance.GetBool("bbctl-log-add-source")
+	g.LogFile = instance.GetString("bbctl-log-file")
+	g.LogFormat = instance.GetString("bbctl-log-format")
+	g.LogLevel = instance.GetString("bbctl-log-level")
+	g.LogOutput = instance.GetString("bbctl-log-output")
+
 	allErrors := []error{}
 	for _, subConfig := range g.getSubConfigurations() {
 		err := subConfig.ReconcileConfiguration(instance)
@@ -53,8 +67,11 @@ func (g *GlobalConfiguration) getSubConfigurations() []BaseConfiguration {
 		&g.DeployBigBangConfiguration,
 		&g.ExampleConfiguration,
 		&g.K3dSshConfiguration,
+		&g.PolicyConfiguration,
 		&g.PreflightCheckConfiguration,
 		&g.UtilCredentialHelperConfiguration,
 		&g.UtilK8sConfiguration,
+		&g.VersionConfiguration,
+		&g.ViolationsConfiguration,
 	}
 }

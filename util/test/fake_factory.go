@@ -21,7 +21,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"helm.sh/helm/v3/pkg/release"
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -46,6 +45,7 @@ func GetFakeFactory() *FakeFactory {
 	factory.SetAWSConfig(nil)
 	factory.SetClusterIPs(nil)
 	factory.SetLoggingFunc(nil)
+	factory.viperInstance = viper.New()
 	return factory
 }
 
@@ -139,11 +139,11 @@ type FakeFactory struct {
 	resources          []*metaV1.APIResourceList
 	stsClient          *sts.Client
 	virtualServiceList *apisV1Beta1.VirtualServiceList
-}
+	viperInstance      *viper.Viper
 
-// GetCommandFlags - get command flags
-func (f *FakeFactory) GetCommandFlags() *pFlag.FlagSet {
-	return pFlag.NewFlagSet("fake", pFlag.ContinueOnError)
+	SetFail struct {
+		GetConfigClient bool
+	}
 }
 
 // GetCredentialHelper - get credential helper
@@ -163,7 +163,7 @@ func (f *FakeFactory) GetAWSClient() bbAws.Client {
 }
 
 // GetHelmClient - get helm client
-func (f *FakeFactory) GetHelmClient(namespace string) (helm.Client, error) {
+func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
 	return fakeHelm.NewFakeClient(f.helmReleases)
 }
 
@@ -174,7 +174,7 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 }
 
 // GetK8sClientset - get k8s clientset
-func (f *FakeFactory) GetK8sClientset() (kubernetes.Interface, error) {
+func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
 	cs := fake.NewSimpleClientset(f.objects...)
 	if f.resources != nil {
 		cs.Fake.Resources = f.resources
@@ -183,7 +183,7 @@ func (f *FakeFactory) GetK8sClientset() (kubernetes.Interface, error) {
 }
 
 // GetK8sDynamicClient - get k8s dynamic client
-func (f *FakeFactory) GetK8sDynamicClient() (dynamic.Interface, error) {
+func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
 	scheme := runtime.NewScheme()
 	err := coreV1.AddToScheme(scheme)
 	f.GetLoggingClient().HandleError("failed to add coreV1 to scheme", err)
@@ -211,7 +211,7 @@ func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Clie
 }
 
 // GetRestConfig - get rest config
-func (f *FakeFactory) GetRestConfig() (*rest.Config, error) {
+func (f *FakeFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
 	return &rest.Config{}, nil
 }
 
@@ -224,7 +224,7 @@ func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, e
 }
 
 // GetCommandExecutor - execute command in a Pod
-func (f *FakeFactory) GetCommandExecutor(pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
+func (f *FakeFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
 	fakeCommandExecutor.Command = strings.Join(command, " ")
 	return fakeCommandExecutor, nil
 }
@@ -270,13 +270,16 @@ func (f *FakeFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.Ist
 
 // GetConfigClient - get config client
 func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
+	if f.SetFail.GetConfigClient {
+		return nil, fmt.Errorf("failed to get config client")
+	}
 	clientGetter := bbConfig.ClientGetter{}
 	loggingClient := f.GetLoggingClient()
-	client, err := clientGetter.GetClient(command, &loggingClient)
+	client, err := clientGetter.GetClient(command, &loggingClient, f.GetViper())
 	return client, err
 }
 
 // GetViper - get viper
 func (f *FakeFactory) GetViper() *viper.Viper {
-	return viper.GetViper()
+	return f.viperInstance
 }

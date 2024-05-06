@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
@@ -77,46 +76,62 @@ func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		Long:    violationsLong,
 		Example: violationsExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(getViolations(factory, streams, cmd.Flags()))
+			cmdUtil.CheckErr(getViolations(cmd, factory, streams))
 		},
 	}
 
-	cmd.Flags().BoolP("audit", "d", false, "list violations in audit mode")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("Error getting config client: %v", err)
+
+	loggingClient.HandleError(
+		"Error binding flags: %v",
+		configClient.SetAndBindFlag(
+			"audit",
+			false,
+			"list violations in audit mode",
+		),
+	)
 
 	return cmd
 }
 
-func getViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, flags *pFlag.FlagSet) error {
-	namespace, _ := flags.GetString("namespace")
+func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+	configClient, err := factory.GetConfigClient(cmd)
+	if err != nil {
+		return err
+	}
+	config := configClient.GetConfig()
 
-	audit, _ := flags.GetBool("audit")
+	namespace := config.UtilK8sConfiguration.Namespace
+	audit := config.ViolationsConfiguration.Audit
 
-	gkFound, err := gatekeeperExists(factory, streams)
+	gkFound, err := gatekeeperExists(cmd, factory, streams)
 	if err != nil {
 		return err
 	}
 
 	if gkFound {
-		err = listGkViolations(factory, streams, namespace, audit)
+		err = listGkViolations(cmd, factory, streams, namespace, audit)
 		if err != nil {
 			return err
 		}
 	}
 
-	kyvernoFound, err := kyvernoExists(factory, streams)
+	kyvernoFound, err := kyvernoExists(cmd, factory, streams)
 	if err != nil {
 		return err
 	}
 
 	if kyvernoFound {
-		return listKyvernoViolations(factory, streams, namespace, audit)
+		return listKyvernoViolations(cmd, factory, streams, namespace, audit)
 	}
 
 	return nil
 }
 
-func kyvernoExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
-	client, err := factory.GetK8sDynamicClient()
+func kyvernoExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
+	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return false, err
 	}
@@ -129,8 +144,8 @@ func kyvernoExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, 
 	return len(kyvernoCrds.Items) != 0, nil
 }
 
-func listKyvernoViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, listAuditViolations bool) error {
-	client, err := factory.GetK8sClientset()
+func listKyvernoViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, listAuditViolations bool) error {
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
 	}
@@ -197,8 +212,8 @@ func listKyvernoViolations(factory bbUtil.Factory, streams genericIOOptions.IOSt
 	return nil
 }
 
-func gatekeeperExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
-	client, err := factory.GetK8sDynamicClient()
+func gatekeeperExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
+	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return false, err
 	}
@@ -211,16 +226,16 @@ func gatekeeperExists(factory bbUtil.Factory, _ genericIOOptions.IOStreams) (boo
 	return len(gkCrds.Items) != 0, nil
 }
 
-func listGkViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, audit bool) error {
+func listGkViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, audit bool) error {
 	if audit {
-		return listGkAuditViolations(factory, streams, namespace)
+		return listGkAuditViolations(cmd, factory, streams, namespace)
 	}
 
-	return listGkDenyViolations(factory, streams, namespace)
+	return listGkDenyViolations(cmd, factory, streams, namespace)
 }
 
-func listGkDenyViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
-	client, err := factory.GetK8sClientset()
+func listGkDenyViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
+	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
 	}
@@ -267,8 +282,8 @@ func listGkDenyViolations(factory bbUtil.Factory, streams genericIOOptions.IOStr
 }
 
 // query the cluster using dynamic client to get audit violation information from gatekeeper constraint crds
-func listGkAuditViolations(factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
-	client, err := factory.GetK8sDynamicClient()
+func listGkAuditViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
+	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
 	}

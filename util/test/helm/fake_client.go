@@ -35,7 +35,7 @@ func (c *FakeClient) GetList() ([]*release.Release, error) {
 }
 
 // GetValues - returns a list of releases
-func (c *FakeClient) GetValues(name string, allValues bool) (interface{}, error) {
+func (c *FakeClient) GetValues(name string) (interface{}, error) {
 	for _, r := range c.releases {
 		if r.Name == name {
 			return r.Chart.Values, nil

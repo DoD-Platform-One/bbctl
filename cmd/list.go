@@ -35,7 +35,7 @@ func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 		Long:    listLong,
 		Example: listExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(listHelmReleases(factory, streams))
+			cmdUtil.CheckErr(listHelmReleases(cmd, factory, streams))
 		},
 	}
 
@@ -43,8 +43,8 @@ func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 }
 
 // query the cluster using helm module to get information on bigbang release
-func listHelmReleases(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	client, err := factory.GetHelmClient(BigBangNamespace)
+func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
 	if err != nil {
 		return err
 	}

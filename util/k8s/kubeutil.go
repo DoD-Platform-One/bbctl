@@ -1,16 +1,14 @@
 package k8s
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 
-	pFlag "github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"k8s.io/client-go/dynamic"
 	restClient "k8s.io/client-go/rest"
 	clientCmd "k8s.io/client-go/tools/clientcmd"
 	homeDir "k8s.io/client-go/util/homedir"
+
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 )
 
 // BuildKubeConfigFromFlags - is a helper function that builds config object used to
@@ -21,21 +19,10 @@ import (
 // Read config from default location at $HOME/.kube/config
 //
 // If all these steps fail, fallback to default kubernetes config mechanism.
-func BuildKubeConfigFromFlags(flags *pFlag.FlagSet) (*restClient.Config, error) {
-	kubeConfig, _ := flags.GetString("kubeconfig")
-
+func BuildKubeConfig(bbConfig *bbConfig.GlobalConfiguration) (*restClient.Config, error) {
+	kubeConfig := bbConfig.UtilK8sConfiguration.Kubeconfig
 	if kubeConfig != "" {
-		_, err := os.Stat(kubeConfig)
-		if err != nil {
-			return nil, fmt.Errorf("%s", err)
-		}
-	}
-
-	if kubeConfig == "" {
-		kubeConfig = viper.GetString("kubeconfig")
-		if kubeConfig != "" {
-			return GetKubeConfigFromPathList(kubeConfig)
-		}
+		return GetKubeConfigFromPathList(kubeConfig)
 	}
 
 	if kubeConfig == "" {
@@ -55,8 +42,8 @@ func BuildKubeConfigFromFlags(flags *pFlag.FlagSet) (*restClient.Config, error) 
 
 // BuildDynamicClientFromFlags is a helper function that builds a dynamic client
 // used to interact with the k8s cluster.
-func BuildDynamicClientFromFlags(flags *pFlag.FlagSet) (dynamic.Interface, error) {
-	restConfig, err := BuildKubeConfigFromFlags(flags)
+func BuildDynamicClient(bbConfig *bbConfig.GlobalConfiguration) (dynamic.Interface, error) {
+	restConfig, err := BuildKubeConfig(bbConfig)
 	if err != nil {
 		return nil, err
 	}

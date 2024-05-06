@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -28,22 +27,25 @@ func NewDeployFluxCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		Long:    fluxLong,
 		Example: fluxExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployFluxToCluster(factory, streams, args))
+			cmdUtil.CheckErr(deployFluxToCluster(factory, cmd, streams, args))
 		},
 	}
 
 	return cmd
 }
 
-func deployFluxToCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
-	repoPath := viper.GetString("big-bang-repo")
-	if repoPath == "" {
-		factory.GetLoggingClient().Error("Big bang repository location not defined (\"big-bang-repo\")")
+func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(command)
+	if err != nil {
+		return err
 	}
+	loggingClient.HandleError("error getting config client: %v", err)
+	config := configClient.GetConfig()
 	credentialHelper := factory.GetCredentialHelper()
 	username := credentialHelper("username", "registry1.dso.mil")
 	password := credentialHelper("password", "registry1.dso.mil")
-	installFluxPath := path.Join(repoPath,
+	installFluxPath := path.Join(config.BigBangRepo,
 		"scripts",
 		"install_flux.sh",
 	)
@@ -57,6 +59,6 @@ func deployFluxToCluster(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	cmd := factory.GetCommandWrapper(installFluxPath, fluxArgs...)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
-	err := cmd.Run()
+	err = cmd.Run()
 	return err
 }

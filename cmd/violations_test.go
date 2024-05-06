@@ -59,7 +59,7 @@ func eventKyverno(rName string, rKind string, ns string, component string, msg s
 
 func violationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, ns string, args []string) *cobra.Command {
 	cmd := NewViolationsCmd(factory, streams)
-	cmd.Flags().StringP("namespace", "n", "", "namespace")
+	cmd.PersistentFlags().StringP("namespace", "n", "", "namespace")
 	cmdArgs := []string{}
 	if ns != "" {
 		cmdArgs = []string{"--namespace", ns}
@@ -196,6 +196,7 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+			factory.GetViper().Set("big-bang-repo", "test")
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
@@ -278,6 +279,7 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+			factory.GetViper().Set("big-bang-repo", "test")
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
 			err := cmd.Execute()
@@ -361,6 +363,7 @@ func TestKyvernoAuditViolations(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			factory.GetViper().Set("big-bang-repo", "test")
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
@@ -444,6 +447,7 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			factory.GetViper().Set("big-bang-repo", "test")
 			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, test.namespace, nil)
 			err := cmd.Execute()

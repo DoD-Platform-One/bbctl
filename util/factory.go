@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
-	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	"helm.sh/helm/v3/pkg/action"
@@ -36,16 +35,15 @@ import (
 // Factory interface
 type Factory interface {
 	GetAWSClient() bbAws.Client
-	GetHelmClient(namespace string) (helm.Client, error)
-	GetK8sClientset() (kubernetes.Interface, error)
+	GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error)
+	GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error)
 	GetLoggingClient() bbLog.Client                              // this can't bubble up an error, if it fails it will panic
 	GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Client // this can't bubble up an error, if it fails it will panic
 	GetRuntimeClient(*runtime.Scheme) (runtimeClient.Client, error)
-	GetK8sDynamicClient() (dynamic.Interface, error)
-	GetRestConfig() (*rest.Config, error)
-	GetCommandExecutor(pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
+	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
+	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
+	GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
 	GetCredentialHelper() func(string, string) string
-	GetCommandFlags() *pFlag.FlagSet
 	GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
@@ -53,18 +51,15 @@ type Factory interface {
 }
 
 // NewFactory - new factory method
-func NewFactory(flags *pFlag.FlagSet) *UtilityFactory {
-	return &UtilityFactory{flags: flags}
+func NewFactory() *UtilityFactory {
+	return &UtilityFactory{
+		viperInstance: viper.New(),
+	}
 }
 
 // UtilityFactory - util factory
 type UtilityFactory struct {
-	flags *pFlag.FlagSet
-}
-
-// GetCommandFlags - get the @*#%&# command line flags
-func (f *UtilityFactory) GetCommandFlags() *pFlag.FlagSet {
-	return f.flags
+	viperInstance *viper.Viper
 }
 
 // CredentialsFile struct
@@ -82,17 +77,20 @@ type Credentials struct {
 // ReadCredentialsFile - read credentials file
 func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) string {
 	// Get credentials path
-	credentialsPath := viper.GetString("big-bang-credential-helper-credentials-file-path")
+	loggingClient := f.GetLoggingClient()
+	configClient, err := f.GetConfigClient(nil)
+	loggingClient.HandleError("Unable to get config client: %v", err)
+	config := configClient.GetConfig()
+	credentialsPath := config.UtilCredentialHelperConfiguration.FilePath
 	if credentialsPath == "" {
 		// Get the home directory
 		homeDir, err := os.UserHomeDir()
-		f.GetLoggingClient().HandleError("Unable to get home directory: %v", err)
+		loggingClient.HandleError("Unable to get home directory: %v", err)
 		credentialsPath = path.Join(homeDir, ".bbctl", "credentials.yaml")
 	}
 
 	// Read the credentials file
 	credentialsYaml, err := os.ReadFile(credentialsPath)
-	loggingClient := f.GetLoggingClient()
 	loggingClient.HandleError("Unable to read credentials file %v: %v", err, credentialsPath)
 
 	// Unmarshal the credentials file
@@ -128,7 +126,10 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
 	return func(component string, uri string) string {
 		loggingClient := f.GetLoggingClient()
-		helper := viper.GetString("big-bang-credential-helper")
+		configClient, err := f.GetConfigClient(nil)
+		loggingClient.HandleError("Unable to get config client: %v", err)
+		config := configClient.GetConfig()
+		helper := config.UtilCredentialHelperConfiguration.CredentialHelper
 		if helper == "" {
 			loggingClient.Error("No credential helper defined (\"big-bang-credential-helper\")")
 		}
@@ -158,8 +159,8 @@ func (f *UtilityFactory) GetAWSClient() bbAws.Client {
 }
 
 // GetHelmClient - get helm client
-func (f *UtilityFactory) GetHelmClient(namespace string) (helm.Client, error) {
-	actionConfig, err := f.getHelmConfig(namespace)
+func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
+	actionConfig, err := f.getHelmConfig(cmd, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -175,8 +176,8 @@ func (f *UtilityFactory) GetHelmClient(namespace string) (helm.Client, error) {
 }
 
 // GetK8sClientset - get k8s clientset
-func (f *UtilityFactory) GetK8sClientset() (kubernetes.Interface, error) {
-	config, err := f.GetRestConfig()
+func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
+	config, err := f.GetRestConfig(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +186,13 @@ func (f *UtilityFactory) GetK8sClientset() (kubernetes.Interface, error) {
 }
 
 // GetK8sDynamicClient - get k8s dynamic client
-func (f *UtilityFactory) GetK8sDynamicClient() (dynamic.Interface, error) {
-	return bbK8sUtil.BuildDynamicClientFromFlags(f.flags)
+func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
+	configClient, err := f.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+	config := configClient.GetConfig()
+	return bbK8sUtil.BuildDynamicClient(config)
 }
 
 // GetLoggingClient - get logging client
@@ -213,13 +219,18 @@ func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient
 }
 
 // GetRestConfig - get rest config
-func (f *UtilityFactory) GetRestConfig() (*rest.Config, error) {
-	return bbK8sUtil.BuildKubeConfigFromFlags(f.flags)
+func (f *UtilityFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
+	configClient, err := f.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+	config := configClient.GetConfig()
+	return bbK8sUtil.BuildKubeConfig(config)
 }
 
 // GetCommandExecutor - get executor to run command in a Pod
-func (f *UtilityFactory) GetCommandExecutor(pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
-	client, err := f.GetK8sClientset()
+func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
+	client, err := f.GetK8sClientset(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +251,7 @@ func (f *UtilityFactory) GetCommandExecutor(pod *coreV1.Pod, container string, c
 		TTY:       false,
 	}, scheme.ParameterCodec, schema.GroupVersion{Version: "v1"})
 
-	config, err := f.GetRestConfig()
+	config, err := f.GetRestConfig(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -248,9 +259,15 @@ func (f *UtilityFactory) GetCommandExecutor(pod *coreV1.Pod, container string, c
 	return remoteCommand.NewSPDYExecutor(config, "POST", req.URL())
 }
 
-func (f *UtilityFactory) getHelmConfig(namespace string) (*action.Configuration, error) {
+func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*action.Configuration, error) {
+	configClient, err := f.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+	bbctlConfig := configClient.GetConfig()
+
 	loggingClient := f.GetLoggingClient()
-	config, err := bbK8sUtil.BuildKubeConfigFromFlags(f.flags)
+	config, err := bbK8sUtil.BuildKubeConfig(bbctlConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +308,7 @@ func (f *UtilityFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.
 func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
 	clientGetter := bbConfig.ClientGetter{}
 	loggingClient := f.GetLoggingClient()
-	client, err := clientGetter.GetClient(command, &loggingClient)
+	client, err := clientGetter.GetClient(command, &loggingClient, f.GetViper())
 	if err != nil {
 		return nil, err
 	}
@@ -300,5 +317,5 @@ func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 
 // GetViper returns the viper instance.
 func (f *UtilityFactory) GetViper() *viper.Viper {
-	return viper.GetViper()
+	return f.viperInstance
 }

@@ -11,12 +11,12 @@ import (
 
 // Client interface
 type Client[C schemas.BaseConfiguration] interface {
-	GetConfig(*viper.Viper) C
+	GetConfig() C
 	SetAndBindFlag(string, interface{}, string) error
 }
 
 // GetConfigFunc type
-type GetConfigFunc func(*ConfigClient, *viper.Viper) *schemas.GlobalConfiguration
+type GetConfigFunc func(*ConfigClient) *schemas.GlobalConfiguration
 
 // SetAndBindFlagFunc type
 type SetAndBindFlagFunc func(*ConfigClient, string, interface{}, string) error
@@ -27,6 +27,7 @@ type ConfigClient struct {
 	setAndBindFlag SetAndBindFlagFunc
 	loggingClient  *bbLog.Client
 	command        *cobra.Command
+	viperInstance  *viper.Viper
 }
 
 // NewClient returns a new config client with the provided configuration
@@ -35,24 +36,26 @@ func NewClient(
 	setAndBindFlag SetAndBindFlagFunc,
 	loggingClient *bbLog.Client,
 	command *cobra.Command,
+	viperInstance *viper.Viper,
 ) (*ConfigClient, error) {
 	if loggingClient == nil {
 		return nil, errors.New("logging client is required")
 	}
-	if command == nil {
-		return nil, errors.New("command is required")
+	if viperInstance == nil {
+		return nil, errors.New("viper instance is required")
 	}
 	return &ConfigClient{
 		getConfig:      getConfig,
 		setAndBindFlag: setAndBindFlag,
 		loggingClient:  loggingClient,
 		command:        command,
+		viperInstance:  viperInstance,
 	}, nil
 }
 
 // GetConfig returns the global configuration.
-func (client *ConfigClient) GetConfig(viper *viper.Viper) *schemas.GlobalConfiguration {
-	return client.getConfig(client, viper)
+func (client *ConfigClient) GetConfig() *schemas.GlobalConfiguration {
+	return client.getConfig(client)
 }
 
 // SetAndBindFlag sets and binds a flag to a command and viper.

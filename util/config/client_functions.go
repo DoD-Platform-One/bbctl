@@ -5,7 +5,6 @@ import (
 	"time"
 
 	validator "github.com/go-playground/validator/v10"
-	"github.com/spf13/viper"
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 )
@@ -15,6 +14,9 @@ import (
 // Note these are some unsupported types: map[string]interface{}, map[string][]string, time.Time
 func SetAndBindFlag(client *ConfigClient, name string, value interface{}, description string) error {
 	command := client.command
+	if command == nil {
+		return errors.New("command is required to set and bind flag")
+	}
 	switch typedValue := value.(type) {
 	case bool:
 		command.PersistentFlags().Bool(name, typedValue, description)
@@ -52,15 +54,17 @@ func SetAndBindFlag(client *ConfigClient, name string, value interface{}, descri
 		return errors.New("unsupported type")
 	}
 
-	(*client.loggingClient).HandleError("error binding flag %v: %v", viper.BindPFlag(name, command.PersistentFlags().Lookup(name)), name)
-	return nil
+	return client.viperInstance.BindPFlag(name, command.PersistentFlags().Lookup(name))
 }
 
 // getConfig returns the global configuration.
-func getConfig(client *ConfigClient, viper *viper.Viper) *schemas.GlobalConfiguration {
+func getConfig(client *ConfigClient) *schemas.GlobalConfiguration {
 	var config schemas.GlobalConfiguration
-	(*client.loggingClient).HandleError("Error unmarshalling configuration: %v", viper.Unmarshal(&config))
-	config.ReconcileConfiguration(viper)
+	(*client.loggingClient).HandleError("Error unmarshalling configuration: %v", client.viperInstance.Unmarshal(&config))
+	if client.command != nil {
+		(*client.loggingClient).HandleError("Error binding flags: %v", client.viperInstance.BindPFlags(client.command.PersistentFlags()))
+	}
+	(*client.loggingClient).HandleError("Error reconciling configuration: %v", config.ReconcileConfiguration(client.viperInstance))
 	validator := validator.New()
 	(*client.loggingClient).HandleError("Error during validation for configuration: %v", validator.Struct(config))
 	return &config

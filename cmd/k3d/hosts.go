@@ -27,8 +27,6 @@ var (
 	hostsExample = templates.Examples(i18n.T(`
 	    # Generate a list of hosts that reference your k3d cluster suitable for use in /etc/hosts
 		bbctl k3d hosts`))
-
-	usePrivateIP bool
 )
 
 // NewHostsCmd - command to generate a hosts list for your k3d cluster
@@ -39,20 +37,28 @@ func NewHostsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *co
 		Long:    hostsLong,
 		Example: hostsExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(hostsListCluster(factory, streams))
+			cmdUtil.CheckErr(hostsListCluster(cmd, factory, streams))
 		},
 	}
 
-	cmd.Flags().BoolVar(&usePrivateIP,
-		"private",
-		false,
-		"Use the private IP instead of the public IP")
+	loggingClient := factory.GetLoggingClient()
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("Unable to get config client: %v", err)
+
+	loggingClient.HandleError(
+		"Unable to add flags to command: %v",
+		configClient.SetAndBindFlag(
+			"private-ip",
+			false,
+			"Use the private IP instead of the public IP",
+		),
+	)
 
 	return cmd
 }
 
 // hostsListCluster - command to generate a hosts list for your k3d cluster
-func hostsListCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	var useIP string
 	var virtualServices []string
 
@@ -62,14 +68,17 @@ func hostsListCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 	stsClient := awsClient.GetStsClient(context.TODO(), cfg)
 	userInfo := awsClient.GetIdentity(context.TODO(), stsClient)
 	filterExposure := bbAws.FilterExposurePublic
-	if usePrivateIP {
+	configClient, err := factory.GetConfigClient(cmd)
+	loggingClient.HandleError("Unable to get config client: %v", err)
+	config := configClient.GetConfig()
+	if config.K3dSshConfiguration.PrivateIp {
 		filterExposure = bbAws.FilterExposurePrivate
 	}
 	ec2Client := awsClient.GetEc2Client(context.TODO(), cfg)
 	ips, err := awsClient.GetClusterIPs(context.TODO(), ec2Client, userInfo.Username, filterExposure)
 	loggingClient.HandleError("Unable to fetch cluster information: %v", err)
 	useIP = *ips[0].IP
-	k8sConfig, err := bbK8s.BuildKubeConfigFromFlags(factory.GetCommandFlags())
+	k8sConfig, err := bbK8s.BuildKubeConfig(config)
 	loggingClient.HandleError("Unable to build k8s configuration: %v", err)
 	istioClientSet, err := factory.GetIstioClientSet(k8sConfig)
 	loggingClient.HandleError("Unable to create istio client: %v", err)
