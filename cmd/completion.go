@@ -21,6 +21,8 @@ var (
 
 		$ source <(bbctl completion bash)
 
+		Note: you will need to install "bash-completion" with your OS's package manager first.
+
 		To load completions for each session, execute once:
 		
 		Linux:
@@ -41,6 +43,8 @@ var (
 		To load completions for each session, execute once:
 		
 		$ bbctl completion zsh > "${fpath[1]}/_bbctl"
+
+		You may need to create the directory with "mkdir -p ${fpath[1]}" if it does not already exist.
 
 		Note: You will need to start a new shell for this setup to take effect.
 
