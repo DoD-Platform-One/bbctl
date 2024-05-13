@@ -1,4 +1,4 @@
-.PHONY: default all build clean coverage fmt format golint install lint run test vet
+.PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint run test vet
 
 # If the first argument is "run"...
 ifeq (run,$(firstword $(MAKECMDGOALS)))
@@ -23,6 +23,18 @@ clean:
 coverage:
 	@echo "make coverage..."
 	./scripts/coverage.sh
+
+dup:
+	@echo "make devpod up..."
+	./scripts/devpod.sh up
+
+dstop:
+	@echo "make devpod stop..."
+	./scripts/devpod.sh stop
+
+dbuild:
+	@echo "make devpod build..."
+	./scripts/devpod.sh build
 
 fmt: format
 

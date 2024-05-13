@@ -24,6 +24,42 @@ Code contributions from the community are welcomed. Steps to contribute:
 
 The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
+This project supports [devcontainers](https://containers.dev/), [devpod](https://devpod.sh/docs/getting-started/install), and [devbox](https://www.jetify.com/devbox/) all of which will instantly give you an environment to work in. It also uses a Makefile to provide helpful development scripts.
+
+__NOTE:__ These folders have to exist on your machine for the container to start, they don't have to have anything in them, but they do have to be there.
+- `~/.ssh`
+- `~/.kube`
+- `~/.bbctl`
+- `~/.aws`
+- `~/.gitconfig`
+- `~/.config`
+
+### Dev Containers
+
+For the simplest most integrated dev environment in VS Code, install the [Dev Containers Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers). Then every time you open the workspace it will offer to reopen the workspace in the dev container.
+- `F1` then type `reopen` and you can easily switch between developing locally and in a container
+
+### Devpod
+
+To run with devpod you can use the Makefile:
+- `make dup` will start the container (and build it if necessary)
+- `make dstop` will stop the container
+- `make dbuild` will recreate the container and start it
+
+This solution also let you select kubernetes as a provider meaning your shell and vscode server can live inside your working cluster.
+
+### Devbox
+
+Both of the dev container based solutions use devbox, just inside a container. Here are some basic commands for interacting with it (in or outside of a container):
+- `devbox run [script name]` - runs the named script in the devbox.json
+- `devbox shell` - Start a shell in the devbox instance
+- `devbox install` - Installs all of the packages in the devbox.json
+- `devbox update` - Updates the packages in devbox.json
+- `devbox search` - Search for nix packages
+- `devbox add` - Add a package to the devbox.json
+- `devbox help` - Get help overview
+- `devbox [command] --help` - Get help for a command
+
 ### Install Golang
 
 Follow the instructions in official Go document for the specific development platform:
