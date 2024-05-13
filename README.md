@@ -6,4 +6,3 @@ Follow the [user guide](/docs/user-guide.md) for how to install and use the bbct
 
 ## Developer Documentation
 Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands. 
-
