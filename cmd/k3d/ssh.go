@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -36,9 +35,10 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 		Short:   sshShort,
 		Long:    sshLong,
 		Example: sshExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(sshToK3dCluster(factory, cmd, args))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return sshToK3dCluster(factory, cmd, streams, args)
 		},
+		SilenceUsage: true,
 	}
 
 	loggingClient := factory.GetLoggingClient()
@@ -49,12 +49,15 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 		// make sure to sync this default with the one in the configuration schema
 		configClient.SetAndBindFlag("ssh-username", "ubuntu", "Username to use for SSH connection"),
 	)
+	loggingClient.HandleError("Unable to bind flags: %v",
+		configClient.SetAndBindFlag("dry-run", false, "Print command but don't actually establish an SSH connection"),
+	)
 
 	return cmd
 }
 
 // sshToK3dCluster - Open an SSH session to your cluster
-func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
+func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
 	awsClient := factory.GetAWSClient()
 	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
@@ -85,6 +88,13 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+
+	err = nil
+	dryRun, _ := command.Flags().GetBool("dry-run")
+	if !dryRun {
+		err = cmd.Run()
+	} else {
+		fmt.Fprint(streams.Out, cmd.String())
+	}
 	return err
 }

@@ -33,7 +33,7 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 		Long:    shellProfileLong,
 		Example: shellProfileExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(shellProfileCluster(factory))
+			cmdUtil.CheckErr(shellProfileCluster(factory, streams))
 		},
 	}
 
@@ -41,7 +41,7 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 }
 
 // shellProfileCluster - generate a BASH compatible shell profile for your cluster
-func shellProfileCluster(factory bbUtil.Factory) error {
+func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	awsClient := factory.GetAWSClient()
 	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
@@ -57,8 +57,18 @@ func shellProfileCluster(factory bbUtil.Factory) error {
 	if len(ips.PrivateIPs) > 0 {
 		privateIP = *ips.PrivateIPs[0].IP
 	}
-	fmt.Printf("export KUBECONFIG=~/.kube/%v-dev-config\n", userInfo.Username)
-	fmt.Printf("export BB_K3D_PUBLICIP=%v\n", publicIP)
-	fmt.Printf("export BB_K3D_PRIVATEIP=%v\n", privateIP)
+
+	output := [3]string{
+		fmt.Sprintf("export KUBECONFIG=~/.kube/%v-dev-config\n", userInfo.Username),
+		fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP),
+		fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP),
+	}
+	for _, str := range output {
+		_, err = streams.Out.Write([]byte(str))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
