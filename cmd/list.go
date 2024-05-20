@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/gosuri/uitable"
@@ -44,7 +45,11 @@ func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 
 // query the cluster using helm module to get information on bigbang release
 func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
+	constants, err := static.GetConstants()
+	if err != nil {
+		return err
+	}
+	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
 	if err != nil {
 		return err
 	}
@@ -53,7 +58,7 @@ func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, streams generi
 	releases, err := client.GetList()
 	if err != nil {
 		return fmt.Errorf("error getting helm releases in namespace %s: %s",
-			BigBangNamespace, err.Error())
+			constants.BigBangNamespace, err.Error())
 	}
 
 	table := uitable.New()

@@ -2,3 +2,4 @@ bbctl
 .vscode
 *.txt
 test.out
+bin/

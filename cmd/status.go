@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
@@ -133,8 +134,14 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOS
 		return err
 	}
 
+	// get constants
+	constants, err := static.GetConstants()
+	if err != nil {
+		return err
+	}
+
 	// get helm client
-	helmClient, err := factory.GetHelmClient(cmd, BigBangNamespace)
+	helmClient, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
 	if err != nil {
 		return err
 	}
@@ -169,7 +176,14 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOS
 func getBigBangStatus(helmClient helm.Client) string {
 	var sb strings.Builder
 
-	release, err := helmClient.GetRelease(BigBangHelmReleaseName)
+	// get constants
+	constants, err := static.GetConstants()
+	if err != nil {
+		sb.WriteString(err.Error())
+		return sb.String()
+	}
+
+	release, err := helmClient.GetRelease(constants.BigBangHelmReleaseName)
 	if err != nil {
 		sb.WriteString("No Big Bang release was found.\n")
 		return sb.String()

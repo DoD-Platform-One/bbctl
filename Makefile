@@ -1,4 +1,4 @@
-.PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint run test vet
+.PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint release run test vet
 
 # If the first argument is "run"...
 ifeq (run,$(firstword $(MAKECMDGOALS)))
@@ -51,6 +51,10 @@ golint:
 	./scripts/golang_ci_lint.sh
 
 lint: vet golint
+
+release:
+	@echo "make releasing..."
+	./scripts/release.sh
 
 run:
 	@echo "make running with args ($(RUN_ARGS))..."

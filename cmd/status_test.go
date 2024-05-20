@@ -15,6 +15,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	helmV2Beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
@@ -60,14 +61,17 @@ func TestGetBigBangStatus(t *testing.T) {
 
 	// prepare the helm client with no data
 	factory := bbTestUtil.GetFakeFactory()
-	helmClient, _ := factory.GetHelmClient(nil, BigBangNamespace)
+	constants, err := static.GetConstants()
+	assert.NoError(t, err)
+	helmClient, err := factory.GetHelmClient(nil, constants.BigBangNamespace)
+	assert.NoError(t, err)
 	var response = getBigBangStatus(helmClient)
 	assert.Contains(t, response, "No Big Bang release was found")
 
 	// prepare the helm client with big bang release
 	factory = bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
-	helmClient, _ = factory.GetHelmClient(nil, BigBangNamespace)
+	helmClient, _ = factory.GetHelmClient(nil, constants.BigBangNamespace)
 	response = getBigBangStatus(helmClient)
 	assert.Contains(t, response, "Found bigbang release version")
 }

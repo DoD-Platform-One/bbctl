@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
@@ -57,7 +58,11 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 
 // query the cluster using helm module to get information on bigbang release
 func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", BigBangCliVersion)
+	constants, err := static.GetConstants()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", constants.BigBangCliVersion)
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return err
@@ -68,15 +73,15 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOpti
 		return nil
 	}
 
-	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
+	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
 	if err != nil {
 		return err
 	}
 
-	release, err := client.GetRelease(BigBangHelmReleaseName)
+	release, err := client.GetRelease(constants.BigBangHelmReleaseName)
 	if err != nil {
 		return fmt.Errorf("error getting helm information for release %s in namespace %s: %s",
-			BigBangHelmReleaseName, BigBangNamespace, err.Error())
+			constants.BigBangHelmReleaseName, constants.BigBangNamespace, err.Error())
 	}
 
 	fmt.Fprintf(streams.Out, "%s release version %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
