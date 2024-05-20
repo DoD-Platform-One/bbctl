@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
@@ -52,7 +53,11 @@ func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 
 // query the cluster using helm module to get information on big bang release values
 func getHelmValues(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
-	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
+	constants, err := static.GetConstants()
+	if err != nil {
+		return err
+	}
+	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
 	if err != nil {
 		return err
 	}
@@ -61,7 +66,7 @@ func getHelmValues(cmd *cobra.Command, factory bbUtil.Factory, streams genericIO
 	releases, err := client.GetValues(name)
 	if err != nil {
 		return fmt.Errorf("error getting helm release values in namespace %s: %s",
-			BigBangNamespace, err.Error())
+			constants.BigBangNamespace, err.Error())
 	}
 
 	return output.EncodeYAML(streams.Out, releases)
@@ -69,7 +74,11 @@ func getHelmValues(cmd *cobra.Command, factory bbUtil.Factory, streams genericIO
 
 // find helm releases with given prefix for command completion
 func matchingReleaseNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-	client, err := factory.GetHelmClient(cmd, BigBangNamespace)
+	constants, err := static.GetConstants()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
