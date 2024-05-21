@@ -39,6 +39,7 @@ func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cob
 	cmd.CompletionOptions.DisableDescriptions = false
 
 	cmd.AddCommand(NewCompletionCmd(factory, streams))
+	cmd.AddCommand(NewConfigCmd(factory, streams))
 	cmd.AddCommand(NewVersionCmd(factory, streams))
 	cmd.AddCommand(NewReleasesCmd(factory, streams))
 	cmd.AddCommand(NewValuesCmd(factory, streams))

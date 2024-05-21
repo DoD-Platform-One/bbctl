@@ -12,6 +12,9 @@ type ExampleConfiguration struct {
 	ShouldError bool `mapstructure:"example-config-should-error" yaml:"example-config-should-error"`
 	// ExtraConfigs is a list of extra configurations
 	ExtraConfigs []BaseConfiguration
+	// ShouldFailToMarshal is an optional field that can be set with an invalid value such that calling yaml.Marshal on the configuration will panic.
+	// This should never be set outside of unit tests.
+	ShouldFailToMarshal *any `yaml:"example-config-should-fail-to-marshal,omitempty"`
 }
 
 // ReconcileConfiguration reconciles the configuration.
