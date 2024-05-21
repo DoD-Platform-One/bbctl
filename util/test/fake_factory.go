@@ -140,6 +140,7 @@ type FakeFactory struct {
 	stsClient          *sts.Client
 	virtualServiceList *apisV1Beta1.VirtualServiceList
 	viperInstance      *viper.Viper
+	configClient       *bbConfig.ConfigClient
 
 	SetFail struct {
 		GetConfigClient bool
@@ -268,8 +269,22 @@ func (f *FakeFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.Ist
 	return fakeApiWrappers.NewFakeIstioClientSet(f.virtualServiceList), nil
 }
 
+// SetConfigClient sets the configuration client returned by the fake factory.
+// This may be useful for tests that set configuration values directly that bypass
+// the viper instance.
+func (f *FakeFactory) SetConfigClient(configClient *bbConfig.ConfigClient) {
+	f.configClient = configClient
+}
+
 // GetConfigClient - get config client
 func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
+	// if SetConfigClient has been previously called and an alternative client
+	// has been attached, return it
+	if f.configClient != nil {
+		return f.configClient, nil
+
+	}
+
 	if f.SetFail.GetConfigClient {
 		return nil, fmt.Errorf("failed to get config client")
 	}
