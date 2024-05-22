@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -433,12 +434,20 @@ func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer
 	_, err := bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 	if err != nil {
 		if api_errors.IsAlreadyExists(err) {
-			fmt.Fprintf(w, "Namespace %s already exists...It will be recreated\n", preflightPodNamespace)
+			fmt.Fprintf(w, "Namespace %s already exists... It will be recreated\n", preflightPodNamespace)
 			err = bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 			if err != nil {
 				return err
 			}
-			_, err = bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
+			// Give the namespace deletion some time to finish before trying to recreate the namespace
+			for retry := 0; retry <= 5; retry++ {
+				_, err = bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
+				if err != nil {
+					time.Sleep(5 * time.Second)
+				} else {
+					break
+				}
+			}
 		}
 	}
 
@@ -451,6 +460,10 @@ func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.W
 	server := config.PreflightCheckConfiguration.RegistryServer
 	username := config.PreflightCheckConfiguration.RegistryUsername
 	password := config.PreflightCheckConfiguration.RegistryPassword
+
+	if server == "" || username == "" || password == "" {
+		return nil, errors.New("\n***Invalid registry credentials provided. Ensure the registry server, username, and password values are all set!***")
+	}
 
 	return bbUtilK8s.CreateRegistrySecret(client, preflightPodNamespace,
 		preflightPodImagePullSecret, server, username, password)
@@ -517,7 +530,7 @@ func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errO
 }
 
 func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChecks []preflightCheck) {
-	fmt.Fprintf(streams.Out, "\n\n***Preflight Check Summary***\n\n")
+	fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
 
 	for _, check := range preflightChecks {
 		message := check.failureMessage
