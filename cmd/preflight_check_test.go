@@ -241,12 +241,16 @@ func TestCheckSystemParameters(t *testing.T) {
 	assert.Nil(t, viperInstance.BindPFlags(command.Flags()))
 
 	config := configClient.GetConfig()
+	config.PreflightCheckConfiguration.RegistryServer = "registry.foo"
+	config.PreflightCheckConfiguration.RegistryUsername = "user"
+	config.PreflightCheckConfiguration.RegistryPassword = "pass"
+
 	factory.SetObjects([]runtime.Object{pfcPod})
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			bbTestUtil.GetFakeCommandExecutor().CommandResult = test.commandResult
-			checkSystemParameters(nil, factory, streams, config)
+			checkSystemParameters(command, factory, streams, config)
 			assert.Contains(t, buf.String(), test.expected)
 			buf.Reset()
 		})
