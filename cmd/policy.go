@@ -303,7 +303,7 @@ func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory, strea
 		}
 		fmt.Fprintf(streams.Out, "%s\n", crdName)
 		if len(constraints.Items) == 0 {
-			fmt.Fprint(streams.Out, "\nNo constraints found\n\n")
+			fmt.Fprint(streams.Out, "\nNo constraints found\n\n\n")
 		}
 		for _, c := range constraints.Items {
 			d, err := getGatekeeperPolicyDescriptor(&c)
@@ -342,7 +342,7 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams 
 		}
 		fmt.Fprintf(streams.Out, "\n%s\n\n", crdName)
 		if len(policies.Items) == 0 {
-			fmt.Fprint(streams.Out, "No policies found\n\n")
+			fmt.Fprint(streams.Out, "No policies found\n\n\n")
 		}
 		for _, c := range policies.Items {
 			d, err := getKyvernoPolicyDescriptor(&c)
