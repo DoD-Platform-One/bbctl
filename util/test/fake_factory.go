@@ -144,6 +144,7 @@ type FakeFactory struct {
 
 	SetFail struct {
 		GetConfigClient bool
+		GetHelmClient   bool
 	}
 }
 
@@ -165,6 +166,10 @@ func (f *FakeFactory) GetAWSClient() bbAws.Client {
 
 // GetHelmClient - get helm client
 func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
+	if f.SetFail.GetHelmClient {
+		return nil, fmt.Errorf("failed to get helm client")
+	}
+
 	return fakeHelm.NewFakeClient(f.helmReleases)
 }
 
