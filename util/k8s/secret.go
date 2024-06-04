@@ -32,6 +32,10 @@ type DockerConfigJSON struct {
 
 // CreateRegistrySecret creates a new secret for docker registry
 func CreateRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string, server string, username string, password string) (*coreV1.Secret, error) {
+	return createRegistrySecret(k8sInterface, namespace, name, server, username, password, json.Marshal)
+}
+
+func createRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string, server string, username string, password string, jsonMarshalFunction func(any) ([]byte, error)) (*coreV1.Secret, error) {
 	secret := &coreV1.Secret{
 		TypeMeta: metaV1.TypeMeta{
 			APIVersion: coreV1.SchemeGroupVersion.String(),
@@ -55,7 +59,7 @@ func CreateRegistrySecret(k8sInterface kubernetes.Interface, namespace string, n
 		Authorizations: map[string]DockerConfigEntry{server: dockerConfigAuth},
 	}
 
-	bytes, err := json.Marshal(dockerConfigJSON)
+	bytes, err := jsonMarshalFunction(dockerConfigJSON)
 	if err != nil {
 		return nil, err
 	}
