@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -25,7 +24,7 @@ var (
 		bbctl version
 		
 		# Print client version only
-		bbctl --client`))
+		bbctl version --client`))
 )
 
 // NewVersionCmd - new version command
@@ -35,9 +34,11 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 		Short:   versionShort,
 		Long:    versionLong,
 		Example: versionExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbVersion(cmd, factory, streams))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return bbVersion(cmd, factory, streams)
 		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	loggingClient := factory.GetLoggingClient()
@@ -63,10 +64,9 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOpti
 		return err
 	}
 	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", constants.BigBangCliVersion)
-	configClient, err := factory.GetConfigClient(cmd)
-	if err != nil {
-		return err
-	}
+
+	// Config client error handling is done in the public NewVersionCmd function above
+	configClient, _ := factory.GetConfigClient(cmd)
 	config := configClient.GetConfig()
 
 	if config.VersionConfiguration.Client {
