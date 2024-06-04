@@ -69,3 +69,33 @@ func TestDeleteRegistrySecret(t *testing.T) {
 		t.Errorf("unexpected output: %v", secret)
 	}
 }
+
+func TestCreateRegistrySecretError(t *testing.T) {
+	objects := []runtime.Object{}
+	cs := fake.NewSimpleClientset(objects...)
+
+	// Create a secret
+	_, err := CreateRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass")
+	assert.Nil(t, err)
+
+	// Create the same secret again
+	_, err = CreateRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "secrets \"foo\" already exists")
+}
+
+func TestCreateRegistrySecretJSONMarshallError(t *testing.T) {
+	// Arrange
+	objects := []runtime.Object{}
+	cs := fake.NewSimpleClientset(objects...)
+
+	// Act
+	secret, err := createRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass", func(any) ([]byte, error) {
+		return nil, assert.AnError
+	})
+
+	// Assert
+	assert.NotNil(t, err)
+	assert.Nil(t, secret)
+	assert.Contains(t, err.Error(), "assert.AnError general error for testing")
+}
