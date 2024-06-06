@@ -23,7 +23,13 @@ var (
 
 	bigBangExample = templates.Examples(i18n.T(`
 	    # Deploy big bang product to your cluster
-		bbctl deploy big bang
+		bbctl deploy bigbang
+
+		# Deploy bigbang to a k3d development cluster
+		bbctl deploy bigbang --k3d
+
+		# Deploy bigbang with a helm overrides file. All arguments after -- are passed to the underlying helm command
+		bbctl deploy bigbang -- -f ../overrides/values.yaml
 		`))
 )
 
