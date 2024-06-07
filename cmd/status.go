@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	k8sClient "k8s.io/client-go/kubernetes"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 
@@ -52,9 +51,11 @@ func NewStatusCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 		Short:   statusShort,
 		Long:    statusLong,
 		Example: statusExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbStatus(cmd, factory, streams))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return bbStatus(cmd, factory, streams)
 		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	return cmd
