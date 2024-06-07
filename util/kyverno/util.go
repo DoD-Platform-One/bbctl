@@ -16,24 +16,28 @@ import (
 func FetchKyvernoCrds(client dynamic.Interface) (*unstructured.UnstructuredList, error) {
 	var customResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
 
-	opts := metaV1.ListOptions{LabelSelector: "app.kubernetes.io/name=kyverno"}
+	// Get all the CRDs
+	opts := metaV1.ListOptions{LabelSelector: ""}
 
-	kyvernoResources, err := client.Resource(customResource).List(context.TODO(), opts)
+	allCrds, err := client.Resource(customResource).List(context.TODO(), opts)
 	if err != nil {
 		return nil, fmt.Errorf("error getting kyverno crds: %s", err.Error())
 	}
 
 	items := make([]unstructured.Unstructured, 0)
-	for _, crd := range kyvernoResources.Items {
-		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
-		if strings.HasSuffix(crdName, "policies.kyverno.io") {
+	for _, crd := range allCrds.Items {
+		group, found, err := unstructured.NestedString(crd.Object, "spec", "group")
+		if err != nil || !found {
+			continue
+		}
+		if group == "kyverno.io" {
 			items = append(items, crd)
 		}
 	}
 
-	kyvernoResources.Items = items
+	allCrds.Items = items
 
-	return kyvernoResources, nil
+	return allCrds, nil
 }
 
 // FetchKyvernoPolicies - Fetch Kyverno Policies

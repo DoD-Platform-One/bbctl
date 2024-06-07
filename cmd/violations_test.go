@@ -305,6 +305,9 @@ func TestKyvernoAuditViolations(t *testing.T) {
 				"app.kubernetes.io/name": "kyverno",
 			},
 		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
+		},
 	})
 
 	crdList := &unstructured.UnstructuredList{
@@ -388,6 +391,9 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "kyverno",
 			},
+		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
 		},
 	})
 
