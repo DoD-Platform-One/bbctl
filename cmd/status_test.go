@@ -23,19 +23,31 @@ import (
 	sourceV1Beta1 "github.com/fluxcd/source-controller/api/v1beta1"
 )
 
+func TestGetStatusUsage(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	cmd := NewStatusCmd(factory, streams)
+
+	assert.Equal(t, cmd.Use, "status")
+	assert.Contains(t, cmd.Example, "bbctl status")
+}
+
 func TestGetStatus(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	cmd := NewStatusCmd(factory, streams)
-	cmd.Run(cmd, []string{})
+	result := cmd.RunE(cmd, []string{})
 
-	response := strings.Split(buf.String(), "\n")
+	output := strings.Split(buf.String(), "\n")
 
 	// functionality is tested separately.
-	// only checking for not nil to get code coverage for cobra cmd
-	assert.NotNil(t, response)
+	// only checking for no error to get code coverage for cobra cmd
+	assert.Nil(t, result)
+	assert.NotNil(t, output)
 }
 
 func TestGetBigBangStatus(t *testing.T) {
@@ -465,4 +477,160 @@ func TestGetPodStatus(t *testing.T) {
 	}
 	response = getPodStatus(clientSet)
 	assert.Contains(t, response, "2 pods that are not ready")
+}
+
+func TestProcessPodStatus(t *testing.T) {
+	// Arrange
+	readyPod := podData{
+		namespace: "bigbang",
+		name:      "readyPod",
+		status:    "Ready",
+	}
+	notReadyPod := podData{
+		namespace: "bigbang",
+		name:      "notReadyPod",
+		status:    "NotReady",
+	}
+	errorPod := podData{
+		namespace: "bigbang",
+		name:      "errorPod",
+		status:    "",
+	}
+
+	var podData = []podData{}
+
+	// Act
+	processPodStatus(&readyPod, &podData, true)
+	processPodStatus(&notReadyPod, &podData, false)
+	processPodStatus(&errorPod, &podData, false)
+
+	// Assert
+	assert.NotContains(t, podData, readyPod)
+
+	assert.Contains(t, podData, notReadyPod)
+
+	assert.Equal(t, errorPod.status, "error")
+	assert.Contains(t, podData, errorPod)
+}
+
+func TestGetContainerStatus(t *testing.T) {
+	// Arrange
+	var tests = []struct {
+		desc              string
+		pod               podData
+		podReady          bool
+		isInit            bool
+		containerStatuses []coreV1.ContainerStatus
+	}{
+		{
+			desc: "ReadyContainer",
+			pod: podData{
+				namespace: "bigbang",
+				name:      "readyPod",
+				status:    "Ready",
+			},
+			podReady: true,
+			isInit:   false,
+			containerStatuses: []coreV1.ContainerStatus{
+				{
+					Ready: true,
+				},
+				{
+					Ready: true,
+				},
+			},
+		},
+		{
+			desc: "UnreadyContainerWithNoInfo",
+			pod: podData{
+				namespace: "bigbang",
+				name:      "noInfoPod",
+				status:    "NotReady",
+			},
+			podReady: false,
+			isInit:   false,
+			containerStatuses: []coreV1.ContainerStatus{
+				{
+					Ready: false,
+				},
+			},
+		},
+		{
+			desc: "MultipleUnreadyContainers",
+			pod: podData{
+				namespace: "bigbang",
+				name:      "multipleErrorsPod",
+				status:    "ImagePullBackOff",
+			},
+			podReady: false,
+			isInit:   true,
+			containerStatuses: []coreV1.ContainerStatus{
+				{
+					State: coreV1.ContainerState{
+						Waiting: &coreV1.ContainerStateWaiting{
+							Reason: "ImagePullBackOff",
+						},
+					},
+					Ready: false,
+				},
+				{
+					State: coreV1.ContainerState{
+						Waiting: &coreV1.ContainerStateWaiting{
+							Reason: "CrashLoopBackOff",
+						},
+					},
+					Ready: false,
+				},
+			},
+		},
+		{
+			desc: "MixedReadinessContainers",
+			pod: podData{
+				namespace: "bigbang",
+				name:      "mixedResutsPod",
+				status:    "CrashLoopBackOff",
+			},
+			podReady: false,
+			isInit:   true,
+			containerStatuses: []coreV1.ContainerStatus{
+				{
+					Ready: true,
+				},
+				{
+					State: coreV1.ContainerState{
+						Waiting: &coreV1.ContainerStateWaiting{
+							Reason: "CrashLoopBackOff",
+						},
+					},
+					Ready: false,
+				},
+			},
+		},
+	}
+
+	var podReadyPointer bool
+	prefix := ""
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			if test.isInit {
+				prefix = "init:"
+			} else {
+				prefix = ""
+			}
+
+			// Act
+			podReadyPointer = true
+			getContainerStatus(test.containerStatuses, &test.pod, &podReadyPointer, test.isInit)
+
+			// Assert
+			assert.Equal(t, podReadyPointer, test.podReady)
+			for i := len(test.containerStatuses) - 1; i >= 0; i-- {
+				if test.containerStatuses[i].State.Waiting != nil {
+					// Multiple containers overwrite pod status so only the last status gets captured
+					assert.Equal(t, test.pod.status, prefix+test.containerStatuses[i].State.Waiting.Reason)
+					break
+				}
+			}
+		})
+	}
 }
