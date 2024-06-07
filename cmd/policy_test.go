@@ -195,6 +195,9 @@ func TestKyvernoPolicies(t *testing.T) {
 				"app.kubernetes.io/name": "kyverno",
 			},
 		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
+		},
 	})
 
 	crd2 := &unstructured.Unstructured{}
@@ -206,6 +209,9 @@ func TestKyvernoPolicies(t *testing.T) {
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "kyverno",
 			},
+		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
 		},
 	})
 
@@ -232,6 +238,7 @@ func TestKyvernoPolicies(t *testing.T) {
 		},
 		"spec": map[string]interface{}{
 			"validationFailureAction": "enforce",
+			"group":                   "kyverno.io",
 		},
 	})
 
@@ -251,6 +258,7 @@ func TestKyvernoPolicies(t *testing.T) {
 		},
 		"spec": map[string]interface{}{
 			"validationFailureAction": "audit",
+			"group":                   "kyverno.io",
 		},
 	})
 
@@ -402,6 +410,9 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 				"app.kubernetes.io/name": "kyverno",
 			},
 		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
+		},
 	})
 
 	crdList := &unstructured.UnstructuredList{
@@ -427,6 +438,7 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 		},
 		"spec": map[string]interface{}{
 			"validationFailureAction": "enforce",
+			"group":                   "kyverno.io",
 		},
 	})
 
@@ -446,6 +458,7 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 		},
 		"spec": map[string]interface{}{
 			"validationFailureAction": "audit",
+			"group":                   "kyverno.io",
 		},
 	})
 

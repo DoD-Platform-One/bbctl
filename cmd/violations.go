@@ -97,6 +97,7 @@ func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 }
 
 func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+	logger := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return err
@@ -112,6 +113,7 @@ func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIO
 	}
 
 	if gkFound {
+		logger.Debug("Gatekeeper exists in cluster. Checking for Gatekeeper violations.")
 		err = listGkViolations(cmd, factory, streams, namespace, audit)
 		if err != nil {
 			return err
@@ -124,6 +126,7 @@ func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIO
 	}
 
 	if kyvernoFound {
+		logger.Debug("Kyverno exists in cluster. Checking for Kyverno violations.")
 		return listKyvernoViolations(cmd, factory, streams, namespace, audit)
 	}
 

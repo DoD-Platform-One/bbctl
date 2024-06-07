@@ -12,6 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// gvrToListKind returns a list of schema.GroupVersionResource resources
+// that map to a resource type to be used as test values for util tests
 func gvrToListKind() map[schema.GroupVersionResource]string {
 	return map[schema.GroupVersionResource]string{
 		{
@@ -58,6 +60,9 @@ func crdList() *unstructured.UnstructuredList {
 				"app.kubernetes.io/name": "kyverno",
 			},
 		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
+		},
 	})
 
 	crd2 := &unstructured.Unstructured{}
@@ -69,6 +74,9 @@ func crdList() *unstructured.UnstructuredList {
 			"labels": map[string]interface{}{
 				"app.kubernetes.io/name": "kyverno",
 			},
+		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
 		},
 	})
 
