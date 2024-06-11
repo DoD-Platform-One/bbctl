@@ -10,6 +10,7 @@ import (
 
 	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
 
 func TestK3d_ShellProfileUsage(t *testing.T) {
@@ -74,4 +75,37 @@ func TestK3d_ShellProfiile(t *testing.T) {
 	assert.Contains(t, out.String(), kubeConfExport)
 	assert.Contains(t, out.String(), privateIpExport)
 	assert.Contains(t, out.String(), publicIpExport)
+}
+
+func TestK3d_ShellProfileError(t *testing.T) {
+	// Arrange
+	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	account := callerIdentityAccount
+	arn := callerIdentityArn
+	callerIdentity := bbAwsUtil.CallerIdentity{
+		GetCallerIdentityOutput: sts.GetCallerIdentityOutput{
+			Account: &account,
+			Arn:     &arn,
+		},
+		Username: "developer",
+	}
+	clusterIPs := []bbAwsUtil.ClusterIP{}
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetCallerIdentity(&callerIdentity)
+	factory.SetClusterIPs(&clusterIPs)
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+	cmd := NewShellProfileCmd(factory, streams)
+	// Act
+	err := cmd.Execute()
+	// Assert
+	assert.NotNil(t, err)
+	assert.IsType(t, &apiWrappers.FakeWriterError{}, err)
+	assert.True(t, streams.Out.(*apiWrappers.FakeWriter).ShouldError)
+	assert.Equal(t, "shellprofile", cmd.Use)
+	assert.Empty(t, in.String())
+	assert.Empty(t, out.String())
+	assert.Empty(t, errout.String())
 }
