@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -32,8 +31,8 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 		Short:   shellProfileShort,
 		Long:    shellProfileLong,
 		Example: shellProfileExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(shellProfileCluster(factory, streams))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return shellProfileCluster(factory, streams)
 		},
 	}
 
