@@ -69,6 +69,81 @@ func gvrToListKindForPolicies() map[schema.GroupVersionResource]string {
 			Version:  "v1",
 			Resource: "nop",
 		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1beta1",
+			Resource: "foos",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1beta1",
+			Resource: "foo",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1beta1",
+			Resource: "bars",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1beta1",
+			Resource: "bar",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1beta1",
+			Resource: "nop",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v2beta1",
+			Resource: "foos",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v2beta1",
+			Resource: "foo",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v2beta1",
+			Resource: "bars",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v2beta1",
+			Resource: "bar",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v2beta1",
+			Resource: "nop",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1alpha2",
+			Resource: "foos",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1alpha2",
+			Resource: "foo",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1alpha2",
+			Resource: "bars",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1alpha2",
+			Resource: "bar",
+		}: "kyvernoPolicyList",
+		{
+			Group:    "kyverno.io",
+			Version:  "v1alpha2",
+			Resource: "nop",
+		}: "kyvernoPolicyList",
 	}
 }
 
