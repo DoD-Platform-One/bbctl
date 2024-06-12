@@ -44,12 +44,20 @@ func FetchKyvernoCrds(client dynamic.Interface) (*unstructured.UnstructuredList,
 func FetchKyvernoPolicies(client dynamic.Interface, name string) (*unstructured.UnstructuredList, error) {
 	resourceName := strings.Split(name, ".")[0]
 
-	var policyResource = schema.GroupVersionResource{Group: "kyverno.io", Version: "v1", Resource: resourceName}
+	versions := []string{"v1", "v1beta1", "v2beta1", "v1alpha2"}
 
-	resources, err := client.Resource(policyResource).List(context.TODO(), metaV1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("error getting kyverno policies: %s", err.Error())
+	allPolicies := &unstructured.UnstructuredList{}
+
+	for _, version := range versions {
+		var policyResource = schema.GroupVersionResource{Group: "kyverno.io", Version: version, Resource: resourceName}
+
+		resources, err := client.Resource(policyResource).List(context.TODO(), metaV1.ListOptions{})
+		if err != nil {
+			continue
+		}
+
+		allPolicies.Items = append(allPolicies.Items, resources.Items...)
 	}
 
-	return resources, nil
+	return allPolicies, nil
 }
