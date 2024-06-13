@@ -226,8 +226,7 @@ func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, streams generi
 		status := check.function(cmd, factory, streams, config)
 		preflightChecks[i].status = status
 	}
-	printPreflightCheckSummary(streams, preflightChecks)
-	return nil
+	return printPreflightCheckSummary(streams, preflightChecks)
 }
 
 func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
@@ -253,7 +252,6 @@ func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, streams gene
 
 	fmt.Fprintln(streams.Out, "Check Passed - Metrics API available.")
 	return passed
-
 }
 
 func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
@@ -285,7 +283,6 @@ func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, stream
 
 	fmt.Fprintf(streams.Out, "Check Passed - Default storage class %s found.\n", defaultStorageClassName)
 	return passed
-
 }
 
 func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
@@ -383,10 +380,10 @@ func checkSystemParameter(streams genericIOOptions.IOStreams, bbPackage string, 
 		}
 	} else {
 		fmt.Fprintf(streams.Out, "Check Undetermined - %s needs to be at least %d for %s to work. Current value %s\n", param, threshold, bbPackage, value)
+		status = false
 	}
 
 	return status
-
 }
 
 func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metaV1.APIGroupList) bool {
@@ -414,7 +411,7 @@ func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Facto
 		return nil, err
 	}
 
-	err = createNamespaceForCommandExecution(client, streams.Out)
+	err = createNamespaceForCommandExecution(client, streams.Out, config)
 	if err != nil {
 		return nil, err
 	}
@@ -424,11 +421,10 @@ func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Facto
 		return nil, err
 	}
 
-	return createJobForCommandExecution(client, streams.Out, secret)
-
+	return createJobForCommandExecution(client, streams.Out, secret, config)
 }
 
-func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer) error {
+func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer, config *schemas.GlobalConfiguration) error {
 	fmt.Fprintln(w, "Creating namespace for command execution...")
 
 	_, err := bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
@@ -440,10 +436,10 @@ func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer
 				return err
 			}
 			// Give the namespace deletion some time to finish before trying to recreate the namespace
-			for retry := 0; retry <= 5; retry++ {
+			for retry := 0; retry <= config.PreflightCheckConfiguration.RetryCount; retry++ {
 				_, err = bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 				if err != nil {
-					time.Sleep(5 * time.Second)
+					time.Sleep(time.Duration(config.PreflightCheckConfiguration.RetryDelay) * time.Second)
 				} else {
 					break
 				}
@@ -469,7 +465,7 @@ func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.W
 		preflightPodImagePullSecret, server, username, password)
 }
 
-func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secret *coreV1.Secret) (*coreV1.Pod, error) {
+func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secret *coreV1.Secret, config *schemas.GlobalConfiguration) (*coreV1.Pod, error) {
 	fmt.Fprintln(w, "Creating job for command execution...")
 
 	jobDesc := &bbUtilK8s.JobDesc{
@@ -489,14 +485,17 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 
 	fmt.Fprintf(w, "Waiting for job %s to be ready...\n", job.Name)
 
-	for i := 0; i < 10; i++ {
-		pods, _ := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: "job-name=preflightcheck"})
+	for i := 0; i < config.PreflightCheckConfiguration.RetryCount; i++ {
+		pods, err := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: "job-name=preflightcheck"})
+		if err != nil {
+			return nil, err
+		}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == coreV1.PodRunning {
 				return &pod, nil
 			}
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(config.PreflightCheckConfiguration.RetryDelay) * time.Second)
 	}
 
 	return nil, fmt.Errorf("timeout waiting for command execution job to be ready")
@@ -514,7 +513,6 @@ func deleteResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Facto
 }
 
 func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errOut io.Writer, pod *coreV1.Pod, command []string) error {
-
 	exec, err := factory.GetCommandExecutor(cmd, pod, "", command, out, errOut)
 	if err != nil {
 		return err
@@ -529,8 +527,12 @@ func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errO
 	return err
 }
 
-func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChecks []preflightCheck) {
-	fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
+func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChecks []preflightCheck) error {
+	var errorsList []error
+	_, err := fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
 
 	for _, check := range preflightChecks {
 		message := check.failureMessage
@@ -539,6 +541,10 @@ func printPreflightCheckSummary(streams genericIOOptions.IOStreams, preflightChe
 		} else if check.status == unknown {
 			message = fmt.Sprintf("System Error - Execute command again to run %s", check.desc)
 		}
-		fmt.Fprintf(streams.Out, "%s %s...\n%s\n\n", check.desc, check.status, message)
+		_, err := fmt.Fprintf(streams.Out, "%s %s...\n%s\n\n", check.desc, check.status, message)
+		if err != nil {
+			errorsList = append(errorsList, err)
+		}
 	}
+	return errors.Join(errorsList...)
 }

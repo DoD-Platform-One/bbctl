@@ -14,10 +14,14 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 		setRegistryServer   bool
 		setRegistryUsername bool
 		setRegistryPassword bool
+		setRetryCount       bool
+		setRetryDelay       bool
 	}{
 		{
 			"reconcile configuration, no values",
 			&PreflightCheckConfiguration{},
+			false,
+			false,
 			false,
 			false,
 			false,
@@ -28,12 +32,16 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 			true,
 			false,
 			false,
+			false,
+			false,
 		},
 		{
 			"reconcile configuration, registry username set",
 			&PreflightCheckConfiguration{},
 			false,
 			true,
+			false,
+			false,
 			false,
 		},
 		{
@@ -42,10 +50,32 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 			false,
 			false,
 			true,
+			false,
+			false,
+		},
+		{
+			"reconcile configuration, retry count set",
+			&PreflightCheckConfiguration{},
+			false,
+			false,
+			false,
+			true,
+			false,
+		},
+		{
+			"reconcile configuration, retry delay set",
+			&PreflightCheckConfiguration{},
+			false,
+			false,
+			false,
+			false,
+			true,
 		},
 		{
 			"reconcile configuration, registry server, username, and password set",
 			&PreflightCheckConfiguration{},
+			true,
+			true,
 			true,
 			true,
 			true,
@@ -66,6 +96,12 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 			}
 			if tt.setRegistryPassword {
 				instance.Set("registrypassword", registryPassword)
+			}
+			if tt.setRetryCount {
+				instance.Set("retrycount", 1)
+			}
+			if tt.setRetryDelay {
+				instance.Set("retrydelay", 1)
 			}
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
@@ -91,6 +127,20 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 			} else {
 				assert.Equal(t, "", instance.GetString("registrypassword"))
 				assert.Equal(t, "", tt.arg.RegistryPassword)
+			}
+			if tt.setRetryCount {
+				assert.Equal(t, 1, instance.GetInt("retrycount"))
+				assert.Equal(t, 1, tt.arg.RetryCount)
+			} else {
+				assert.Equal(t, 0, instance.GetInt("retrycount"))
+				assert.Equal(t, 5, tt.arg.RetryCount)
+			}
+			if tt.setRetryDelay {
+				assert.Equal(t, 1, instance.GetInt("retrydelay"))
+				assert.Equal(t, 1, tt.arg.RetryDelay)
+			} else {
+				assert.Equal(t, 0, instance.GetInt("retrydelay"))
+				assert.Equal(t, 5, tt.arg.RetryDelay)
 			}
 		})
 	}

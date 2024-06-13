@@ -55,10 +55,7 @@ func (g *GlobalConfiguration) ReconcileConfiguration(instance *viper.Viper) erro
 			allErrors = append(allErrors, err)
 		}
 	}
-	if len(allErrors) > 0 {
-		return errors.Join(allErrors...)
-	}
-	return nil
+	return errors.Join(allErrors...)
 }
 
 // getSubConfigurations returns the sub-configurations.
