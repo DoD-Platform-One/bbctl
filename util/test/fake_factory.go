@@ -46,6 +46,7 @@ func GetFakeFactory() *FakeFactory {
 	factory.SetClusterIPs(nil)
 	factory.SetLoggingFunc(nil)
 	factory.viperInstance = viper.New()
+	factory.fakeCommandExecutor = &FakeCommandExecutor{}
 	return factory
 }
 
@@ -128,23 +129,27 @@ func (f *FakeFactory) SetVirtualServices(virtualServices *apisV1Beta1.VirtualSer
 
 // FakeFactory - fake factory
 type FakeFactory struct {
-	awsConfig          aws.Config
-	callerIdentity     *bbAws.CallerIdentity
-	clusterIPs         []bbAws.ClusterIP
-	ec2Client          *ec2.Client
-	helmReleases       []*release.Release
-	loggingFunc        fakeLog.LoggingFunction
-	objects            []runtime.Object
-	gvrToListKind      map[schema.GroupVersionResource]string
-	resources          []*metaV1.APIResourceList
-	stsClient          *sts.Client
-	virtualServiceList *apisV1Beta1.VirtualServiceList
-	viperInstance      *viper.Viper
-	configClient       *bbConfig.ConfigClient
+	awsConfig           aws.Config
+	callerIdentity      *bbAws.CallerIdentity
+	clusterIPs          []bbAws.ClusterIP
+	ec2Client           *ec2.Client
+	helmReleases        []*release.Release
+	loggingFunc         fakeLog.LoggingFunction
+	objects             []runtime.Object
+	gvrToListKind       map[schema.GroupVersionResource]string
+	resources           []*metaV1.APIResourceList
+	stsClient           *sts.Client
+	virtualServiceList  *apisV1Beta1.VirtualServiceList
+	viperInstance       *viper.Viper
+	configClient        *bbConfig.ConfigClient
+	fakeCommandExecutor *FakeCommandExecutor
 
 	SetFail struct {
-		GetConfigClient bool
-		GetHelmClient   bool
+		GetConfigClient          bool
+		GetHelmClient            bool
+		GetK8sClientset          bool
+		GetK8sClientsetPrepFuncs []*func(clientset *fake.Clientset)
+		GetCommandExecutor       bool
 	}
 }
 
@@ -181,9 +186,17 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 
 // GetK8sClientset - get k8s clientset
 func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
+	if f.SetFail.GetK8sClientset {
+		return nil, fmt.Errorf("failed to get k8s clientset")
+	}
 	cs := fake.NewSimpleClientset(f.objects...)
 	if f.resources != nil {
 		cs.Fake.Resources = f.resources
+	}
+	if len(f.SetFail.GetK8sClientsetPrepFuncs) > 0 {
+		for _, prepFunc := range f.SetFail.GetK8sClientsetPrepFuncs {
+			(*prepFunc)(cs)
+		}
 	}
 	return cs, nil
 }
@@ -231,13 +244,19 @@ func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, e
 
 // GetCommandExecutor - execute command in a Pod
 func (f *FakeFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
-	fakeCommandExecutor.Command = strings.Join(command, " ")
-	return fakeCommandExecutor, nil
+	if f.SetFail.GetCommandExecutor {
+		return nil, fmt.Errorf("failed to get command executor")
+	}
+	f.fakeCommandExecutor.Command = strings.Join(command, " ")
+	return f.fakeCommandExecutor, nil
 }
 
 // GetFakeCommandExecutor - get fake command executor
-func GetFakeCommandExecutor() *FakeCommandExecutor {
-	return fakeCommandExecutor
+func (f *FakeFactory) GetFakeCommandExecutor() (*FakeCommandExecutor, error) {
+	if f.SetFail.GetCommandExecutor {
+		return nil, fmt.Errorf("failed to get command executor")
+	}
+	return f.fakeCommandExecutor, nil
 }
 
 // FakeCommandExecutor - fake command executor
@@ -261,8 +280,6 @@ func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options rem
 	stdout.Write([]byte(output))
 	return nil
 }
-
-var fakeCommandExecutor = &FakeCommandExecutor{}
 
 // GetCommandWrapper - get command wrapper
 func (f *FakeFactory) GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command {

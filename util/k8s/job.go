@@ -25,6 +25,9 @@ func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) 
 	job := &batchV1.Job{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: jobDesc.Name,
+			Labels: map[string]string{
+				"job-name": jobDesc.Name,
+			},
 		},
 		Spec: batchV1.JobSpec{
 			TTLSecondsAfterFinished: &jobDesc.TTLSecondsOnFinish,

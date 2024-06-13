@@ -85,6 +85,8 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			RegistryServer:   "test",
 			RegistryUsername: "test",
 			RegistryPassword: "test",
+			RetryCount:       1,
+			RetryDelay:       1,
 		},
 		UtilCredentialHelperConfiguration: schemas.UtilCredentialHelperConfiguration{
 			FilePath:         "/tmp/bbctl-test.yaml",
