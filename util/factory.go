@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -107,7 +108,7 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 		}
 	}
 	if credentials.URI == "" {
-		loggingClient.Error("No credentials found for %v in %v", uri, credentialsPath)
+		loggingClient.Error(fmt.Sprintf("No credentials found for %v in %v", uri, credentialsPath))
 	}
 
 	// Return the requested component
@@ -117,7 +118,7 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 		return credentials.Password
 	} else {
 		// this will panic
-		loggingClient.Error("Invalid component %v", component)
+		loggingClient.Error(fmt.Sprintf("Invalid component %v", component))
 		return ""
 	}
 }
@@ -143,7 +144,7 @@ func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
 			output = string(rawOutput[:])
 		}
 		if output == "" {
-			loggingClient.Error("No %v found for %v in %v", component, uri, helper)
+			loggingClient.Error(fmt.Sprintf("No %v found for %v in %v", component, uri, helper))
 		}
 		return output
 	}
@@ -251,10 +252,8 @@ func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod,
 		TTY:       false,
 	}, scheme.ParameterCodec, schema.GroupVersion{Version: "v1"})
 
-	config, err := f.GetRestConfig(cmd)
-	if err != nil {
-		return nil, err
-	}
+	// REST config is already validated in the f.GetK8sClientset(cmd) call above
+	config, _ := f.GetRestConfig(cmd)
 
 	return remoteCommand.NewSPDYExecutor(config, "POST", req.URL())
 }
@@ -279,16 +278,15 @@ func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*a
 		loggingClient.Debug(format, v...)
 	}
 
+	// The actionConfig.Init method will either panic or return nil
+	// It cannot return an error value like the return type says
 	actionConfig := new(action.Configuration)
-	err = actionConfig.Init(
+	actionConfig.Init(
 		clientGetter,
 		namespace,
 		os.Getenv("HELM_DRIVER"),
 		debugLog,
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	return actionConfig, nil
 }
