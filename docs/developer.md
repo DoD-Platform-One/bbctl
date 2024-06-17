@@ -19,6 +19,7 @@ Code contributions from the community are welcomed. Steps to contribute:
 1. The code must include a minimum of 80% unit test coverage
 1. The code must pass lint test
 1. Help resolve any security issues found in the mission ops pipeline
+1. Commands should be well documented and adhere to the guidelines in the [Command Guidelines](./bbctl_command_guidelines.md)
 
 ## Development Environment 
 
