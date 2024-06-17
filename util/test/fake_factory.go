@@ -145,11 +145,13 @@ type FakeFactory struct {
 	fakeCommandExecutor *FakeCommandExecutor
 
 	SetFail struct {
-		GetConfigClient          bool
-		GetHelmClient            bool
-		GetK8sClientset          bool
-		GetK8sClientsetPrepFuncs []*func(clientset *fake.Clientset)
-		GetCommandExecutor       bool
+		GetConfigClient              bool
+		GetHelmClient                bool
+		GetK8sClientset              bool
+		GetK8sClientsetPrepFuncs     []*func(clientset *fake.Clientset)
+		GetCommandExecutor           bool
+		GetK8sDynamicClient          bool
+		GetK8sDynamicClientPrepFuncs []*func(clientset *dynamicFake.FakeDynamicClient)
 	}
 }
 
@@ -203,10 +205,17 @@ func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface,
 
 // GetK8sDynamicClient - get k8s dynamic client
 func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
+	if f.SetFail.GetK8sDynamicClient {
+		return nil, fmt.Errorf("failed to get k8s dynamic client")
+	}
 	scheme := runtime.NewScheme()
 	err := coreV1.AddToScheme(scheme)
 	f.GetLoggingClient().HandleError("failed to add coreV1 to scheme", err)
-	return dynamicFake.NewSimpleDynamicClientWithCustomListKinds(scheme, f.gvrToListKind, f.objects...), nil
+	client := dynamicFake.NewSimpleDynamicClientWithCustomListKinds(scheme, f.gvrToListKind, f.objects...)
+	for _, prepFunc := range f.SetFail.GetK8sDynamicClientPrepFuncs {
+		(*prepFunc)(client)
+	}
+	return client, nil
 }
 
 // GetLoggingClient - get logging client
