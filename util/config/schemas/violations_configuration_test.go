@@ -42,19 +42,19 @@ func TestReconcileConfiguration_ViolationsConfiguration(t *testing.T) {
 
 func TestReconcileConfigurationDefaults_ViolationsConfiguration(t *testing.T) {
 	// Arrange
-	policyConfiguration := &ViolationsConfiguration{}
+	violationsConfiguration := &ViolationsConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, policyConfiguration.ReconcileConfiguration(v))
+	assert.Nil(t, violationsConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, false, policyConfiguration.Audit)
+	assert.Equal(t, false, violationsConfiguration.Audit)
 }
 
 func TestGetSubConfigurations_ViolationsConfiguration(t *testing.T) {
 	// Arrange
-	policyConfiguration := &PolicyConfiguration{}
+	violationsConfiguration := &ViolationsConfiguration{}
 	// Act
-	subConfigurations := policyConfiguration.getSubConfigurations()
+	subConfigurations := violationsConfiguration.getSubConfigurations()
 	// Assert
 	assert.Equal(t, 0, len(subConfigurations))
 }

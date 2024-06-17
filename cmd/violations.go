@@ -11,7 +11,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
@@ -75,8 +74,8 @@ func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		Short:   violationsShort,
 		Long:    violationsLong,
 		Example: violationsExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(getViolations(cmd, factory, streams))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return getViolations(cmd, factory, streams)
 		},
 	}
 
@@ -114,10 +113,7 @@ func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIO
 
 	if gkFound {
 		logger.Debug("Gatekeeper exists in cluster. Checking for Gatekeeper violations.")
-		err = listGkViolations(cmd, factory, streams, namespace, audit)
-		if err != nil {
-			return err
-		}
+		return listGkViolations(cmd, factory, streams, namespace, audit)
 	}
 
 	kyvernoFound, err := kyvernoExists(cmd, factory, streams)

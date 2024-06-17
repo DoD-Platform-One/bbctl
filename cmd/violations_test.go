@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeSchema "k8s.io/apimachinery/pkg/runtime/schema"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	dynamicFake "k8s.io/client-go/dynamic/fake"
+	fake "k8s.io/client-go/kubernetes/fake"
+	typedFake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
+	k8sTesting "k8s.io/client-go/testing"
 )
 
 func eventGK(rName string, rKind string, ns string, reason string, msg string, time time.Time) *v1.Event {
@@ -467,3 +472,638 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 		})
 	}
 }
+
+func TestGetViolations(t *testing.T) {
+	tests := []struct {
+		desc                       string
+		expected                   string
+		out                        string
+		errout                     string
+		errorGettingConfigClient   bool
+		errorCheckingForGatekeeper bool
+		errorCheckingForKyverno    bool
+	}{
+		{
+			"no errors",
+			"",
+			"",
+			"",
+			false,
+			false,
+			false,
+		},
+		{
+			"error getting config client",
+			"failed to get config client",
+			"",
+			"",
+			true,
+			false,
+			false,
+		},
+		{
+			"error checking for gatekeeper",
+			"failed to get k8s dynamic client",
+			"",
+			"",
+			false,
+			true,
+			false,
+		},
+		{
+			"error checking for kyverno",
+			"error getting kyverno crds: error in list crds",
+			"",
+			"",
+			false,
+			false,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.GetViper().Set("big-bang-repo", "test")
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetConfigClient = test.errorGettingConfigClient
+			gvrs := map[runtimeSchema.GroupVersionResource]string{}
+			for gvr, listKind := range gvrToListKindForGatekeeper() {
+				gvrs[gvr] = listKind
+			}
+			for gvr, listKind := range gvrToListKindForKyverno() {
+				gvrs[gvr] = listKind
+			}
+			factory.SetGVRToListKind(gvrs)
+			if test.errorCheckingForGatekeeper {
+				factory.SetFail.GetK8sDynamicClient = true
+			}
+			if test.errorCheckingForKyverno {
+				runCount := 0 // hack to only fail on the second call
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						if runCount == 0 {
+							runCount++
+							return false, nil, nil
+						}
+						return true, nil, fmt.Errorf("error in list crds")
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+			}
+
+			// Act
+			err := getViolations(cmd, factory, streams)
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Equal(t, test.errout, errout.String())
+			assert.Equal(t, test.out, out.String())
+			if test.errorGettingConfigClient || test.errorCheckingForGatekeeper || test.errorCheckingForKyverno {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestKyvernoExists(t *testing.T) {
+	tests := []struct {
+		desc                 string
+		expected             string
+		errorOnDynamicClient bool
+		errorOnListCRDs      bool
+	}{
+		{
+			"no errors",
+			"",
+			false,
+			false,
+		},
+		{
+			"error getting dynamic client",
+			"failed to get k8s dynamic client",
+			true,
+			false,
+		},
+		{
+			"error listing crds",
+			"error getting kyverno crds: error in list crds",
+			false,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
+			if test.errorOnListCRDs {
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list crds")
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+			}
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+
+			// Act
+			exists, err := kyvernoExists(cmd, factory, streams)
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Empty(t, errout.String())
+			assert.False(t, exists)
+			if test.errorOnDynamicClient || test.errorOnListCRDs {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+				assert.Empty(t, out.String())
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, test.expected, out.String())
+			}
+		})
+	}
+}
+
+func TestListKyvernoViolations(t *testing.T) {
+	tests := []struct {
+		desc              string
+		expected          string
+		errorGetClientset bool
+		errorOnListEvents bool
+		noViolations      bool
+		auditViolations   bool
+	}{
+		{
+			"no violations",
+			"No events found for policy violations\n\n",
+			false,
+			false,
+			true,
+			false,
+		},
+		{
+			"admission violations",
+			"Resource: NA, Kind: k1, Namespace: ns1\nPolicy: foo\nFailedAdmission\n\n",
+			false,
+			false,
+			false,
+			false,
+		},
+		{
+			"audit violations",
+			"Resource: bar, Kind: k2, Namespace: ns1\nFailedAudit\n\n",
+			false,
+			false,
+			false,
+			true,
+		},
+		{
+			"error getting clientset",
+			"failed to get k8s clientset",
+			true,
+			false,
+			false,
+			false,
+		},
+		{
+			"error listing events",
+			"error in list events",
+			false,
+			true,
+			false,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sClientset = test.errorGetClientset
+			if test.errorOnListEvents {
+				modFunc := func(client *fake.Clientset) {
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list events")
+					})
+				}
+				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
+			}
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			if !test.noViolations {
+				eventList := &v1.EventList{
+					Items: []v1.Event{
+						*eventKyverno("foo", "k1", "ns1", "admission-controller", "FailedAdmission", time.Now()),
+						*eventKyverno("bar", "k2", "ns1", "policy-controller", "FailedAudit", time.Now()),
+					},
+				}
+				factory.SetObjects([]runtime.Object{eventList})
+			}
+
+			// Act
+			err := listKyvernoViolations(cmd, factory, streams, "ns1", test.auditViolations)
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Empty(t, errout.String())
+			if test.errorGetClientset || test.errorOnListEvents {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+				assert.Empty(t, out.String())
+			} else {
+				assert.Nil(t, err)
+				assert.Contains(t, out.String(), test.expected)
+			}
+		})
+	}
+}
+
+func TestGatekeeperExists(t *testing.T) {
+	tests := []struct {
+		desc                 string
+		expected             string
+		errorOnDynamicClient bool
+		errorOnListCRDs      bool
+	}{
+		{
+			"no errors",
+			"",
+			false,
+			false,
+		},
+		{
+			"error getting dynamic client",
+			"failed to get k8s dynamic client",
+			true,
+			false,
+		},
+		{
+			"error listing crds",
+			"error getting gatekeeper crds: error in list crds",
+			false,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
+			if test.errorOnListCRDs {
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list crds")
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+			}
+			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+
+			// Act
+			exists, err := gatekeeperExists(cmd, factory, streams)
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Empty(t, errout.String())
+			assert.False(t, exists)
+			if test.errorOnDynamicClient || test.errorOnListCRDs {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+				assert.Empty(t, out.String())
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, test.expected, out.String())
+			}
+		})
+	}
+}
+
+// listGkViolations tested in previous tests
+
+func TestListGkDenyViolations(t *testing.T) {
+	tests := []struct {
+		desc              string
+		expected          string
+		errorGetClientset bool
+		errorOnListEvents bool
+		noViolations      bool
+	}{
+		{
+			"no violations",
+			"No events found for deny violations\n\n",
+			false,
+			false,
+			true,
+		},
+		{
+			"deny violations",
+			"Resource: foo, Kind: k1, Namespace: ns1\nConstraint: \nabc\n\n",
+			false,
+			false,
+			false,
+		},
+		{
+			"error getting clientset",
+			"failed to get k8s clientset",
+			true,
+			false,
+			false,
+		},
+		{
+			"error listing events",
+			"error in list events",
+			false,
+			true,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sClientset = test.errorGetClientset
+			if test.errorOnListEvents {
+				modFunc := func(client *fake.Clientset) {
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list events")
+					})
+				}
+				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
+			}
+			if !test.noViolations {
+				eventList := &v1.EventList{
+					Items: []v1.Event{
+						*eventGK("foo", "k1", "ns1", "FailedAdmission", "abc", time.Now()),
+					},
+				}
+				factory.SetObjects([]runtime.Object{eventList})
+			}
+
+			// Act
+			err := listGkDenyViolations(cmd, factory, streams, "ns1")
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Empty(t, errout.String())
+			if test.errorGetClientset || test.errorOnListEvents {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+				assert.Empty(t, out.String())
+			} else {
+				assert.Nil(t, err)
+				assert.Contains(t, out.String(), test.expected)
+			}
+		})
+	}
+}
+
+func TestListGkAuditViolations(t *testing.T) {
+	tests := []struct {
+		desc                   string
+		expected               string
+		errorGetDynamicClient  bool
+		errorOnListCrds        bool
+		noViolations           bool
+		errorOnListConstraints bool
+	}{
+		{
+			"no violations",
+			"No violations found in audit\n\n\n",
+			false,
+			false,
+			true,
+			false,
+		},
+		{
+			"audit violations",
+			"Resource: foo, Kind: k1, Namespace: ns1\nFailedAdmission\n\n",
+			false,
+			false,
+			false,
+			false,
+		},
+		{
+			"error getting dynamic clientset",
+			"failed to get k8s dynamic client",
+			true,
+			false,
+			false,
+			false,
+		},
+		{
+			"error listing crds",
+			"error getting gatekeeper crds: error in list events",
+			false,
+			true,
+			false,
+			false,
+		},
+		{
+			"error listing constraints",
+			"error getting gatekeeper constraint: error in list constraints",
+			false,
+			false,
+			false,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sDynamicClient = test.errorGetDynamicClient
+			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+			if test.errorOnListCrds {
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list events")
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+			} else if !test.noViolations {
+				var objects []runtime.Object
+				crdList := unstructured.UnstructuredList{
+					Object: map[string]interface{}{
+						"apiVersion": "apiextensions.k8s.io/v1",
+						"kind":       "customresourcedefinitionList",
+					},
+					Items: []unstructured.Unstructured{
+						{
+							Object: map[string]interface{}{
+								"apiVersion": "apiextensions.k8s.io/v1",
+								"kind":       "customresourcedefinition",
+								"metadata": map[string]interface{}{
+									"name": "foos.constraints.gatekeeper.sh",
+									"labels": map[string]interface{}{
+										"app.kubernetes.io/name": "gatekeeper",
+									},
+								},
+							},
+						},
+					},
+				}
+				objects = append(objects, &crdList)
+				if !test.errorOnListConstraints {
+					constraints := unstructured.UnstructuredList{
+						Object: map[string]interface{}{
+							"apiVersion": "constraints.gatekeeper.sh/v1beta1",
+							"kind":       "gkPolicyList",
+						},
+						Items: []unstructured.Unstructured{
+							{
+								Object: map[string]interface{}{
+									"apiVersion": "constraints.gatekeeper.sh/v1beta1",
+									"kind":       "foo",
+									"metadata": map[string]interface{}{
+										"name": "foo-1",
+										"labels": map[string]interface{}{
+											"app.kubernetes.io/name": "gatekeeper",
+										},
+									},
+									"status": map[string]interface{}{
+										"auditTimestamp": "2021-11-27T23:55:33Z",
+										"violations": []interface{}{
+											map[string]interface{}{"kind": "k1", "name": "foo", "namespace": "ns1", "message": "FailedAdmission", "enforcementAction": "deny"},
+										},
+									},
+								},
+							},
+						},
+					}
+					objects = append(objects, &constraints)
+				} else {
+					modFunc := func(client *dynamicFake.FakeDynamicClient) {
+						client.Fake.PrependReactor("list", "foos", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+							return true, nil, fmt.Errorf("error in list constraints")
+						})
+					}
+					factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+				}
+				factory.SetObjects(objects)
+			}
+
+			// Act
+			err := listGkAuditViolations(cmd, factory, streams, "ns1")
+
+			// Assert
+			assert.Empty(t, in.String())
+			assert.Empty(t, errout.String())
+			if test.errorGetDynamicClient || test.errorOnListCrds || test.errorOnListConstraints {
+				assert.NotNil(t, err)
+				assert.Equal(t, test.expected, err.Error())
+				assert.Empty(t, out.String())
+			} else {
+				assert.Nil(t, err)
+				assert.Contains(t, out.String(), test.expected)
+			}
+		})
+	}
+}
+
+func TestGetGkConstraintViolations(t *testing.T) {
+	tests := []struct {
+		desc                   string
+		expected               string
+		errorNestedFieldNoCopy bool
+		errorOnNestedSlice     bool
+	}{
+		{
+			"no violations",
+			"No violations found in audit\n\n\n",
+			false,
+			false,
+		},
+		{
+			"violations",
+			"Resource: foo, Kind: k1, Namespace: ns1\nFailedAdmission\n\n",
+			false,
+			false,
+		},
+		{
+			"error getting nested field",
+			".status.auditTimestamp accessor error: 4 is of the type int, expected map[string]interface{}",
+			true,
+			false,
+		},
+		{
+			"error on nested slice",
+			".status.violations accessor error: 4 is of the type int, expected []interface{}",
+			false,
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			constraint := unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "constraints.gatekeeper.sh/v1beta1",
+					"kind":       "foo",
+					"metadata": map[string]interface{}{
+						"name": "foo-1",
+						"labels": map[string]interface{}{
+							"app.kubernetes.io/name": "gatekeeper",
+						},
+					},
+					"status": map[string]interface{}{
+						"auditTimestamp": "2021-11-27T23:55:33Z",
+						"violations": []interface{}{
+							map[string]interface{}{"kind": "k1", "name": "foo", "namespace": "ns1", "message": "FailedAdmission", "enforcementAction": "deny"},
+						},
+					},
+				},
+			}
+			if test.errorNestedFieldNoCopy {
+				constraint.Object["status"] = 4
+			}
+			if test.errorOnNestedSlice {
+				constraint.Object["status"].(map[string]interface{})["violations"] = 4
+			}
+
+			// Act
+			violations, err := getGkConstraintViolations(&constraint)
+
+			// Assert
+			if test.errorNestedFieldNoCopy || test.errorOnNestedSlice {
+				assert.NotNil(t, err)
+				assert.Contains(t, err.Error(), test.expected)
+				assert.Nil(t, violations)
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, violations)
+				assert.Equal(t, 1, len(*violations))
+				violation := (*violations)[0]
+				assert.Equal(t, "foo", violation.name)
+				assert.Equal(t, "ns1", violation.namespace)
+				assert.Equal(t, "k1", violation.kind)
+				assert.Equal(t, "deny", violation.action)
+				assert.Equal(t, "FailedAdmission", violation.message)
+				assert.Equal(t, "2021-11-27T23:55:33Z", violation.timestamp)
+			}
+		})
+	}
+}
+
+// processGkViolations tested in previous tests
+// printViolations tested in previous tests
