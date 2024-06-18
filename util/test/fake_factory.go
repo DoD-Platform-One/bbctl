@@ -54,7 +54,22 @@ func GetFakeFactory() *FakeFactory {
 
 // SetHelmReleases - set helm releases
 func (f *FakeFactory) SetHelmReleases(helmReleases []*release.Release) {
-	f.helmReleases = helmReleases
+	f.helm.releases = helmReleases
+}
+
+// SetHelmGetReleaseFunc sets the GetRelease function on the fake helm client
+func (f *FakeFactory) SetHelmGetReleaseFunc(getReleaseFunc helm.GetReleaseFunc) {
+	f.helm.getRelease = getReleaseFunc
+}
+
+// SetHelmGetValuesFunc sets the GetValues function on the fake helm client
+func (f *FakeFactory) SetHelmGetValuesFunc(getValuesFunc helm.GetValuesFunc) {
+	f.helm.getValues = getValuesFunc
+}
+
+// SetHelmGetListFunc sets the GetList function on the fake helm client
+func (f *FakeFactory) SetHelmGetListFunc(getListFunc helm.GetListFunc) {
+	f.helm.getList = getListFunc
 }
 
 // SetObjects - set objects
@@ -133,7 +148,6 @@ type FakeFactory struct {
 	callerIdentity      *bbAws.CallerIdentity
 	clusterIPs          []bbAws.ClusterIP
 	ec2Client           *ec2.Client
-	helmReleases        []*release.Release
 	loggingFunc         fakeLog.LoggingFunction
 	objects             []runtime.Object
 	gvrToListKind       map[schema.GroupVersionResource]string
@@ -152,6 +166,13 @@ type FakeFactory struct {
 		GetCommandExecutor           bool
 		GetK8sDynamicClient          bool
 		GetK8sDynamicClientPrepFuncs []*func(clientset *dynamicFake.FakeDynamicClient)
+	}
+
+	helm struct {
+		releases   []*release.Release
+		getRelease helm.GetReleaseFunc
+		getList    helm.GetListFunc
+		getValues  helm.GetValuesFunc
 	}
 }
 
@@ -177,7 +198,7 @@ func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.
 		return nil, fmt.Errorf("failed to get helm client")
 	}
 
-	return fakeHelm.NewFakeClient(f.helmReleases)
+	return fakeHelm.NewFakeClient(f.helm.getRelease, f.helm.getList, f.helm.getValues, f.helm.releases)
 }
 
 // GetClientSet - get clientset

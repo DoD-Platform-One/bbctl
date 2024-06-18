@@ -136,7 +136,7 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOS
 	}
 
 	// get constants
-	constants, err := static.GetConstants()
+	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func getBigBangStatus(helmClient helm.Client) string {
 	var sb strings.Builder
 
 	// get constants
-	constants, err := static.GetConstants()
+	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		sb.WriteString(err.Error())
 		return sb.String()

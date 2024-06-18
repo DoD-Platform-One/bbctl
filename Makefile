@@ -1,4 +1,4 @@
-.PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint release run test vet
+.PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint mocks release run test vet
 
 # If the first argument is "run"...
 ifeq (run,$(firstword $(MAKECMDGOALS)))
@@ -67,3 +67,7 @@ test:
 vet:
 	@echo "make vet linting..."
 	./scripts/vet_lint.sh
+
+mocks:
+	@echo "generating mocks..."
+	./scripts/generate_mocks.sh

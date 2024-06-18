@@ -8,18 +8,26 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-// NewFakeClient - returns a new Fake Helm client with the provided options
-func NewFakeClient(releases []*release.Release) (helm.Client, error) {
-	return &FakeClient{releases: releases}, nil
+// NewFakeClient returns a new Helm client with the provided configuration
+func NewFakeClient(getRelease helm.GetReleaseFunc, getList helm.GetListFunc, getValues helm.GetValuesFunc, releases []*release.Release) (helm.Client, error) {
+	return &FakeClient{getRelease: getRelease, getList: getList, getValues: getValues, releases: releases}, nil
 }
 
 // FakeClient - fake client
 type FakeClient struct {
 	releases []*release.Release
+
+	getRelease helm.GetReleaseFunc
+	getList    helm.GetListFunc
+	getValues  helm.GetValuesFunc
 }
 
 // GetRelease - returns a release specified by name.
 func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
+
+	if c.getRelease != nil {
+		return c.getRelease(name)
+	}
 	for _, r := range c.releases {
 		if r.Name == name {
 			return r, nil
@@ -31,11 +39,18 @@ func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
 
 // GetList - returns a list of releases
 func (c *FakeClient) GetList() ([]*release.Release, error) {
+	if c.getList != nil {
+		return c.getList()
+	}
 	return c.releases, nil
 }
 
 // GetValues - returns a list of releases
 func (c *FakeClient) GetValues(name string) (interface{}, error) {
+	if c.getValues != nil {
+		return c.getValues(name)
+	}
+
 	for _, r := range c.releases {
 		if r.Name == name {
 			return r.Chart.Values, nil
