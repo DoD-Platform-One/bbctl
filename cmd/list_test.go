@@ -1,17 +1,23 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	mock "repo1.dso.mil/big-bang/product/packages/bbctl/mocks/repo1.dso.mil/big-bang/product/packages/bbctl/static"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
+
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
-func TestGetList(t *testing.T) {
+func TestListHelmReleases_HappyPath(t *testing.T) {
 	chartFoo := &chart.Chart{
 		Metadata: &chart.Metadata{
 			Name:    "foo",
@@ -70,4 +76,59 @@ func TestGetList(t *testing.T) {
 	if !strings.Contains(releaseBar, "barbigbang2failedbar-1.0.4") {
 		t.Errorf("unexpected output: %s", releaseBar)
 	}
+}
+
+func TestListHelmReleases_NoList(t *testing.T) {
+	// given
+	errorMessage := "error retrieving list"
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	factory := bbTestUtil.GetFakeFactory()
+
+	cmd := NewReleasesCmd(factory, streams)
+
+	// when
+	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
+		return nil, fmt.Errorf(errorMessage)
+	})
+	error := listHelmReleases(cmd, factory, streams, static.DefaultClient)
+
+	// then
+	assert.NotNil(t, error)
+	assert.Equal(t, "error getting helm releases in namespace bigbang: "+errorMessage, error.Error())
+}
+
+func TestListHelmReleases_NoHelmClient(t *testing.T) {
+	// given
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	factory := bbTestUtil.GetFakeFactory()
+
+	cmd := NewReleasesCmd(factory, streams)
+
+	// when
+	factory.SetFail.GetHelmClient = true
+	error := listHelmReleases(cmd, factory, streams, static.DefaultClient)
+
+	// then
+	assert.NotNil(t, error)
+	assert.Equal(t, "failed to get helm client", error.Error())
+}
+
+func TestListHelmReleases_NoConstants(t *testing.T) {
+	// given
+	expectedError := fmt.Errorf("failed to get constants")
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	factory := bbTestUtil.GetFakeFactory()
+
+	cmd := NewReleasesCmd(factory, streams)
+
+	// when
+	constantsClient := mock.MockConstantsClient{}
+	constantsClient.On("GetConstants").Return(static.Constants{BigBangNamespace: "bigbang"}, expectedError)
+	error := listHelmReleases(cmd, factory, streams, &constantsClient)
+
+	// then
+	assert.NotNil(t, error)
 }
