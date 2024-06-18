@@ -54,27 +54,40 @@ var (
 
 		To load completions for each session, execute once:
 		
-		$ bbctl completion fish > ~/.config/fish/completions/bbctl.fish `))
+		$ bbctl completion fish > ~/.config/fish/completions/bbctl.fish
+
+		PowerShell:
+
+ 		PS> bbctl completion powershell | Out-String | Invoke -Expression
+
+		# To load completions for every new session, run:
+
+		PS> bbctl completion powershell > bbctl.ps1
+
+		# and source this file from your PowerShell profile. `))
 )
 
 // NewCompletionCmd - create a new Cobra completion command
 func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	var err error
+	includeDesc := true
 	cmd := &cobra.Command{
 		Use:                   completionUse,
 		Short:                 completionShort,
 		Long:                  completionLong,
 		DisableFlagsInUseLine: true,
-		ValidArgs:             []string{"bash", "zsh", "fish"},
+		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		Run: func(cmd *cobra.Command, args []string) {
 			switch args[0] {
 			case "bash":
-				err = cmd.Root().GenBashCompletion(streams.Out)
+				err = cmd.Root().GenBashCompletionV2(streams.Out, includeDesc)
 			case "zsh":
 				err = cmd.Root().GenZshCompletion(streams.Out)
 			case "fish":
-				err = cmd.Root().GenFishCompletion(streams.Out, true)
+				err = cmd.Root().GenFishCompletion(streams.Out, includeDesc)
+			case "powershell":
+				err = cmd.Root().GenPowerShellCompletionWithDesc(streams.Out)
 			}
 		},
 	}
