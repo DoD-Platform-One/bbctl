@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -9,42 +10,41 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
-func TestBashCompletion(t *testing.T) {
-	factory := bbTestUtil.GetFakeFactory()
-
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-
-	cmd := NewCompletionCmd(factory, streams)
-	cmd.Run(cmd, []string{"bash"})
-
-	if !strings.Contains(buf.String(), "bash completion") {
-		t.Errorf("unexpected output")
+func TestAllCompletions(t *testing.T) {
+	var tests = []struct {
+		desc  string
+		shell string
+	}{
+		{
+			desc:  "BashCompletion",
+			shell: "bash",
+		},
+		{
+			desc:  "ZshCompletion",
+			shell: "zsh",
+		},
+		{
+			desc:  "FishCompletion",
+			shell: "fish",
+		},
+		{
+			desc:  "PowershellCompletion",
+			shell: "powershell",
+		},
 	}
-}
 
-func TestZshCompletion(t *testing.T) {
-	factory := bbTestUtil.GetFakeFactory()
+	for _, test := range tests {
+		factory := bbTestUtil.GetFakeFactory()
+		streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+		t.Run(test.desc, func(t *testing.T) {
+			cmd := NewCompletionCmd(factory, streams)
+			cmd.Run(cmd, []string{test.shell})
 
-	cmd := NewCompletionCmd(factory, streams)
-	cmd.Run(cmd, []string{"zsh"})
-
-	if !strings.Contains(buf.String(), "zsh completion") {
-		t.Errorf("unexpected output")
-	}
-}
-
-func TestFishCompletion(t *testing.T) {
-	factory := bbTestUtil.GetFakeFactory()
-
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-
-	cmd := NewCompletionCmd(factory, streams)
-	cmd.Run(cmd, []string{"fish"})
-
-	if !strings.Contains(buf.String(), "fish completion") {
-		t.Errorf("unexpected output")
+			if !strings.Contains(buf.String(), fmt.Sprintf("%v completion", test.shell)) {
+				t.Errorf("unexpected output")
+			}
+		})
 	}
 }
 
