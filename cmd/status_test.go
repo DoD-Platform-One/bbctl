@@ -73,7 +73,7 @@ func TestGetBigBangStatus(t *testing.T) {
 
 	// prepare the helm client with no data
 	factory := bbTestUtil.GetFakeFactory()
-	constants, err := static.GetConstants()
+	constants, err := static.GetDefaultConstants()
 	assert.NoError(t, err)
 	helmClient, err := factory.GetHelmClient(nil, constants.BigBangNamespace)
 	assert.NoError(t, err)

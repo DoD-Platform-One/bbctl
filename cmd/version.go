@@ -59,7 +59,7 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 
 // query the cluster using helm module to get information on bigbang release
 func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	constants, err := static.GetConstants()
+	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		return err
 	}

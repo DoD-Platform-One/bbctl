@@ -6,6 +6,7 @@ import (
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/cmd/helm/require"
@@ -24,10 +25,38 @@ var (
 	valuesLong = templates.LongDesc(i18n.T(`Get all the values for a given release deployed by BigBang.`))
 
 	valuesExample = templates.Examples(i18n.T(`
-		# Get values for a helm releases in bigbang namespace 
+		# Get values for a helm release in the bigbang namespace 
 		# (equivalent of helm -n bigbang get values <RELEASE_NAME>)
 		bbctl values RELEASE_NAME`))
 )
+
+type valuesCmdHelper struct {
+	// Clients
+	constantsClient static.ConstantsClient
+	helmClient      helm.Client
+
+	// Values
+	constants static.Constants
+}
+
+// newValuesCmdHelper returns a valuesCmdHelper with the default constants
+func newValuesCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsClient static.ConstantsClient) (*valuesCmdHelper, error) {
+	constants, err := constantsClient.GetConstants()
+	if err != nil {
+		return nil, err
+	}
+
+	helmClient, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return &valuesCmdHelper{
+		constantsClient: constantsClient,
+		helmClient:      helmClient,
+		constants:       constants,
+	}, nil
+}
 
 // NewValuesCmd - new values command
 func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
@@ -38,53 +67,48 @@ func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 		Example: valuesExample,
 		Args:    require.ExactArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, hint string) ([]string, cobra.ShellCompDirective) {
+			// If we fail to get the values helper client, we should return an error
+			// as the command will not work
+			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			// We shouldn't try and attempt to continue completing as values only takes a single argument
+			// But we also don't want completion to begin suggesting file names
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			return matchingReleaseNames(cmd, factory, hint)
+			return v.matchingReleaseNames(hint)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(getHelmValues(cmd, factory, streams, args[0]))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
+			if err != nil {
+				cmdUtil.CheckErr(err)
+			}
+			return v.getHelmValues(streams, args[0])
 		},
 	}
 
 	return cmd
 }
 
-// query the cluster using helm module to get information on big bang release values
-func getHelmValues(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
-	constants, err := static.GetConstants()
-	if err != nil {
-		return err
-	}
-	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
-	if err != nil {
-		return err
-	}
-
+// getHelmValues queries the cluster using the helm module to get information on big bang release values
+func (v *valuesCmdHelper) getHelmValues(streams genericIOOptions.IOStreams, name string) error {
 	// use helm get values to get release values
-	releases, err := client.GetValues(name)
+	releases, err := v.helmClient.GetValues(name)
+	fmt.Println(releases)
 	if err != nil {
 		return fmt.Errorf("error getting helm release values in namespace %s: %s",
-			constants.BigBangNamespace, err.Error())
+			v.constants.BigBangNamespace, err.Error())
 	}
 
 	return output.EncodeYAML(streams.Out, releases)
 }
 
-// find helm releases with given prefix for command completion
-func matchingReleaseNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-	constants, err := static.GetConstants()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-	client, err := factory.GetHelmClient(cmd, constants.BigBangNamespace)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-
+// matchingReleaseNames searches the helm releases with given prefix for command completion
+func (v *valuesCmdHelper) matchingReleaseNames(hint string) ([]string, cobra.ShellCompDirective) {
 	// use helm list to get detailed information on charts deployed by bigbang
-	releases, err := client.GetList()
+	releases, err := v.helmClient.GetList()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
