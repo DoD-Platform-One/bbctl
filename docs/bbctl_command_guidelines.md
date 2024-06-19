@@ -9,10 +9,10 @@ The hope of this document is to create a set of guidelines useful for writing an
 ## Usage Strings
 
 All commands should implement the following strings:
-    - Usage String - the one-line usage message
-    - Short Description - the short description to show in the `--help` output
-    - Long Description - the long description to show in the `--help` output
-    - Example - a list of examples of how to use the command
+- Usage String - the one-line usage message
+- Short Description - the short description to show in the `--help` output
+- Long Description - the long description to show in the `--help` output
+- Example - a list of examples of how to use the command
 
 ### Annotated Example (from `cmd/violations.go`)
 Below is a annotated example of a command that implements the above values. Descriptions and expectations are provided in the comments.
