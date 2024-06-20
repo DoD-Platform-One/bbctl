@@ -503,7 +503,7 @@ func TestGetViolations(t *testing.T) {
 		},
 		{
 			"error checking for gatekeeper",
-			"failed to get k8s dynamic client",
+			"failed to get K8sDynamicClient client",
 			"",
 			"",
 			false,
@@ -586,7 +586,7 @@ func TestKyvernoExists(t *testing.T) {
 		},
 		{
 			"error getting dynamic client",
-			"failed to get k8s dynamic client",
+			"failed to get K8sDynamicClient client",
 			true,
 			false,
 		},
@@ -744,7 +744,7 @@ func TestGatekeeperExists(t *testing.T) {
 		},
 		{
 			"error getting dynamic client",
-			"failed to get k8s dynamic client",
+			"failed to get K8sDynamicClient client",
 			true,
 			false,
 		},
@@ -901,7 +901,7 @@ func TestListGkAuditViolations(t *testing.T) {
 		},
 		{
 			"error getting dynamic clientset",
-			"failed to get k8s dynamic client",
+			"failed to get K8sDynamicClient client",
 			true,
 			false,
 			false,
