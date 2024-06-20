@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
@@ -64,13 +63,15 @@ func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 			}
 			return matchingPolicyNames(cmd, factory, hint)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				cmdUtil.CheckErr(listPoliciesByName(cmd, factory, streams, args[0]))
+				return listPoliciesByName(cmd, factory, streams, args[0])
 			} else {
-				cmdUtil.CheckErr(listAllPolicies(cmd, factory, streams))
+				return listAllPolicies(cmd, factory, streams)
 			}
 		},
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	loggingClient := factory.GetLoggingClient()
@@ -111,7 +112,6 @@ func matchingPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string
 	if !config.PolicyConfiguration.Gatekeeper && config.PolicyConfiguration.Kyverno {
 		return matchingKyvernoPolicyNames(cmd, factory, hint)
 	}
-
 	return nil, cobra.ShellCompDirectiveDefault
 }
 
@@ -158,6 +158,7 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
+			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
 			return nil, cobra.ShellCompDirectiveDefault
 		}
 		for _, c := range policies.Items {
@@ -226,18 +227,19 @@ func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, st
 func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	kyvernoCrds, err := kyverno.FetchKyvernoCrds(client)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	for _, crd := range kyvernoCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
+			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
 			return err
 		}
 		for _, c := range policies.Items {
@@ -338,6 +340,7 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams 
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
+			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
 			return err
 		}
 		fmt.Fprintf(streams.Out, "\n%s\n\n", crdName)

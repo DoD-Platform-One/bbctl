@@ -161,11 +161,15 @@ type FakeFactory struct {
 	SetFail struct {
 		GetConfigClient              bool
 		GetHelmClient                bool
+		GetK8sDynamicClient          bool
+		GetK8sDynamicClientPrepFuncs []*func(clientset *dynamicFake.FakeDynamicClient)
 		GetK8sClientset              bool
 		GetK8sClientsetPrepFuncs     []*func(clientset *fake.Clientset)
 		GetCommandExecutor           bool
-		GetK8sDynamicClient          bool
-		GetK8sDynamicClientPrepFuncs []*func(clientset *dynamicFake.FakeDynamicClient)
+		GetPolicyClient              bool
+		GetCrds                      bool
+		GetDescriptor                bool
+		DescriptorType               string
 	}
 
 	helm struct {
@@ -227,8 +231,24 @@ func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface,
 // GetK8sDynamicClient - get k8s dynamic client
 func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
 	if f.SetFail.GetK8sDynamicClient {
-		return nil, fmt.Errorf("failed to get k8s dynamic client")
+		return nil, fmt.Errorf("failed to get K8sDynamicClient client")
 	}
+
+	if f.SetFail.GetPolicyClient {
+		client := &badClient{}
+		if f.SetFail.GetCrds {
+			client.FailCrd = true
+		}
+		if f.SetFail.GetDescriptor {
+			client.FailDescriptor = true
+			if f.GetViper().Get("gatekeeper") == true {
+				client.Gatekeeper = true
+			}
+			client.DescriptorType = f.SetFail.DescriptorType
+		}
+		return client, nil
+	}
+
 	scheme := runtime.NewScheme()
 	err := coreV1.AddToScheme(scheme)
 	f.GetLoggingClient().HandleError("failed to add coreV1 to scheme", err)

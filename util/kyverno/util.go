@@ -53,7 +53,7 @@ func FetchKyvernoPolicies(client dynamic.Interface, name string) (*unstructured.
 
 		resources, err := client.Resource(policyResource).List(context.TODO(), metaV1.ListOptions{})
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("error getting kyverno policies: %s", err.Error())
 		}
 
 		allPolicies.Items = append(allPolicies.Items, resources.Items...)

@@ -22,6 +22,34 @@ func policiesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, arg
 	return cmd
 }
 
+func TestGetPolicyUsage(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Equal(t, "policy CONSTRAINT_NAME", cmd.Use)
+	assert.Contains(t, cmd.Example, "bbctl policy --gatekeeper")
+	assert.Contains(t, cmd.Example, "bbctl policy --gatekeeper CONSTRAINT_NAME")
+	assert.Contains(t, cmd.Example, "bbctl policy --kyverno")
+	assert.Contains(t, cmd.Example, "bbctl policy --kyverno CONSTRAINT_NAME")
+}
+
+func TestInvalidArgsFunction(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	args := []string{"test"}
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, args, "")
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+}
+
 func gvrToListKindForPolicies() map[schema.GroupVersionResource]string {
 	return map[schema.GroupVersionResource]string{
 		{
@@ -147,8 +175,321 @@ func gvrToListKindForPolicies() map[schema.GroupVersionResource]string {
 	}
 }
 
-func TestGatekeeperPolicies(t *testing.T) {
+func TestNoMatchingPrefix(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.GetViper().Set("big-bang-repo", "test")
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+}
 
+func TestGetK8sDynamicClientErrorGatekeeper(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("gatekeeper", true)
+	factory.SetFail.GetK8sDynamicClient = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err1 := cmd.RunE(cmd, []string{})
+	err2 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+	if !assert.Contains(t, err1.Error(), "failed to get K8sDynamicClient client") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "failed to get K8sDynamicClient client") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestGetK8sDynamicClientErrorKyverno(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kyverno", true)
+	factory.SetFail.GetK8sDynamicClient = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err1 := cmd.RunE(cmd, []string{})
+	err2 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "failed to get K8sDynamicClient client") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "failed to get K8sDynamicClient client") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestNoPolicySpecified(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	err1 := cmd.RunE(cmd, []string{})
+	err2 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "either --gatekeeper or --kyverno must be specified") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "either --gatekeeper or --kyverno must be specified, but not both") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestFetchGatekeeperCrdsError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("gatekeeper", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetCrds = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err := cmd.RunE(cmd, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting gatekeeper crds:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFetchGatekeeperConstraintsError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("gatekeeper", true)
+	factory.SetFail.GetPolicyClient = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	err1 := cmd.RunE(cmd, []string{""})
+	err2 := cmd.RunE(cmd, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "error getting gatekeeper constraint:") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "error getting gatekeeper constraint:") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestFetchKyvernoCrdsError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kyverno", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetCrds = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err1 := cmd.RunE(cmd, []string{})
+	err2 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "error getting kyverno crds:") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "error getting kyverno crds:") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestFetchKyvernoPoliciesError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kyverno", true)
+	factory.SetFail.GetPolicyClient = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err1 := cmd.RunE(cmd, []string{""})
+	err2 := cmd.RunE(cmd, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "error getting kyverno policies:") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "error getting kyverno policies:") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestFetchGatekeeperPolicyDescriptorError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("gatekeeper", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetDescriptor = true
+	factory.SetFail.DescriptorType = "kind"
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	err1 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "kind accessor error") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+}
+
+func TestFetchGatekeeperPolicyDescriptorStringErrors(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("gatekeeper", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetDescriptor = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	factory.SetFail.DescriptorType = "name"
+	err1 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "desc"
+	err2 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "action"
+	err3 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "kind"
+	err4 := cmd.RunE(cmd, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	//assert.Error(t, err)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "name accessor error") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "description accessor error") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+	assert.Error(t, err3)
+	if !assert.Contains(t, err3.Error(), "Action accessor error") {
+		t.Errorf("unexpected output: %s", err3.Error())
+	}
+	assert.Error(t, err4)
+	if !assert.Contains(t, err4.Error(), "kind accessor error") {
+		t.Errorf("unexpected output: %s", err4.Error())
+	}
+}
+
+func TestFetchKyvernoPolicyDescriptorError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kyverno", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetDescriptor = true
+	factory.SetFail.DescriptorType = "kind"
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	err1 := cmd.RunE(cmd, []string{"foo-1"})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "kind accessor error") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+}
+
+func TestFetchKyvernoPolicyDescriptorStringErrors(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kyverno", true)
+	factory.SetFail.GetPolicyClient = true
+	factory.SetFail.GetDescriptor = true
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd := policiesCmd(factory, streams, []string{})
+	factory.SetFail.DescriptorType = "name"
+	err1 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "namespace"
+	err2 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "desc"
+	err3 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "action"
+	err4 := cmd.RunE(cmd, []string{})
+	factory.SetFail.DescriptorType = "kind"
+	err5 := cmd.RunE(cmd, []string{})
+	// Assert
+	assert.NotNil(t, cmd)
+	//assert.Error(t, err)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "name accessor error") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "namespace accessor error") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+	assert.Error(t, err3)
+	if !assert.Contains(t, err3.Error(), "description accessor error") {
+		t.Errorf("unexpected output: %s", err3.Error())
+	}
+	assert.Error(t, err4)
+	if !assert.Contains(t, err4.Error(), "Action accessor error") {
+		t.Errorf("unexpected output: %s", err4.Error())
+	}
+	assert.Error(t, err5)
+	if !assert.Contains(t, err5.Error(), "kind accessor error") {
+		t.Errorf("unexpected output: %s", err5.Error())
+	}
+}
+
+func TestGatekeeperPolicies(t *testing.T) {
 	crd := &unstructured.Unstructured{}
 	crd.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -258,8 +599,83 @@ func TestGatekeeperPolicies(t *testing.T) {
 	}
 }
 
-func TestKyvernoPolicies(t *testing.T) {
+func TestNoGatekeeperPolicies(t *testing.T) {
+	crd := &unstructured.Unstructured{}
+	crd.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "foos.constraints.gatekeeper.sh",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "gatekeeper",
+			},
+		},
+	})
 
+	crdList1 := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{*crd},
+	}
+
+	crdList2 := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{},
+	}
+
+	constraintList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "constraints.gatekeeper.sh/v1beta1",
+			"kind":       "gkPolicyList",
+		},
+		Items: []unstructured.Unstructured{},
+	}
+
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+		objects  []runtime.Object
+	}{
+		{
+			"No Constraints",
+			[]string{"--gatekeeper"},
+			[]string{"No constraints found"},
+			[]runtime.Object{crdList1, constraintList},
+		},
+		{
+			"No Crds",
+			[]string{"--gatekeeper"},
+			[]string{"No Gatekeeper Policies Found"},
+			[]runtime.Object{crdList2, constraintList},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			factory.GetViper().Set("big-bang-repo", "test")
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+			cmd := policiesCmd(factory, streams, test.args)
+			err := cmd.Execute()
+			assert.NoError(t, err)
+			for _, exp := range test.expected {
+				if !strings.Contains(buf.String(), exp) {
+					t.Errorf("unexpected output: %s", buf.String())
+				}
+			}
+		})
+	}
+}
+
+func TestKyvernoPolicies(t *testing.T) {
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",
@@ -368,6 +784,85 @@ func TestKyvernoPolicies(t *testing.T) {
 			[]string{"--kyverno", "nop"},
 			[]string{"No Matching Policy Found"},
 			[]runtime.Object{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			factory.GetViper().Set("big-bang-repo", "test")
+			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+			cmd := policiesCmd(factory, streams, test.args)
+			err := cmd.Execute()
+			assert.NoError(t, err)
+			for _, exp := range test.expected {
+				if !strings.Contains(buf.String(), exp) {
+					t.Errorf("unexpected output: %s", buf.String())
+				}
+			}
+		})
+	}
+}
+
+func TestNoKyvernoPolicies(t *testing.T) {
+	crd := &unstructured.Unstructured{}
+	crd.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "foos.policies.kyverno.io",
+			"labels": map[string]interface{}{
+				"app.kubernetes.io/name": "kyverno",
+			},
+		},
+		"spec": map[string]any{
+			"group": "kyverno.io",
+		},
+	})
+
+	crdList1 := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{*crd},
+	}
+
+	crdList2 := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "apiextensions.k8s.io/v1",
+			"kind":       "customresourcedefinitionList",
+		},
+		Items: []unstructured.Unstructured{},
+	}
+
+	policyList := &unstructured.UnstructuredList{
+		Object: map[string]interface{}{
+			"apiVersion": "kyverno.io/v1",
+			"kind":       "kyvernoPolicyList",
+		},
+		Items: []unstructured.Unstructured{},
+	}
+
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+		objects  []runtime.Object
+	}{
+		{
+			"No Policies",
+			[]string{"--kyverno"},
+			[]string{"No policies found"},
+			[]runtime.Object{crdList1, policyList},
+		},
+		{
+			"No Crds",
+			[]string{"--kyverno"},
+			[]string{"No Kyverno Policies Found"},
+			[]runtime.Object{crdList2, policyList},
 		},
 	}
 
