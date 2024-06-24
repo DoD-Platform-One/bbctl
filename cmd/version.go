@@ -15,19 +15,21 @@ import (
 var (
 	versionUse = `version`
 
-	versionShort = i18n.T(`Print BigBang Deployment and BigBang CLI version.`)
+	versionShort = i18n.T(`Print the current BBCTL client version and the version of the BigBang currently deployed.`)
 
-	versionLong = templates.LongDesc(i18n.T(`Print BigBang Deployment and BigBang CLI version.`))
+	versionLong = templates.LongDesc(i18n.T(`Print the version of the BBCTL client and the version of BigBang currently deployed.
+	 The BigBang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
+	 Using the --client flag will only return the BBCTL client version.`))
 
 	versionExample = templates.Examples(i18n.T(`
 		# Print version
 		bbctl version
 		
-		# Print client version only
+		# Print the BBCTL client version only
 		bbctl version --client`))
 )
 
-// NewVersionCmd - new version command
+// NewVersionCmd - Creates a new Cobra command which implements the `bbctl version` functionality
 func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     versionUse,
@@ -50,7 +52,7 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 		configClient.SetAndBindFlag(
 			"client",
 			false,
-			"Print bbctl version only",
+			"Print the BBCTL client version only",
 		),
 	)
 
@@ -63,7 +65,7 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOpti
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(streams.Out, "bigbang cli version %s\n", constants.BigBangCliVersion)
+	fmt.Fprintf(streams.Out, "BBCTL client version %s\n", constants.BigBangCliVersion)
 
 	// Config client error handling is done in the public NewVersionCmd function above
 	configClient, _ := factory.GetConfigClient(cmd)

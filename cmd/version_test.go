@@ -64,7 +64,7 @@ func TestGetVersion(t *testing.T) {
 	if !assert.Contains(t, buf.String(), "release version 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
-	if !assert.Contains(t, buf.String(), "bigbang cli version") {
+	if !assert.Contains(t, buf.String(), "BBCTL client version") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
 }
@@ -106,7 +106,7 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	if !assert.NotContains(t, buf.String(), "release version 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
-	if !assert.Contains(t, buf.String(), "bigbang cli version") {
+	if !assert.Contains(t, buf.String(), "BBCTL client version") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
 }
