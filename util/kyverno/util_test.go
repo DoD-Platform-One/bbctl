@@ -170,12 +170,22 @@ func crdList() *unstructured.UnstructuredList {
 		},
 	})
 
+	crd3 := &unstructured.Unstructured{}
+	crd3.SetUnstructuredContent(map[string]interface{}{
+		"apiVersion": "apiextensions.k8s.io/v1",
+		"kind":       "customresourcedefinition",
+		"metadata": map[string]interface{}{
+			"name": "invalid.group.crd",
+		},
+		"spec": map[string]any{},
+	})
+
 	crdList := &unstructured.UnstructuredList{
 		Object: map[string]interface{}{
 			"apiVersion": "apiextensions.k8s.io/v1",
 			"kind":       "customresourcedefinitionList",
 		},
-		Items: []unstructured.Unstructured{*crd1, *crd2},
+		Items: []unstructured.Unstructured{*crd1, *crd2, *crd3},
 	}
 
 	return crdList
@@ -264,6 +274,37 @@ func TestFetchKyvernoCrds(t *testing.T) {
 	}
 }
 
+func TestFetchKyvernoCrdsError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{crdList()})
+	factory.SetGVRToListKind(gvrToListKind())
+	client := bbTestUtil.GetBadClient()
+	client.FailCrd = true
+
+	// Act
+	result, err := FetchKyvernoCrds(client)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error getting kyverno crds")
+	assert.Nil(t, result)
+}
+
+func TestFetchKyvernoCrds_InvalidGroup(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{&crdList().Items[2]})
+	factory.SetGVRToListKind(gvrToListKind())
+	client, _ := factory.GetK8sDynamicClient(nil)
+
+	// Act
+	crds, _ := FetchKyvernoCrds(client)
+
+	// Assert
+	assert.Len(t, crds.Items, 0)
+}
+
 func TestFetchKyvernoPolicies(t *testing.T) {
 	var tests = []struct {
 		desc     string
@@ -298,4 +339,20 @@ func TestFetchKyvernoPolicies(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchKyvernoPoliciesError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{crdList()})
+	factory.SetGVRToListKind(gvrToListKind())
+	client := bbTestUtil.GetBadClient()
+
+	// Act
+	policies, err := FetchKyvernoPolicies(client, "nop.policies.kyverno.io")
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error getting kyverno policies")
+	assert.Nil(t, policies)
 }
