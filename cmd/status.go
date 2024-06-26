@@ -63,14 +63,14 @@ func NewStatusCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 	return cmd
 }
 
-// Pod
+// podData is the Pod data returned from the Kubernetes cluster
 type podData struct {
 	namespace string
 	name      string
 	status    string
 }
 
-// StatefulSet
+// statefulSetData is the StatefulSet data returned the Kubernetes cluster
 type statefulSetData struct {
 	namespace string
 	name      string
@@ -79,7 +79,7 @@ type statefulSetData struct {
 	status    string
 }
 
-// deployments
+// deploymentData is the Deployment data returned the Kubernetes cluster
 type deploymentData struct {
 	namespace string
 	name      string
@@ -88,7 +88,7 @@ type deploymentData struct {
 	status    string
 }
 
-// Daemonsets
+// daemonSetData is the DaemonSet data returned the Kubernetes cluster
 type daemonSetData struct {
 	namespace string
 	name      string
@@ -97,27 +97,28 @@ type daemonSetData struct {
 	status    string
 }
 
-// Flux HelmRelease Data
+// fluxHRData is the Flux HelmRelease data returned the Kubernetes cluster
 type fluxHRData struct {
 	namespace string
 	name      string
 	status    string
 }
 
-// Flux GitRepository Data
+// fluxGRData is the Flux GitRepository data returned the Kubernetes cluster
 type fluxGRData struct {
 	namespace string
 	name      string
 	status    string
 }
 
-// Flux Kustomizations Data
+// fluxKZData is the Flux Kustomization data returned the Kubernetes cluster
 type fluxKZData struct {
 	namespace string
 	name      string
 	status    string
 }
 
+// bbStatus queries the Kubernetes cluster and gets the Status of the various bigbang-controlled components
 func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
 	// get client-go client
 	clientset, err := factory.GetK8sClientset(cmd)
@@ -176,6 +177,7 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOS
 	return nil
 }
 
+// getBigBangStatus gets the Status of the "bigbang" HelmRelease itself
 func getBigBangStatus(helmClient helm.Client) string {
 	var sb strings.Builder
 
@@ -197,6 +199,9 @@ func getBigBangStatus(helmClient helm.Client) string {
 	return sb.String()
 }
 
+// getFluxKustomizations queries the cluster for Flux Kustomizations and returns a string with the Status of
+// the Kustomizations. If the kustomization is not ready, the status is reported as "Not Ready" and remediation
+// steps are provided.
 func getFluxKustomizations(fc client.Client) string {
 	var sb strings.Builder
 
@@ -246,6 +251,9 @@ func getFluxKustomizations(fc client.Client) string {
 	return sb.String()
 }
 
+// getFluxGitRepositories queries the cluster for Flux GitRepository resources and returns a string with the Status of
+// the GitRepositories. If the GitRepository is not ready, the status is reported as "Not Ready" and remediation
+// steps are provided.
 func getFluxGitRepositories(fluxClient client.Client) string {
 	var sb strings.Builder
 
@@ -296,6 +304,9 @@ func getFluxGitRepositories(fluxClient client.Client) string {
 	return sb.String()
 }
 
+// getFluxHelmReleases queries the Kubernetes cluster for Flux HelmRelease resources and returns a string with the Status of
+// the HelmReleases. If the HelmRelease is not ready, the status is reported as "Not Ready" and remediation
+// steps are provided.
 func getFluxHelmReleases(fluxClient client.Client) string {
 	var sb strings.Builder
 
@@ -347,6 +358,9 @@ func getFluxHelmReleases(fluxClient client.Client) string {
 	return sb.String()
 }
 
+// getDaemonSetsStatus queries the Kubernetes cluster for DaemonSet resources and returns a string with the Status of
+// the DaemonSets. If the DaemonSets are not available, the status is reported as "Not Available" and manual debugging
+// steps are provided.
 func getDaemonSetsStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
@@ -392,6 +406,9 @@ func getDaemonSetsStatus(clientset k8sClient.Interface) string {
 	return sb.String()
 }
 
+// getDeploymentStatus queries the Kubernetes cluster for Deployment resources and returns a string with the Status of
+// the Deployments. If the Deployments are not available, the status is reported as "Not Available" and manual debugging
+// steps are provided.
 func getDeploymentStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
@@ -436,6 +453,9 @@ func getDeploymentStatus(clientset k8sClient.Interface) string {
 	return sb.String()
 }
 
+// getStatefulSetStatus queries the Kubernetes cluster for StatefulSet resources and returns a string with the Status of
+// the StatefulSets. If the StatefulSets are not available, the status is reported as "Not Available" and manual debugging
+// steps are provided.
 func getStatefulSetStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
@@ -480,6 +500,9 @@ func getStatefulSetStatus(clientset k8sClient.Interface) string {
 	return sb.String()
 }
 
+// getPodStatus queries the Kubernetes cluster for Pod resources and returns a string with the Status of
+// the Pods. If the Pods are not available, the status is reported as "Not Available" and manual debugging
+// steps are provided.
 func getPodStatus(clientset k8sClient.Interface) string {
 	var sb strings.Builder
 
@@ -535,6 +558,7 @@ func getPodStatus(clientset k8sClient.Interface) string {
 	return sb.String()
 }
 
+// processPodStatus processes the status of a pod and adds it to the list of pods that are ready
 func processPodStatus(pod *podData, pods *[]podData, podReady bool) {
 	if !podReady {
 		if pod.status == "" {
@@ -545,6 +569,7 @@ func processPodStatus(pod *podData, pods *[]podData, podReady bool) {
 	}
 }
 
+// getContainerStatus processes the status of a pod's containers and adds it to the list of pods that are ready
 func getContainerStatus(containerStatuses []k8sCoreV1.ContainerStatus, pod *podData, podReady *bool, isInit bool) {
 	var shortStatus string
 	var longStatus string
