@@ -33,7 +33,7 @@ import (
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Factory interface
+// Factory is an interface providing initialization methods for various external clients
 type Factory interface {
 	GetAWSClient() bbAws.Client
 	GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error)
@@ -51,31 +51,42 @@ type Factory interface {
 	GetViper() *viper.Viper
 }
 
-// NewFactory - new factory method
+// NewFactory initializes and returns a new instance of UtilityFactory
 func NewFactory() *UtilityFactory {
 	return &UtilityFactory{
 		viperInstance: viper.New(),
 	}
 }
 
-// UtilityFactory - util factory
+// UtilityFactory is a concrete implementation of the Factory interface containing a pre-initialized Viper instance
 type UtilityFactory struct {
 	viperInstance *viper.Viper
 }
 
-// CredentialsFile struct
+// CredentialsFile struct represents credentials YAML files with a top level field called `credentials`
+// which contains a list of Credentials struct values
 type CredentialsFile struct {
 	Credentials []Credentials `yaml:"credentials"`
 }
 
-// Credentials Struct
+// Credentials struct represents each individual entry in a valid credentials file.
+// URI should be unique for every entry
 type Credentials struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 	URI      string `yaml:"uri"`
 }
 
-// ReadCredentialsFile - read credentials file
+// ReadCredentialsFile reads the credentials file for the requested uri and attempts to return the string value
+// for the requested component
+// Multiple credentials can be present in the file and are identified by their `uri` field
+//
+// Credentials file path is pulled from the BBCTL config and will default to ~/.bbctl/credentials.yaml when not set
+//
+// # Valid component values are `username` and `password`, any other value will panic
+//
+// Panics when the credentials file cannot be accessed or parsed, component value is invalid,
+// and when uri is not found in credentials list
 func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) string {
 	// Get credentials path
 	loggingClient := f.GetLoggingClient()
@@ -123,7 +134,21 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 	}
 }
 
-// GetCredentialHelper - get the credential helper
+// GetCredentialHelper returns a function reference to the configured credential helper function that can
+// be called to fetch credential values. A custom credential helper function is any CLI executable
+// script which can be passed into this function via the BBCTL config settings as a file path.
+//
+// Credential helper functions take 2 parameters. For the default `credentials-file` implementation, these parameters are:
+//
+// * component (string) - The Credentials struct field name, either `username` or `password`
+//
+// * uri (string) - The Credentials struct URI value which uniquely identifies the requested component
+//
+// These parameters are passed into custom credential helpers as CLI arguments in the same order.
+//
+// Panics when no credential helper is defined, there is an issue reading credentials from a file,
+// there is an issue running a custom credential helper script, and when an empty value is returned
+// for a requested credential component
 func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
 	return func(component string, uri string) string {
 		loggingClient := f.GetLoggingClient()
@@ -150,7 +175,9 @@ func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
 	}
 }
 
-// GetAWSClient - get aws client
+// GetAWSClient initializes and returns a new AWS API client
+//
+// Panics when there are issues with the BBCTL configurations
 func (f *UtilityFactory) GetAWSClient() bbAws.Client {
 	loggingClient := f.GetLoggingClient()
 	clientGetter := bbAws.ClientGetter{}
@@ -159,7 +186,11 @@ func (f *UtilityFactory) GetAWSClient() bbAws.Client {
 	return client
 }
 
-// GetHelmClient - get helm client
+// GetHelmClient initializes and returns a new Helm client that can perform operations in the given namespace
+//
+// # Returns a nil client and an error if there are any issues with the intialization
+//
+// Panics when there are issues with the BBCTL configurations
 func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
 	actionConfig, err := f.getHelmConfig(cmd, namespace)
 	if err != nil {
@@ -176,7 +207,13 @@ func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (he
 	return helm.NewClient(getReleaseClient.Run, getListClient.Run, getValuesClient.Run)
 }
 
-// GetK8sClientset - get k8s clientset
+// GetK8sClientset initializes and returns a new k8s client by calling the kubernetes.NewForConfig()
+// function with the REST configuration defined in the BBCTL config layered together with any existing
+// KUBECONFIG settings and k8s config CLI parameters
+//
+// # Returns a nil client and an error if there are any issues with the intialization
+//
+// Panics when there are issues with the BBCTL configurations
 func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
 	config, err := f.GetRestConfig(cmd)
 	if err != nil {
@@ -186,7 +223,13 @@ func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interfa
 	return kubernetes.NewForConfig(config)
 }
 
-// GetK8sDynamicClient - get k8s dynamic client
+// GetK8sDynamicClient initializes and returns a new dynamic k8s client by calling the dynamic.NewForConfig()
+// function with the configuration defined in the BBCTL config layered together with any existing
+// KUBECONFIG settings and k8s config CLI parameters
+//
+// # Returns a nil client and an error if there are any issues with the intialization
+//
+// Panics when there are issues with the BBCTL configurations
 func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {
@@ -196,19 +239,27 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 	return bbK8sUtil.BuildDynamicClient(config)
 }
 
-// GetLoggingClient - get logging client
+// GetLoggingClient initializes and returns a new logging client using the default slog logger implementation
+//
+// Panics when there are issues initializing the logger
 func (f *UtilityFactory) GetLoggingClient() bbLog.Client {
 	return f.GetLoggingClientWithLogger(nil)
 }
 
-// GetLoggingClientWithLogger - get logging client providing logger
+// GetLoggingClientWithLogger initializes and returns a new logging client using the given logger implementation
+//
+// Panics when there are issues initializing the logger
 func (f *UtilityFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Client {
 	clientGetter := bbLog.ClientGetter{}
 	client := clientGetter.GetClient(logger)
 	return client
 }
 
-// GetRuntimeClient - get runtime client
+// GetRuntimeClient initializes and returns a new k8s runtime client by calling the client.New() function
+//
+// # Returns a nil client and an error if there are any issues with the intialization
+//
+// Panics when there are issues creating the k8s REST config
 func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error) {
 	// init runtime controller client
 	runtimeClient, err := runtimeClient.New(ctrl.GetConfigOrDie(), runtimeClient.Options{Scheme: scheme})
@@ -219,7 +270,10 @@ func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient
 	return runtimeClient, err
 }
 
-// GetRestConfig - get rest config
+// GetRestConfig returns the k8s REST configuration defined in the BBCTL config layered together with any existing
+// KUBECONFIG settings and k8s config CLI parameters
+//
+// # Returns a nil client and an error if there are any issues with the intialization
 func (f *UtilityFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {
@@ -229,7 +283,9 @@ func (f *UtilityFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	return bbK8sUtil.BuildKubeConfig(config)
 }
 
-// GetCommandExecutor - get executor to run command in a Pod
+// GetCommandExecutor initializes and returns a new SPDY executor that can run the given command in a Pod in the k8s cluster
+//
+// # Returns a nil executor and an error if there are any issues with the intialization
 func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
 	client, err := f.GetK8sClientset(cmd)
 	if err != nil {
@@ -258,6 +314,9 @@ func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod,
 	return remoteCommand.NewSPDYExecutor(config, "POST", req.URL())
 }
 
+// Internal helper function to create configs for GetHelmClient
+//
+// Panics if Helm action.Configuration.Init fails
 func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*action.Configuration, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {
@@ -291,18 +350,24 @@ func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*a
 	return actionConfig, nil
 }
 
-// GetCommandWrapper - get command wrapper
+// GetCommandWrapper initializes and returns a new Command instance which encapsulates the functionality needed to run a CLI command
+// `name` is the command to execute i.e. kubectl
+// `args` string values are all passed to the command as CLI arguments
 func (f *UtilityFactory) GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command {
 	return bbUtilApiWrappers.NewExecRunner(name, args...)
 }
 
-// GetIstioClientSet - get istio client set
+// GetIstioClientSet initializes and returns a new istio client set by calling versioned.NewForConfig() with the provided REST config settings
+//
+// # Returns a nil client and an error if there are any issues with the intialization
 func (f *UtilityFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
 	clientSet, err := versioned.NewForConfig(cfg)
 	return clientSet, err
 }
 
-// GetConfigClient - get config client
+// GetConfigClient initializes and returns a new BBCTL config client
+//
+// # Returns a nil client and an error if there are any issues with the intialization
 func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
 	clientGetter := bbConfig.ClientGetter{}
 	loggingClient := f.GetLoggingClient()
@@ -313,7 +378,7 @@ func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 	return client, nil
 }
 
-// GetViper returns the viper instance.
+// GetViper returns the viper instance
 func (f *UtilityFactory) GetViper() *viper.Viper {
 	return f.viperInstance
 }
