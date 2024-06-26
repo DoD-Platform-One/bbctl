@@ -30,12 +30,14 @@ import (
 var (
 	statusUse = `status`
 
-	statusShort = i18n.T(`Show status of Big Bang deployment.`)
+	statusShort = i18n.T(`Show the deployment status of the Big Bang deployment and its subcomponents.`)
 
-	statusLong = templates.LongDesc(i18n.T(`Show status of Big Bang deployment.`))
+	statusLong = templates.LongDesc(i18n.T(`Show the deployment status of Big Bang deployment and it subcomponents.
+		This command queries the cluster and returns the deplyoment status of all bigbang-controlled resources.
+	`))
 
 	statusExample = templates.Examples(i18n.T(`
-		# Get overall status
+		# Get the overall bigbang status
 		bbctl status`))
 )
 
