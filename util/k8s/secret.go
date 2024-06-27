@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// DockerConfigEntry holds the user information that grant the access to docker registry
+// DockerConfigEntry holds user auth information that grants access to a docker registry
 type DockerConfigEntry struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty" datapolicy:"password"`
@@ -18,8 +18,7 @@ type DockerConfigEntry struct {
 }
 
 // DockerConfig represents the config file used by the docker CLI.
-// This config that represents the credentials that should be used
-// when pulling images from specific image repositories.
+// This config is mapping of reqistry server URIs to the credentials that can be used to pull images from them
 type DockerConfig map[string]DockerConfigEntry
 
 // DockerConfigJSON represents a local docker auth config file
@@ -30,11 +29,16 @@ type DockerConfigJSON struct {
 	HTTPHeaders map[string]string `json:"HttpHeaders,omitempty" datapolicy:"token"`
 }
 
-// CreateRegistrySecret creates a new secret for docker registry
+// CreateRegistrySecret creates a new secret for docker registry credentials and deploys it into a k8s cluster using the given parameters
+//
+// Returns a nil secret and an error if there were any issues creating the secret
 func CreateRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string, server string, username string, password string) (*coreV1.Secret, error) {
 	return createRegistrySecret(k8sInterface, namespace, name, server, username, password, json.Marshal)
 }
 
+// Internal helper function to implement CreateRegistrySecret
+//
+// Returns a nil secret and an error if there were any issues creating the secret
 func createRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string, server string, username string, password string, jsonMarshalFunction func(any) ([]byte, error)) (*coreV1.Secret, error) {
 	secret := &coreV1.Secret{
 		TypeMeta: metaV1.TypeMeta{
@@ -70,6 +74,8 @@ func createRegistrySecret(k8sInterface kubernetes.Interface, namespace string, n
 }
 
 // DeleteRegistrySecret deletes docker registry secret
+//
+// Returns an error if there were any issues deleting the secret
 func DeleteRegistrySecret(k8sInterface kubernetes.Interface, namespace string, name string) error {
 	return k8sInterface.CoreV1().Secrets(namespace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
 }

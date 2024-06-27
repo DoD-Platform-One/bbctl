@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// JobDesc - Job Descriptor
+// JobDesc contains all the information needed to create a new k8s Job object in a cluster using the CreateJob function
 type JobDesc struct {
 	Name               string
 	ContainerName      string
@@ -20,7 +20,9 @@ type JobDesc struct {
 	TTLSecondsOnFinish int32
 }
 
-// CreateJob function creates a new job
+// CreateJob function creates a new k8s job and deploys it into the cluster using the given parameters
+//
+// Returns the job and an error if there were any issues creating the job
 func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) (*batchV1.Job, error) {
 	job := &batchV1.Job{
 		ObjectMeta: metaV1.ObjectMeta{
