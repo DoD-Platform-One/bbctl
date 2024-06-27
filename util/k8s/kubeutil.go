@@ -11,7 +11,7 @@ import (
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 )
 
-// BuildKubeConfigFromFlags - is a helper function that builds config object used to
+// BuildKubeConfigFromFlags is a helper function that builds a config object used to
 // interact with the k8s cluster. The configuration is sourced in the following order:
 //
 // Read config from file specified using --kubeconfig flag
