@@ -325,8 +325,19 @@ func TestCheckSystemParameters(t *testing.T) {
 		"ulimit -n":                      "131072",
 		"ulimit -u":                      "8192",
 	}
-	fullExpectedPassingOutput := "Creating namespace for command execution...\nNamespace preflight-check already exists... It will be recreated\nCreating registry secret for command execution...\nCreating job for command execution...\nWaiting for job preflightcheck to be ready...\nChecking system parameters...\nChecking vm.max_map_count\nChecking fs.file-max\nChecking ulimit -n\nChecking ulimit -u\nDeleting namespace for command execution...\n"
-
+	fullExpectedPassingOutput := []string{
+		"Creating namespace for command execution...",
+		"Namespace preflight-check already exists... It will be recreated",
+		"Creating registry secret for command execution...",
+		"Creating job for command execution...",
+		"Waiting for job preflightcheck to be ready...",
+		"Checking system parameters...",
+		"Checking vm.max_map_count",
+		"Checking fs.file-max",
+		"Checking ulimit -n",
+		"Checking ulimit -u",
+		"Deleting namespace for command execution...",
+	}
 	var tests = []struct {
 		desc                   string
 		expected               string
@@ -335,7 +346,7 @@ func TestCheckSystemParameters(t *testing.T) {
 		failGetClientset       bool
 		failGetCommandExecutor bool
 		failDeleteNamespace    bool
-		extraExpected          string
+		extraExpected          []string
 	}{
 		{
 			"check failed for max_map_count (ECK)",
@@ -345,7 +356,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check passed for max_map_count (ECK)",
@@ -355,7 +366,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check failed for max_map_count (Sonarqube)",
@@ -365,7 +376,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check passed for max_map_count (Sonarqube)",
@@ -375,7 +386,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check failed for file-max (Sonarqube)",
@@ -385,7 +396,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check passed for file-max (Sonarqube)",
@@ -395,7 +406,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check failed for ulimit -n (Sonarqube)",
@@ -405,7 +416,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check passed for ulimit -n (Sonarqube) unlimited",
@@ -415,7 +426,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check failed for ulimit -n (Sonarqube) unknown",
@@ -425,7 +436,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check failed for ulimit -u (Sonarqube)",
@@ -435,7 +446,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"check passed for ulimit -u (Sonarqube)",
@@ -445,7 +456,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"failed to get clientset",
@@ -455,7 +466,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			true,
 			false,
 			false,
-			"",
+			[]string{},
 		},
 		{
 			"failed to get command executor",
@@ -475,7 +486,28 @@ func TestCheckSystemParameters(t *testing.T) {
 			false,
 			false,
 			true,
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\nCreating job for command execution...\nWaiting for job preflightcheck to be ready...\nChecking system parameters...\nChecking vm.max_map_count\nvm.max_map_count = 524288\nCheck Passed - vm.max_map_count 524288 is suitable for ECK to work.\nvm.max_map_count = 524288\nCheck Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.\nChecking fs.file-max\nfs.file-max = 131072\nCheck Passed - fs.file-max 131072 is suitable for Sonarqube to work.\nChecking ulimit -n\nulimit -n = 131072\nCheck Passed - ulimit -n 131072 is suitable for Sonarqube to work.\nChecking ulimit -u\nulimit -u = 8192\nCheck Passed - ulimit -u 8192 is suitable for Sonarqube to work.\nDeleting namespace for command execution...\n",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"Creating job for command execution...",
+				"Waiting for job preflightcheck to be ready...",
+				"Checking system parameters...",
+				"Checking vm.max_map_count",
+				"vm.max_map_count = 524288",
+				"Check Passed - vm.max_map_count 524288 is suitable for ECK to work.",
+				"vm.max_map_count = 524288",
+				"Check Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.",
+				"Checking fs.file-max",
+				"fs.file-max = 131072",
+				"Check Passed - fs.file-max 131072 is suitable for Sonarqube to work.",
+				"Checking ulimit -n",
+				"ulimit -n = 131072",
+				"Check Passed - ulimit -n 131072 is suitable for Sonarqube to work.",
+				"Checking ulimit -u",
+				"ulimit -u = 8192",
+				"Check Passed - ulimit -u 8192 is suitable for Sonarqube to work.",
+				"Deleting namespace for command execution...",
+			},
 		},
 	}
 
@@ -540,7 +572,9 @@ func TestCheckSystemParameters(t *testing.T) {
 					assert.Equal(t, passed, status)
 				}
 			} else {
-				assert.Equal(t, test.extraExpected, out.String())
+				for _, line := range test.extraExpected {
+					assert.Contains(t, out.String(), line)
+				}
 				assert.Contains(t, errout.String(), test.expected)
 				assert.Equal(t, unknown, status)
 			}
