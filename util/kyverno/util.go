@@ -12,7 +12,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// FetchKyvernoCrds - Fetch Kyverno Policy CRDs
+// FetchKyvernoCrds - Fetches all Custom Resource Definitions(CRDs) related to Kyverno Policies from the cluster
+// Filters CRDs with the group kyverno.io and returns the list
 func FetchKyvernoCrds(client dynamic.Interface) (*unstructured.UnstructuredList, error) {
 	var customResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
 
@@ -40,7 +41,8 @@ func FetchKyvernoCrds(client dynamic.Interface) (*unstructured.UnstructuredList,
 	return allCrds, nil
 }
 
-// FetchKyvernoPolicies - Fetch Kyverno Policies
+// FetchKyvernoPolicies - Fetches all Kyverno Policies for the specified resource name(crdname) across different API versions
+// Iterates over each API version, collects all retrieved Kyverno Policies into a single list, and returns it
 func FetchKyvernoPolicies(client dynamic.Interface, name string) (*unstructured.UnstructuredList, error) {
 	resourceName := strings.Split(name, ".")[0]
 
