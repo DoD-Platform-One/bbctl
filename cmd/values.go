@@ -20,16 +20,20 @@ import (
 var (
 	valuesUse = `values RELEASE_NAME`
 
-	valuesShort = i18n.T(`Get all the values for a given release deployed by BigBang.`)
+	valuesShort = i18n.T(`Get all the values for a given release deployed by Big Bang.`)
 
-	valuesLong = templates.LongDesc(i18n.T(`Get all the values for a given release deployed by BigBang.`))
+	valuesLong = templates.LongDesc(i18n.T(`Get all the values for a given release deployed by Big Bang.
+		Running this comamnd is the equivalent of running "helm -n bigbang get values RELEASE_NAME".
+
+		This command only looks for releases in the namespace in which the Big Bang umbrella chart is deployed.
+	`))
 
 	valuesExample = templates.Examples(i18n.T(`
-		# Get values for a helm release in the bigbang namespace 
-		# (equivalent of helm -n bigbang get values <RELEASE_NAME>)
+		# Get values for a helm release deployed by Big Bang
 		bbctl values RELEASE_NAME`))
 )
 
+// valuesCmdHelper is a structure for storing shared clients, values, and methods used in the values command
 type valuesCmdHelper struct {
 	// Clients
 	constantsClient static.ConstantsClient
@@ -58,7 +62,7 @@ func newValuesCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCli
 	}, nil
 }
 
-// NewValuesCmd - new values command
+// NewValuesCmd returns a new values command
 func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     valuesUse,
