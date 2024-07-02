@@ -18,26 +18,29 @@ import (
 )
 
 var (
-	policyUse = `policy CONSTRAINT_NAME`
+	policyUse = `policy --PROVIDER CONSTRAINT_NAME`
 
-	policyShort = i18n.T(`Describe policy implemented by Gatekeeper or Kyverno.`)
+	policyShort = i18n.T(`Describe the configured policies implemented by Gatekeeper or Kyverno.`)
 
 	policyLong = templates.LongDesc(i18n.T(`
-		Describe policy implemented by Gatekeeper or Kyverno.
-		Use either --gatekeeper or --kyverno flag to select the policy provider.
+		Describe the configured policies implemented by Gatekeeper or Kyverno.
+
+		Supported values for the required policy provider flag are --gatekeeper and --kyverno.
+
+		The optional constraint name argument can be provided to limit results to policies with the same name.
 	`))
 
 	policyExample = templates.Examples(i18n.T(`
-		# Describe gatekeeper policy
-		bbctl policy --gatekeeper CONSTRAINT_NAME
+		# Describe a secific gatekeeper policy named "restrictedtainttoleration"
+		bbctl policy --gatekeeper restrictedtainttoleration
 	
-	    # Get a list of active gatekeeper policies
+	    # Get a list of all active gatekeeper policies
 		bbctl policy --gatekeeper
 		
-		# Describe kyverno policy
-		bbctl policy --kyverno CONSTRAINT_NAME
+		# Describe a specific kyverno policy named "restrict-seccomp"
+		bbctl policy --kyverno restrict-seccomp
 	
-	    # Get a list of active kyverno policies
+	    # Get a list of all active kyverno policies
 		bbctl policy --kyverno
 	`))
 )
@@ -50,7 +53,7 @@ type policyDescriptor struct {
 	action    string // enforcement action
 }
 
-// NewPoliciesCmd - new policies command
+// NewPoliciesCmd - Creates a new Cobra command which implements the `bbctl policy` functionality
 func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     policyUse,
@@ -98,7 +101,7 @@ func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 	return cmd
 }
 
-// find policies with given prefix for command completion
+// Internal helper function to find policy CRDs matching the given the prefix hint for command completion
 func matchingPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
@@ -115,7 +118,7 @@ func matchingPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string
 	return nil, cobra.ShellCompDirectiveDefault
 }
 
-// find policies with given prefix for command completion
+// Internal helper function to find Gatekeeper policy CRDs matching the given the prefix hint for command completion
 func matchingGatekeeperPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -141,6 +144,7 @@ func matchingGatekeeperPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, h
 	return matches, cobra.ShellCompDirectiveNoFileComp
 }
 
+// Internal helper function to find Kyverno policy CRDs matching the given the prefix hint for command completion
 func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -172,9 +176,9 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 	return matches, cobra.ShellCompDirectiveNoFileComp
 }
 
-// query the cluster using dynamic client to get information on the following:
-// gatekeeper constraint crds
-// kyverno cluster policy crds
+// Internal helper function to query the cluster for resources matching the given the prefix hint on the following:
+//   - Gatekeeper constraint CRDs
+//   - Kyverno cluster policy CRDs
 func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
@@ -192,7 +196,7 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams gene
 	return fmt.Errorf("either --gatekeeper or --kyverno must be specified, but not both")
 }
 
-// query the cluster using dynamic client to get information on gatekeeper constraint crds
+// Internal helper function to query the cluster for Gatekeeper constraint CRDs matching the given prefix
 func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -223,7 +227,7 @@ func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, st
 	return nil
 }
 
-// query the cluster using dynamic client to get information on kyverno policies
+// Internal helper function to query the cluster for Kyverno cluster policy CRDs matching the given name
 func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -244,7 +248,7 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, strea
 		}
 		for _, c := range policies.Items {
 			policyName, _, _ := unstructured.NestedString(c.Object, "metadata", "name")
-			if strings.Compare(policyName, name) == 0 {
+			if policyName == name {
 				d, err := getKyvernoPolicyDescriptor(&c)
 				if err != nil {
 					return err
@@ -260,8 +264,9 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, strea
 	return nil
 }
 
-// query the cluster using dynamic client to get information on gatekeeper constraint crds
-// and kyverno cluster policy crds
+// Internal helper function to query the cluster using the dynamic client to get information on the following:
+//   - All Gatekeeper constraint CRDs
+//   - All Kyverno policy CRDs
 func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
@@ -279,7 +284,7 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams generic
 	return fmt.Errorf("either --gatekeeper or --kyverno must be specified")
 }
 
-// query the cluster using dynamic client to get information on gatekeeper constraint crds
+// Internal helper function to query the cluster for Gatekeeper constraint CRDs
 func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -319,6 +324,7 @@ func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory, strea
 	return nil
 }
 
+// Internal helper function to query the cluster for Kyverno policy CRDs
 func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -359,6 +365,7 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams 
 	return nil
 }
 
+// Internal helper function to query the cluster for Gatekeeper policy descriptors
 func getGatekeeperPolicyDescriptor(resource *unstructured.Unstructured) (*policyDescriptor, error) {
 	kind, _, err := unstructured.NestedString(resource.Object, "kind")
 	if err != nil {
@@ -390,6 +397,7 @@ func getGatekeeperPolicyDescriptor(resource *unstructured.Unstructured) (*policy
 	return descriptor, nil
 }
 
+// Internal helper function to query the cluster for Kyverno policy descriptors
 func getKyvernoPolicyDescriptor(resource *unstructured.Unstructured) (*policyDescriptor, error) {
 	kind, _, err := unstructured.NestedString(resource.Object, "kind")
 	if err != nil {
@@ -427,6 +435,7 @@ func getKyvernoPolicyDescriptor(resource *unstructured.Unstructured) (*policyDes
 	return descriptor, nil
 }
 
+// Internal helper function to print policy information to the console
 func printPolicyDescriptor(d *policyDescriptor, w io.Writer) {
 	if d.namespace != "" {
 		fmt.Fprintf(w, "\nKind: %s, Name: %s, Namespace: %s, EnforcementAction: %s\n", d.kind, d.name, d.namespace, d.action)

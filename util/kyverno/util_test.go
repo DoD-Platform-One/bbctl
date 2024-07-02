@@ -356,3 +356,20 @@ func TestFetchKyvernoPoliciesError(t *testing.T) {
 	assert.Contains(t, err.Error(), "error getting kyverno policies")
 	assert.Nil(t, policies)
 }
+
+func TestFetchKyvernoPoliciesPartialError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{crdList()})
+	factory.SetGVRToListKind(gvrToListKind())
+	client := bbTestUtil.GetBadClient()
+
+	// Ensure a partial failure occurs when fetching policy CRD versions
+	client.FailPolicy = true
+
+	// Act
+	_, err := FetchKyvernoPolicies(client, "nop.policies.kyverno.io")
+
+	// Assert
+	assert.Nil(t, err)
+}

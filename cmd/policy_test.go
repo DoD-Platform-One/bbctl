@@ -30,11 +30,11 @@ func TestGetPolicyUsage(t *testing.T) {
 	cmd := policiesCmd(factory, streams, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Equal(t, "policy CONSTRAINT_NAME", cmd.Use)
+	assert.Equal(t, "policy --PROVIDER CONSTRAINT_NAME", cmd.Use)
 	assert.Contains(t, cmd.Example, "bbctl policy --gatekeeper")
-	assert.Contains(t, cmd.Example, "bbctl policy --gatekeeper CONSTRAINT_NAME")
+	assert.Contains(t, cmd.Example, "bbctl policy --gatekeeper restrictedtainttoleration")
 	assert.Contains(t, cmd.Example, "bbctl policy --kyverno")
-	assert.Contains(t, cmd.Example, "bbctl policy --kyverno CONSTRAINT_NAME")
+	assert.Contains(t, cmd.Example, "bbctl policy --kyverno restrict-seccomp")
 }
 
 func TestInvalidArgsFunction(t *testing.T) {
