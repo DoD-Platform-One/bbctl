@@ -35,7 +35,7 @@ func TestGetHelpUsage(t *testing.T) {
 	assert.Contains(t, commandUseNamesList, "deploy")
 	assert.Contains(t, commandUseNamesList, "k3d")
 	assert.Contains(t, commandUseNamesList, "list")
-	assert.Contains(t, commandUseNamesList, "policy CONSTRAINT_NAME")
+	assert.Contains(t, commandUseNamesList, "policy --PROVIDER CONSTRAINT_NAME")
 	assert.Contains(t, commandUseNamesList, "preflight-check")
 	assert.Contains(t, commandUseNamesList, "status")
 	assert.Contains(t, commandUseNamesList, "values RELEASE_NAME")

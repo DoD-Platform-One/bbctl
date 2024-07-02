@@ -15,12 +15,18 @@ import (
 type badClient struct {
 	FailCrd        bool
 	FailDescriptor bool
+	FailPolicy     bool
 	Gatekeeper     bool
 	DescriptorType string
 }
 
 func (b *badClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
 	mockResource := badResource{}
+	if b.FailPolicy {
+		mockResource.MockPolicyNotFound = true
+		mockResource.MockPolicies = true
+		return mockResource
+	}
 	if resource.Resource == "customresourcedefinitions" && !b.FailCrd {
 		mockResource.MockCrds = true
 		return mockResource
@@ -43,10 +49,11 @@ func GetBadClient() *badClient {
 }
 
 type badResource struct {
-	MockCrds        bool
-	MockConstraints bool
-	MockPolicies    bool
-	DescriptorType  string
+	MockCrds           bool
+	MockConstraints    bool
+	MockPolicies       bool
+	MockPolicyNotFound bool
+	DescriptorType     string
 }
 
 func (b badResource) Namespace(name string) dynamic.ResourceInterface {
@@ -98,6 +105,13 @@ func (b badResource) List(ctx context.Context, opts metaV1.ListOptions) (*unstru
 		return constraintList, nil
 	}
 	if b.MockPolicies {
+		if b.MockPolicyNotFound {
+			// To do a partial failure, one call needs to return an error and the next needs to return success
+			// so the value of MockPolicyNotFound gets reset to false after the first failure
+			b.MockPolicyNotFound = false
+			return nil, fmt.Errorf("the server could not find the requested resource")
+		}
+
 		var policyList *unstructured.UnstructuredList
 		switch {
 		case b.DescriptorType == "kind":
