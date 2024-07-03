@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// FetchGatekeeperConstraints - Fetch Gatekeeper Constraints
+// FetchGatekeeperConstraints - Fetches all Gatekeeper Constraints for the specified resource name (crdName)
 func FetchGatekeeperConstraints(client dynamic.Interface, name string) (*unstructured.UnstructuredList, error) {
 	resourceName := strings.Split(name, ".")[0]
 
@@ -26,7 +26,7 @@ func FetchGatekeeperConstraints(client dynamic.Interface, name string) (*unstruc
 	return resources, nil
 }
 
-// FetchGatekeeperCrds - Fetch Gatekeeper Custom Resource Dedinitions
+// FetchGatekeeperCrds - Fetches all Custom Resource Definitions(CRDs) related to Gatekeeper Constraints from the cluster
 func FetchGatekeeperCrds(client dynamic.Interface) (*unstructured.UnstructuredList, error) {
 	var customResource = schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"}
 
