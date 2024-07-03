@@ -1,6 +1,6 @@
 # User Guide
 
-The BBCTL Command line interface(CLI) tool is designed to simplify development, deployment, auditing and troubleshooting of the BigBang product in a kubernetes cluster. The bbctl repository is mirrored to PartyBus code.il2.dso.mil where a Mission DevOps pipelne is run and a package is built and pushed back to repo1.dso.mil. The code has passed security scans and is eligible to receive a certificate to field(CTF).
+The `bbctl` command line interface (CLI) tool is designed to simplify development, deployment, auditing and troubleshooting of the Big Bang product in a kubernetes cluster. The `bbctl` repository is mirrored to PartyBus https://code.il2.dso.mil where a Mission DevOps pipeline is ran and a package is built and pushed back to https://repo1.dso.mil. The code has passed security scans and is eligible to receive a certificate to field(CTF).
 
 ## Installation
 
@@ -33,24 +33,30 @@ The BBCTL Command line interface(CLI) tool is designed to simplify development, 
 
 ## Usage
 
-The bbctl tool is self documenting so only a few simple examples are included here. The bbctl commands work similar to other well known tools such as `kubectl`
+The bbctl tool is self documenting so only a few simple examples are included here. The `bbctl` commands work similar to other well known tools such as `kubectl`.
 
 ```bash
-# get help for commands
+# show all available commands
 bbctl -h
-# get bbctl version
+
+# get the bbctl client version
 bbctl version
-# preflight check: Checks status of k8s cluster before deploying BigBang
+
+# preflight check: Checks status of k8s cluster before deploying Big Bang
 bbctl preflight-check --registryserver https://registry1.dso.mil --registryusername your.name --registrypassword yourPassword
-# git status of BigBang deployment
+
+# git status of Big Bang deployment
 bbctl status
-# get the helm chart values for a helm release as deployed by BigBang
+
+# get the helm chart values for a helm release as deployed by Big Bang
 bbctl values RELEASE_NAME
 ```
 
+To see a full list of commands, run `bbctl -h`. To see specific command help, usage, and examples, run `bbctl COMMAND -h`.
+
 ## Command completion
 
-To enable command completion using the tab key, ensure that bbctl completion script gets sourced in all your shell sessions. Execute the following command for details on how to generate the completion script and load it in the supported shells:
+To enable command completion using the tab key, ensure that `bbctl` completion script gets sourced in all your shell sessions. Execute the following command for details on how to generate the completion script and load it in the supported shells:
 
 ```
 bbctl completion -h
@@ -78,11 +84,11 @@ Example:
 
 ### Credential Helpers
 
-bbctl will often need credentials for various connections. It will attempt to pull appropriate credentials from the sources that control those resources, e.g. `~/.kube/config` or `~/.aws/config`. For other credentials bbctl will attempt to use Credential Helpers. Right now there are 2 kinds of credential helpers, shell commands and a credentials file.
+`bbctl` will often need credentials for various connections. It will attempt to pull appropriate credentials from the sources that control those resources, e.g. `~/.kube/config` or `~/.aws/config`. For other credentials `bbctl` will attempt to use Credential Helpers. Right now there are 2 kinds of credential helpers, shell commands and a credentials file.
 
 #### Shell Command Credential Helper
 
-You can define a shell command to provide credentials to bbctl. You will need to set `big-bang-credential-helper` to the command. The command needs to accept 2 positional parameters: `component` and `uri`. The component values will be `username` or `password`. It should return the value for the component given that URI.
+You can define a shell command to provide credentials to `bbctl`. You will need to set `big-bang-credential-helper` to the command. The command needs to accept 2 positional parameters: `component` and `uri`. The component values will be `username` or `password`. It should return the value for the component given that URI.
 
 Example variable values if you want to set them in the configuration file:
 
@@ -107,7 +113,7 @@ fi
 
 #### Credentials File Credential Helper
 
-You can define a credentials file to provide credentials to bbctl. By default it is named `credentials.yaml` and should exist in `~/.bbctl/`. If you want to use the credentials file, you will need to set `big-bang-credential-helper` to `credentials-file`. If you would like to set a different path for the credentials file, you will need to set `big-bang-credential-helper-credentials-file-path` to the full path.
+You can define a credentials file to provide credentials to `bbctl`. By default it is named `credentials.yaml` and should exist in `~/.bbctl/`. If you want to use the credentials file, you will need to set `big-bang-credential-helper` to `credentials-file`. If you would like to set a different path for the credentials file, you will need to set `big-bang-credential-helper-credentials-file-path` to the full path.
 
 Example variable values if you want to set them in the configuration file:
 

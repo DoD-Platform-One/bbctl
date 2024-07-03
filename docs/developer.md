@@ -1,6 +1,6 @@
 # bbctl
 
-CLI tool to simplify development, deployment, auditing and troubleshooting of BigBang in a kubernetes cluster.
+CLI tool to simplify development, deployment, auditing and troubleshooting of Big Bang in a kubernetes cluster.
 
 ## Contributing
 
@@ -19,7 +19,7 @@ Code contributions from the community are welcomed. Steps to contribute:
 1. The code must include a minimum of 80% unit test coverage
 1. The code must pass lint test
 1. Help resolve any security issues found in the mission ops pipeline
-1. Commands should be well documented and adhere to the guidelines in the [Command Guidelines](./bbctl_command_guidelines.md)
+1. Commands should be well documented and adhere to the guidelines in the [Command Guidelines](./bbctl-command-guidelines.md)
 
 ## Development Environment 
 
@@ -78,7 +78,7 @@ mkdir -p $HOME/go/{bin,src,pkg}
 export PATH="$PATH:${GOPATH}/bin"
 ```
 
-Clone the repo such that the bbctl is available in the following location (clone it there or run `ln -s real-location gopath-location`):
+Clone the repo such that the `bbctl` is available in the following location (clone it there or run `ln -s real-location gopath-location`):
 ```bash
 $GOPATH/src/repo1.dso.mil/big-bang/product/packages/bbctl
 ```
@@ -99,7 +99,7 @@ go get -u github.com/spf13/cobra
 
 ### Add new commands with cobra
 
-The base command is defined in cmd.go and new subcommands are added in NewRootCmd function. Follow list.go as an example to create a new subcommand. Refer to [command semantics](/docs/command.md) for the practices followed in naming bbctl commands.
+The base command is defined in `cmd.go` and new subcommands are added in `NewRootCmd` function. Follow `list.go` as an example to create a new subcommand. Refer to [command semantics](/docs/command.md) for the practices followed in naming and implementing `bbctl` commands.
 
 ### Build only with no local install
 
@@ -126,7 +126,7 @@ make install
 go install
 ```
 
-Run the installed bbctl tool
+Run the installed `bbctl` tool
 ```bash
 bbctl version
 ```
