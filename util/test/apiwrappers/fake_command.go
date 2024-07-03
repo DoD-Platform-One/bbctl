@@ -33,10 +33,12 @@ func (c *FakeCommandRunner) SetStdout(writer io.Writer) {
 	c.stdout = writer
 }
 
+// SetStderr - set the stderr for the command and the underlying runner, if applicable
 func (c *FakeCommandRunner) SetStderr(writer io.Writer) {
 	c.stderr = writer
 }
 
+// SetStdin - set the stdin for the command and the underlying runner, if applicable
 func (c *FakeCommandRunner) SetStdin(reader io.Reader) {
 	c.stdin = reader
 }

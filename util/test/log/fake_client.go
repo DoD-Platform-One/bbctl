@@ -8,20 +8,24 @@ import (
 	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 )
 
-// LoggingFunction - log function
+// LoggingFunction type is a type hint representing an arbitrary function that accepts a collection of string parameters
 type LoggingFunction func(...string)
 
-// NewFakeClient - returns a new Fake Log client with the provided options
+// NewFakeClient initializes and returns a new Fake Log client with the provided logging function
 func NewFakeClient(logFunction LoggingFunction) bbUtilLog.Client {
 	return &fakeClient{logFunction: logFunction}
 }
 
-// fakeClient - fake client
+// fakeClient
 type fakeClient struct {
 	logFunction LoggingFunction
 }
 
-// CloneWithUpdates implements log.Client.
+// Fake logger client functions provided to conform to the Logger interface
+
+// CloneWithUpdates not implemented
+//
+// Panics when called
 func (c *fakeClient) CloneWithUpdates(
 	debugFunc bbUtilLog.DebugFunc,
 	debugContextFunc bbUtilLog.DebugContextFunc,
@@ -43,7 +47,9 @@ func (c *fakeClient) CloneWithUpdates(
 	panic("unimplemented")
 }
 
-// Logger implements log.Client.
+// Logger not implemented
+//
+// Panics when called
 func (c *fakeClient) Logger() *slog.Logger {
 	panic("unimplemented")
 }
@@ -54,29 +60,37 @@ func (c *fakeClient) Debug(format string, args ...interface{}) {
 	c.logFunction(msg)
 }
 
-// DebugContext implements log.Client.
+// DebugContext not implemented
+//
+// Panics when called
 func (c *fakeClient) DebugContext(context context.Context, format string, args ...interface{}) {
 	panic("unimplemented")
 }
 
-// Enabled implements log.Client.
+// Enabled not implemented
+//
+// Panics when called
 func (c *fakeClient) Enabled(context context.Context, level slog.Level) bool {
 	panic("unimplemented")
 }
 
-// Error - logs the error and panics
+// Error formats the message using the provided format then calls the configured log function and panics
 func (c *fakeClient) Error(format string, args ...interface{}) {
 	msg := fmt.Sprintf("ERROR: "+format, args...)
 	c.logFunction(msg)
 	panic(msg)
 }
 
-// ErrorContext implements log.Client.
+// ErrorContext not implemented
+//
+// Panics when called
 func (c *fakeClient) ErrorContext(context context.Context, format string, args ...interface{}) {
 	panic("unimplemented")
 }
 
-// HandleError - logs the error and panics
+// HandleError formats the message using the provided format then calls the configured log function and panics
+//
+// Format string must not be empty
 func (c *fakeClient) HandleError(format string, err error, args ...interface{}) {
 	if format == "" {
 		msg := "format string cannot be empty for HandleError"
@@ -91,50 +105,62 @@ func (c *fakeClient) HandleError(format string, err error, args ...interface{}) 
 	}
 }
 
-// Handler implements log.Client.
+// Handler not implemented
+//
+// Panics when called
 func (c *fakeClient) Handler() slog.Handler {
 	panic("unimplemented")
 }
 
-// Info implements log.Client.
+// Info formats the message using the provided format then calls the configured log function
 func (c *fakeClient) Info(format string, args ...interface{}) {
 	msg := fmt.Sprintf("INFO: "+format, args...)
 	c.logFunction(msg)
 }
 
-// InfoContext implements log.Client.
+// InfoContext not implemented
+//
+// Panics when called
 func (c *fakeClient) InfoContext(context context.Context, format string, args ...interface{}) {
 	panic("unimplemented")
 }
 
-// Log implements log.Client.
+// Log formats the message using the provided format then calls the configured log function
 func (c *fakeClient) Log(context context.Context, level slog.Level, format string, args ...interface{}) {
 	msg := fmt.Sprintf("LOG: "+format, args...)
 	c.logFunction(msg)
 }
 
-// LogAttrs implements log.Client.
+// LogAttrs not implemented
+//
+// Panics when called
 func (c *fakeClient) LogAttrs(context context.Context, level slog.Level, msg string, attrs ...slog.Attr) {
 	panic("unimplemented")
 }
 
-// Warn implements log.Client.
+// Warn formats the message using the provided format then calls the configured log function
 func (c *fakeClient) Warn(format string, args ...interface{}) {
 	msg := fmt.Sprintf("WARN: "+format, args...)
 	c.logFunction(msg)
 }
 
-// WarnContext implements log.Client.
+// WarnContext not implemented
+//
+// Panics when called
 func (c *fakeClient) WarnContext(context context.Context, format string, args ...interface{}) {
 	panic("unimplemented")
 }
 
-// With implements log.Client.
+// With not implemented
+//
+// Panics when called
 func (c *fakeClient) With(attrs ...interface{}) *bbUtilLog.Client {
 	panic("unimplemented")
 }
 
-// WithGroup implements log.Client.
+// WithGroup not implemented
+//
+// Panics when called
 func (c *fakeClient) WithGroup(group string) *bbUtilLog.Client {
 	panic("unimplemented")
 }

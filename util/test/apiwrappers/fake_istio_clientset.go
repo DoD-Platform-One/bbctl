@@ -12,12 +12,12 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// FakeIstioClientSet - fake clientset
+// FakeIstioClientSet
 type FakeIstioClientSet struct {
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
 }
 
-// FakeNetworkingV1beta1 - fake networking v1beta1
+// FakeNetworkingV1beta1
 type FakeNetworkingV1beta1 struct {
 	DestinationRulesGetter typedV1Beta1.DestinationRulesGetter
 	GatewaysGetter         typedV1Beta1.GatewaysGetter
@@ -31,21 +31,21 @@ type FakeNetworkingV1beta1 struct {
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
 }
 
-// FakeVirtualService - fake virtual service
+// FakeVirtualService
 type FakeVirtualService struct {
 	typedV1Beta1.VirtualServiceExpansion
 
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
 }
 
-// NewFakeIstioClientSet - new fake clientset
+// NewFakeIstioClientSet intializes and returns a new FakeIstioClientSet
 func NewFakeIstioClientSet(vsList *apisV1Beta1.VirtualServiceList) *FakeIstioClientSet {
 	return &FakeIstioClientSet{VirtualServicesList: vsList}
 }
 
 // Fake Clientset functions
 
-// NetworkingV1beta1 - networking v1beta1
+// NetworkingV1beta1 intializes and returns a new FakeNetworkingV1beta1 object containing the configured list of virtual services
 func (f *FakeIstioClientSet) NetworkingV1beta1() typedV1Beta1.NetworkingV1beta1Interface {
 	return &FakeNetworkingV1beta1{
 		VirtualServicesList: f.VirtualServicesList,
@@ -54,106 +54,106 @@ func (f *FakeIstioClientSet) NetworkingV1beta1() typedV1Beta1.NetworkingV1beta1I
 
 // Fake NetworkingV1beta1Interface functions
 
-// DestinationRules - destination rules
+// DestinationRules returns nil
 func (f *FakeNetworkingV1beta1) DestinationRules(namespace string) typedV1Beta1.DestinationRuleInterface {
 	return nil
 }
 
-// Gateways - gateways
+// Gateways returns nil
 func (f *FakeNetworkingV1beta1) Gateways(namespace string) typedV1Beta1.GatewayInterface {
 	return nil
 }
 
-// ProxyConfigs - proxy configs
+// ProxyConfigs returns nil
 func (f *FakeNetworkingV1beta1) ProxyConfigs(namespace string) typedV1Beta1.ProxyConfigInterface {
 	return nil
 }
 
-// RESTClient - rest client
+// RESTClient returns nil
 func (f *FakeNetworkingV1beta1) RESTClient() rest.Interface {
 	return nil
 }
 
-// ServiceEntries - service entries
+// ServiceEntries returns nil
 func (f *FakeNetworkingV1beta1) ServiceEntries(namespace string) typedV1Beta1.ServiceEntryInterface {
 	return nil
 }
 
-// Sidecars - sidecars
+// Sidecars returns nil
 func (f *FakeNetworkingV1beta1) Sidecars(namespace string) typedV1Beta1.SidecarInterface {
 	return nil
 }
 
-// VirtualServices - virtual services
+// VirtualServices returns nil
 func (f *FakeNetworkingV1beta1) VirtualServices(namespace string) typedV1Beta1.VirtualServiceInterface {
 	return &FakeVirtualService{
 		VirtualServicesList: f.VirtualServicesList,
 	}
 }
 
-// WorkloadEntries - workload entries
+// WorkloadEntries returns nil
 func (f *FakeNetworkingV1beta1) WorkloadEntries(namespace string) typedV1Beta1.WorkloadEntryInterface {
 	return nil
 }
 
-// WorkloadGroups - workload groups
+// WorkloadGroups returns nil
 func (f *FakeNetworkingV1beta1) WorkloadGroups(namespace string) typedV1Beta1.WorkloadGroupInterface {
 	return nil
 }
 
 // Fake VirtualService functions
 
-// Create - create
+// Create returns nil, nil
 func (f *FakeVirtualService) Create(ctx context.Context, virtualService *apisV1Beta1.VirtualService, opts v1.CreateOptions) (*apisV1Beta1.VirtualService, error) {
 	return nil, nil
 }
 
-// Update - update
+// Update returns nil, nil
 func (f *FakeVirtualService) Update(ctx context.Context, virtualService *apisV1Beta1.VirtualService, opts v1.UpdateOptions) (*apisV1Beta1.VirtualService, error) {
 	return nil, nil
 }
 
-// UpdateStatus - update status
+// UpdateStatus returns nil, nil
 func (f *FakeVirtualService) UpdateStatus(ctx context.Context, virtualService *apisV1Beta1.VirtualService, opts v1.UpdateOptions) (*apisV1Beta1.VirtualService, error) {
 	return nil, nil
 }
 
-// Delete - delete
+// Delete returns nil
 func (f *FakeVirtualService) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return nil
 }
 
-// DeleteCollection - delete collection
+// DeleteCollection returns nil
 func (f *FakeVirtualService) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	return nil
 }
 
-// Get - get
+// Get returns nil, nil
 func (f *FakeVirtualService) Get(ctx context.Context, name string, opts v1.GetOptions) (*apisV1Beta1.VirtualService, error) {
 	return nil, nil
 }
 
-// List - list
+// List returns a list of virtual service resources
 func (f *FakeVirtualService) List(ctx context.Context, opts v1.ListOptions) (*apisV1Beta1.VirtualServiceList, error) {
 	return f.VirtualServicesList, nil
 }
 
-// Watch - watch
+// Watch returns nil, nil
 func (f *FakeVirtualService) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, nil
 }
 
-// Patch - patch
+// Patch returns nil, nil
 func (f *FakeVirtualService) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, args ...string) (*apisV1Beta1.VirtualService, error) {
 	return nil, nil
 }
 
-// Apply - apply
+// Apply returns nil, nil
 func (f *FakeVirtualService) Apply(ctx context.Context, virtualService *networkingV1Beta1.VirtualServiceApplyConfiguration, opts v1.ApplyOptions) (result *apisV1Beta1.VirtualService, err error) {
 	return nil, nil
 }
 
-// ApplyStatus - apply status
+// ApplyStatus returns nil, nil
 func (f *FakeVirtualService) ApplyStatus(ctx context.Context, virtualService *networkingV1Beta1.VirtualServiceApplyConfiguration, opts v1.ApplyOptions) (result *apisV1Beta1.VirtualService, err error) {
 	return nil, nil
 }
