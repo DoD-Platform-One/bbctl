@@ -21,7 +21,7 @@ var (
 	    # K3D functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
 )
 
-// NewK3dCmd - parent for k3d commands
+// NewK3dCmd - Returns a minimal parent command for the default k3d commands
 func NewK3dCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     k3dUse,
