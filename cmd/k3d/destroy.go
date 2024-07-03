@@ -14,11 +14,11 @@ import (
 var (
 	destroyUse = `destroy`
 
-	destroyShort = i18n.T(`destroy a k3d cluster`)
+	destroyShort = i18n.T(`Destroys a k3d cluster`)
 
-	destroyLong = templates.LongDesc(i18n.T(`destroy a previously created AWS k3d cluster.
+	destroyLong = templates.LongDesc(i18n.T(`Destroys a previously created AWS k3d cluster.
 	This is a wrapper around the k3d-dev.sh script. It must be checked out at --big-bang-repo location.
-	Any command line arguments after -- are passed to k3d-dev.sh (including --help).`))
+	Any command line arguments following -- are passed to k3d-dev.sh (including --help).`))
 
 	destroyExample = templates.Examples(i18n.T(`
 	    # destroy your k3d cluster previously built with 'bbctl k3d create'
@@ -28,7 +28,7 @@ var (
 		bbctl k3d destroy -- --help`))
 )
 
-// NewDestroyClusterCmd - command to destroy a k3d cluster
+// NewDestroyClusterCmd - Returns a command to destroy a k3d cluster using destroyCluster
 func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     destroyUse,
@@ -43,7 +43,7 @@ func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStr
 	return cmd
 }
 
-// destroyCluster - pass through options to the k3d-dev script to destroy a cluster
+// destroyCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to destroy the k3d dev cluster
 func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {

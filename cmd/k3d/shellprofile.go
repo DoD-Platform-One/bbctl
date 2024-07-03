@@ -15,16 +15,16 @@ import (
 var (
 	shellProfileUse = `shellprofile`
 
-	shellProfileShort = i18n.T(`Generate shell profile for k3d cluster`)
+	shellProfileShort = i18n.T(`Generates a shell profile for k3d cluster`)
 
-	shellProfileLong = templates.LongDesc(i18n.T(`Generate a shell profile (BASH compatible) to set up your environment for a k3d cluster`))
+	shellProfileLong = templates.LongDesc(i18n.T(`Generates a shell profile (BASH compatible) to set up your environment for a k3d cluster`))
 
 	shellProfileExample = templates.Examples(i18n.T(`
 	    # Generate a profile suitable for inclusion in your ~/.profile
 		bbctl k3d shellprofile`))
 )
 
-// NewShellProfileCmd - command to generate a shell profile for a k3d cluster
+// NewShellProfileCmd - Returns a command to generate a shell profile for a k3d cluster using shellProfileCluster
 func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     shellProfileUse,
@@ -39,7 +39,7 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 	return cmd
 }
 
-// shellProfileCluster - generate a BASH compatible shell profile for your cluster
+// shellProfileCluster - Returns the error (nil if no error) when generating a BASH compatible shell profile for your cluster
 func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	awsClient := factory.GetAWSClient()
 	loggingClient := factory.GetLoggingClient()

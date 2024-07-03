@@ -19,7 +19,7 @@ import (
 var (
 	sshUse = `ssh`
 
-	sshShort = i18n.T(`SSH to the primary instance of your k3d cluster`)
+	sshShort = i18n.T(`SSH to the k3d cluster`)
 
 	sshLong = templates.LongDesc(i18n.T(`SSH to the primary instance of your k3d cluster`))
 
@@ -28,7 +28,7 @@ var (
 		bbctl k3d ssh`))
 )
 
-// NewSSHCmd - command to ssh to your k3d cluster
+// NewSSHCmd - Returns a command to ssh to your k3d cluster using sshToK3dCluster
 func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     sshUse,
@@ -56,7 +56,7 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 	return cmd
 }
 
-// sshToK3dCluster - Open an SSH session to your cluster
+// sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
 func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
 	awsClient := factory.GetAWSClient()
 	loggingClient := factory.GetLoggingClient()

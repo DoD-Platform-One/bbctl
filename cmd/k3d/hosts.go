@@ -20,16 +20,16 @@ import (
 var (
 	hostsUse = `hosts`
 
-	hostsShort = i18n.T(`Generate /etc/hosts entries for your k3d cluster`)
+	hostsShort = i18n.T(`Generates /etc/hosts entries for your k3d cluster`)
 
-	hostsLong = templates.LongDesc(i18n.T(`Generate a list of hosts that reference your k3d cluster suitable for use in /etc/hosts`))
+	hostsLong = templates.LongDesc(i18n.T(`Generates a list of hosts that reference your k3d cluster suitable for use in /etc/hosts`))
 
 	hostsExample = templates.Examples(i18n.T(`
 	    # Generate a list of hosts that reference your k3d cluster suitable for use in /etc/hosts
 		bbctl k3d hosts`))
 )
 
-// NewHostsCmd - command to generate a hosts list for your k3d cluster
+// NewHostsCmd - Returns a command to generate a hosts list for your k3d cluster using hostsListCluster
 func NewHostsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     hostsUse,
@@ -57,7 +57,7 @@ func NewHostsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *co
 	return cmd
 }
 
-// hostsListCluster - command to generate a hosts list for your k3d cluster
+// hostsListCluster - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
 func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	var virtualServices []string
 
@@ -79,24 +79,24 @@ func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, streams generi
 	// One line per service
 	for _, loadBalancer := range allServices.Items {
 		virtualServices = []string{}
-		// Only consider services of type LoadBalancer
+		// Only considers services of type LoadBalancer
 		if loadBalancer.Spec.Type != coreV1.ServiceTypeLoadBalancer {
 			loggingClient.Debug("Skipping service %s of type %s\n", loadBalancer.Name, loadBalancer.Spec.Type)
 			continue
 		}
-		// Check all virtual services for a match
+		// Checks all virtual istio services for a loadbalancer name or namespace matches
 		for _, virtualService := range istioServices.Items {
-			// Skip virtual services without hosts or gateways
+			// Skips virtual services without hosts or gateways
 			if len(virtualService.Spec.Hosts) == 0 ||
 				len(virtualService.Spec.Gateways) == 0 {
 				loggingClient.Warn("Skipping virtual service %s without hosts or gateways\n", virtualService.Name)
 				continue
 			}
-			// Check if the load balancer name or namespace matches the virtual service
+			// Checks if the load balancer name or namespace matches the virtual service
 			for _, gateway := range virtualService.Spec.Gateways {
 				combinedName := fmt.Sprintf("%s/%s", loadBalancer.Namespace, loadBalancer.Name)
 				if strings.Contains(loadBalancer.Name, gateway) ||
-					// Add the virtual service hosts to the list
+					// Adds the virtual service hosts to the list if a match is found
 					strings.Contains(combinedName, gateway) {
 					virtualServices = slices.Insert(virtualServices,
 						0,
@@ -106,12 +106,12 @@ func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, streams generi
 				}
 			}
 		}
-		// Skip if no virtual services were found
+		// Skips if no virtual services were found in loadBalancer name or namespace
 		if len(virtualServices) == 0 {
 			loggingClient.Warn("Skipping service %s without virtual services\n", loadBalancer.Name)
 			continue
 		}
-		// Print each cluster IP and associated virtual services
+		// Print each cluster IP with the associated virtual services
 		for _, clusterIP := range loadBalancer.Spec.ClusterIPs {
 			msg := fmt.Sprintf("%s\t%s\n",
 				clusterIP,

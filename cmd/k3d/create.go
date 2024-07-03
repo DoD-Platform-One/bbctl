@@ -14,11 +14,11 @@ import (
 var (
 	createUse = `create`
 
-	createShort = i18n.T(`Create a k3d cluster`)
+	createShort = i18n.T(`Creates a k3d cluster`)
 
-	createLong = templates.LongDesc(i18n.T(`Create a minimal k3d cluster in AWS for development or testing.
+	createLong = templates.LongDesc(i18n.T(`Creates a minimal k3d cluster in AWS for development or testing.
 	This is a wrapper around the k3d-dev.sh script. It must be checked out at --big-bang-repo location.
-	Any command line arguments after -- are passed to k3d-dev.sh (including --help).`))
+	Any command line arguments following -- are passed to k3d-dev.sh (including --help).`))
 
 	createExample = templates.Examples(i18n.T(`
 	    # Create a default k3d cluster in AWS
@@ -27,11 +27,11 @@ var (
 		# Get the full help message from k3d-dev.sh
 		bbctl k3d create -- --help
 		
-		# Create a k3d cluster in AWS on a BIG M5 with a private IP and metalLB
+		# Create a k3d cluster in AWS on a BIG M5 with a private IP and metalLB installed
 		bbctl k3d create -- -b -p -m`))
 )
 
-// NewCreateClusterCmd - command to create a k3d cluster
+// NewCreateClusterCmd - Returns a command to create the k3d cluster using createCluster
 func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     createUse,
@@ -46,7 +46,7 @@ func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	return cmd
 }
 
-// createCluster - pass through options to the k3d-dev script to create a cluster
+// createCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to create the k3d dev cluster
 func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {
