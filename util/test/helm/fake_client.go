@@ -13,7 +13,7 @@ func NewFakeClient(getRelease helm.GetReleaseFunc, getList helm.GetListFunc, get
 	return &FakeClient{getRelease: getRelease, getList: getList, getValues: getValues, releases: releases}, nil
 }
 
-// FakeClient - fake client
+// FakeClient
 type FakeClient struct {
 	releases []*release.Release
 
@@ -22,7 +22,9 @@ type FakeClient struct {
 	getValues  helm.GetValuesFunc
 }
 
-// GetRelease - returns a release specified by name.
+// GetRelease returns a helm release matching the given name
+//
+// Returns an error if no release matches the given name
 func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
 
 	if c.getRelease != nil {
@@ -37,7 +39,9 @@ func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
 	return nil, fmt.Errorf("release %s not found", name)
 }
 
-// GetList - returns a list of releases
+// GetList returns a list of all helm releases
+//
+// Cannot return an error
 func (c *FakeClient) GetList() ([]*release.Release, error) {
 	if c.getList != nil {
 		return c.getList()
@@ -45,7 +49,9 @@ func (c *FakeClient) GetList() ([]*release.Release, error) {
 	return c.releases, nil
 }
 
-// GetValues - returns a list of releases
+// GetValues returns the values.yaml values used to deploy the helm release matching the given name
+//
+// Returns an error if no release matches the given name
 func (c *FakeClient) GetValues(name string) (interface{}, error) {
 	if c.getValues != nil {
 		return c.getValues(name)

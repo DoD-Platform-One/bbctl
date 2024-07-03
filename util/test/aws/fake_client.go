@@ -26,7 +26,7 @@ func NewFakeClient(
 	}, nil
 }
 
-// FakeClient - fake client
+// FakeClient
 type FakeClient struct {
 	clusterIPs []bbAws.ClusterIP
 	config     *aws.Config
@@ -35,17 +35,21 @@ type FakeClient struct {
 	stsClient  *sts.Client
 }
 
-// Config implements aws.Client.
+// Config returns the configured client config object
 func (c *FakeClient) Config(ctx context.Context) *aws.Config {
 	return c.config
 }
 
-// GetClusterIPs implements aws.Client.
+// GetClusterIPs returns the configured client clusterIPs object
+//
+// Cannot return an error
 func (c *FakeClient) GetClusterIPs(ctx context.Context, api bbAws.DescribeInstancesAPI, username string, filterExposure bbAws.FilterExposure) ([]bbAws.ClusterIP, error) {
 	return c.clusterIPs, nil
 }
 
-// GetSortedClusterIPs implements aws.Client.
+// GetSortedClusterIPs returns the configured client cluster IPs divded into private and public
+//
+// Cannot return an error
 func (c *FakeClient) GetSortedClusterIPs(ctx context.Context, api bbAws.DescribeInstancesAPI, username string, filterExposure bbAws.FilterExposure) (bbAws.SortedClusterIPs, error) {
 	var publicIPs, privateIPs []bbAws.ClusterIP
 	for _, ip := range c.clusterIPs {
@@ -61,17 +65,17 @@ func (c *FakeClient) GetSortedClusterIPs(ctx context.Context, api bbAws.Describe
 	}, nil
 }
 
-// GetEc2Client implements aws.Client.
+// GetEc2Client returns the configured client ec2Client object
 func (c *FakeClient) GetEc2Client(ctx context.Context, awsConfig *aws.Config) *ec2.Client {
 	return c.ec2Client
 }
 
-// GetIdentity implements aws.Client.
+// GetIdentity returns the configured client identity object
 func (c *FakeClient) GetIdentity(ctx context.Context, api bbAws.GetCallerIdentityAPI) *bbAws.CallerIdentity {
 	return c.identity
 }
 
-// GetStsClient implements aws.Client.
+// GetStsClient returns the configured client stsClient object
 func (c *FakeClient) GetStsClient(ctx context.Context, awsConfig *aws.Config) *sts.Client {
 	return c.stsClient
 }
