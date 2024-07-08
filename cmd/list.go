@@ -18,9 +18,14 @@ import (
 var (
 	listUse = `list`
 
-	listShort = i18n.T(`List all the helm releases deployed by BigBang.`)
+	listShort = i18n.T(`List all the helm releases deployed by Big Bang.`)
 
-	listLong = templates.LongDesc(i18n.T(`List all the helm releases deployed by BigBang.`))
+	listLong = templates.LongDesc(i18n.T(`List all the helm releases deployed by Big Bang.
+
+	This command queries the cluster and displays information about all helm releases in the bigbang namespace.
+
+	It displays information including Name, Namespace, Revision, Status, Chart, and Appversion.
+	`))
 
 	listExample = templates.Examples(i18n.T(`
 		# Get a list of helm releases in bigbang namespace 
@@ -28,7 +33,9 @@ var (
 		bbctl list`))
 )
 
-// NewReleasesCmd - new releases command
+// NewReleasesCmd creates a new command for listing new releases.
+//
+// Returns a cobra.Command configured to list releases.
 func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     listUse,
@@ -43,7 +50,9 @@ func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 	return cmd
 }
 
-// query the cluster using helm module to get information on bigbang release
+// listHelmReleases queries the cluster and retrieves information about helm releases in the bigbang namespace
+//
+// Returns an error if the release information could not be found
 func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, constantClient static.ConstantsClient) error {
 	constants, err := constantClient.GetConstants()
 	if err != nil {
