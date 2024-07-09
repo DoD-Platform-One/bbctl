@@ -20,6 +20,7 @@ import (
 	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 )
 
+// main - main exectable function for bbctl
 func main() {
 	flags := pFlag.NewFlagSet("bbctl", pFlag.ExitOnError)
 	factory := bbUtil.NewFactory()
@@ -27,6 +28,7 @@ func main() {
 	injectableMain(factory, flags, streams)
 }
 
+// injectableMain - helper function for main
 func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams genericIOOptions.IOStreams) {
 	flags.Bool("bbctl-log-add-source",
 		false,
