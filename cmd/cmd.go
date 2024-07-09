@@ -13,14 +13,14 @@ import (
 var (
 	cmdUse = `bbctl`
 
-	cmdShort = i18n.T(`BigBang command-line tool.`)
+	cmdShort = i18n.T(`Big Bang Control command-line tool.`)
 
 	cmdLong = templates.LongDesc(i18n.T(
-		`BigBang command-line tool allows you to run commands against Kubernetes clusters 
-		to simplify development, deployment, auditing, and troubleshooting of BigBang.`))
+		`Big Bang Control command-line tool allows you to run commands against Kubernetes clusters 
+		to simplify development, deployment, auditing, and troubleshooting of Big Bang.`))
 
 	cmdExample = templates.Examples(i18n.T(`
-		# Get help
+		# List all available commands
 		bbctl help`))
 )
 

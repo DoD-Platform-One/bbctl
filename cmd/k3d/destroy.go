@@ -21,7 +21,7 @@ var (
 	Any command line arguments following -- are passed to k3d-dev.sh (including --help).`))
 
 	destroyExample = templates.Examples(i18n.T(`
-	    # destroy your k3d cluster previously built with 'bbctl k3d create'
+	    # Destroy your k3d cluster previously built with 'bbctl k3d create'
 		bbctl k3d destroy
 		
 		# To get the full help message from k3d-dev.sh

@@ -15,10 +15,12 @@ var (
 
 	k3dShort = i18n.T(`Manage k3d cluster`)
 
-	k3dLong = templates.LongDesc(i18n.T(`Manage a minimal k3d cluster for bigbang development or testing`))
+	k3dLong = templates.LongDesc(i18n.T(`Manage a minimal k3d cluster for Big Bang development or testing.
+		This command mirrors some of the functionality of the k3d-dev.sh script in the Big Bang product repo.
+	`))
 
 	k3dExample = templates.Examples(i18n.T(`
-	    # K3D functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
+	    # k3d functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
 )
 
 // NewK3dCmd - Returns a minimal parent command for the default k3d commands

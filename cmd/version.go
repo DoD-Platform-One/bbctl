@@ -15,17 +15,17 @@ import (
 var (
 	versionUse = `version`
 
-	versionShort = i18n.T(`Print the current BBCTL client version and the version of the BigBang currently deployed.`)
+	versionShort = i18n.T(`Print the current bbctl client version and the version of the Big Bang currently deployed.`)
 
-	versionLong = templates.LongDesc(i18n.T(`Print the version of the BBCTL client and the version of BigBang currently deployed.
-	 The BigBang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
-	 Using the --client flag will only return the BBCTL client version.`))
+	versionLong = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
+	 The Big Bang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
+	 Using the --client flag will only return the bbctl client version.`))
 
 	versionExample = templates.Examples(i18n.T(`
 		# Print version
 		bbctl version
 		
-		# Print the BBCTL client version only
+		# Print the bbctl client version only
 		bbctl version --client`))
 )
 
@@ -52,20 +52,20 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 		configClient.SetAndBindFlag(
 			"client",
 			false,
-			"Print the BBCTL client version only",
+			"Print the bbctl client version only",
 		),
 	)
 
 	return cmd
 }
 
-// query the cluster using helm module to get information on bigbang release
+// bbVersion queries the cluster using helm module to get information on Big Bang release
 func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
 	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(streams.Out, "BBCTL client version %s\n", constants.BigBangCliVersion)
+	fmt.Fprintf(streams.Out, "bbctl client version %s\n", constants.BigBangCliVersion)
 
 	// Config client error handling is done in the public NewVersionCmd function above
 	configClient, _ := factory.GetConfigClient(cmd)

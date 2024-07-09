@@ -32,12 +32,12 @@ var (
 
 	statusShort = i18n.T(`Show the deployment status of the Big Bang deployment and its subcomponents.`)
 
-	statusLong = templates.LongDesc(i18n.T(`Show the deployment status of Big Bang deployment and it subcomponents.
-		This command queries the cluster and returns the deplyoment status of all bigbang-controlled resources.
+	statusLong = templates.LongDesc(i18n.T(`Show the deployment status of Big Bang deployment and its subcomponents.
+		This command queries the cluster and returns the deplyoment status of all Big Bang-controlled resources.
 	`))
 
 	statusExample = templates.Examples(i18n.T(`
-		# Get the overall bigbang status
+		# Get the overall Big Bang status
 		bbctl status`))
 )
 
