@@ -25,9 +25,9 @@ func (r ReadFileFunc) ReadFile(s string) ([]byte, error) {
 type Constants struct {
 	// readFileFunc - function to read file
 	readFileFunc ReadFileFunc
-	// BigBangHelmReleaseName - Helm Release Name for BigBang Deployment
+	// BigBangHelmReleaseName - Helm Release Name for Big Bang Deployment
 	BigBangHelmReleaseName string `yaml:"BigBangHelmReleaseName"`
-	// BigBangNamespace - Namespace where BigBang Helm Chart is deployed
+	// BigBangNamespace - Namespace where Big Bang Helm Chart is deployed
 	BigBangNamespace string `yaml:"BigBangNamespace"`
 	// BigBangCliVersion - constance for sematic versioning
 	BigBangCliVersion string `yaml:"BigBangCliVersion"`

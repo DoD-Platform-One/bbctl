@@ -81,7 +81,7 @@ type Credentials struct {
 // for the requested component
 // Multiple credentials can be present in the file and are identified by their `uri` field
 //
-// Credentials file path is pulled from the BBCTL config and will default to ~/.bbctl/credentials.yaml when not set
+// Credentials file path is pulled from the bbctl config and will default to ~/.bbctl/credentials.yaml when not set
 //
 // # Valid component values are `username` and `password`, any other value will panic
 //
@@ -136,7 +136,7 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 
 // GetCredentialHelper returns a function reference to the configured credential helper function that can
 // be called to fetch credential values. A custom credential helper function is any CLI executable
-// script which can be passed into this function via the BBCTL config settings as a file path.
+// script which can be passed into this function via the bbctl config settings as a file path.
 //
 // Credential helper functions take 2 parameters. For the default `credentials-file` implementation, these parameters are:
 //
@@ -177,7 +177,7 @@ func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
 
 // GetAWSClient initializes and returns a new AWS API client
 //
-// Panics when there are issues with the BBCTL configurations
+// Panics when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetAWSClient() bbAws.Client {
 	loggingClient := f.GetLoggingClient()
 	clientGetter := bbAws.ClientGetter{}
@@ -190,7 +190,7 @@ func (f *UtilityFactory) GetAWSClient() bbAws.Client {
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the BBCTL configurations
+// Panics when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
 	actionConfig, err := f.getHelmConfig(cmd, namespace)
 	if err != nil {
@@ -208,12 +208,12 @@ func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (he
 }
 
 // GetK8sClientset initializes and returns a new k8s client by calling the kubernetes.NewForConfig()
-// function with the REST configuration defined in the BBCTL config layered together with any existing
+// function with the REST configuration defined in the bbctl config layered together with any existing
 // KUBECONFIG settings and k8s config CLI parameters
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the BBCTL configurations
+// Panics when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
 	config, err := f.GetRestConfig(cmd)
 	if err != nil {
@@ -224,12 +224,12 @@ func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interfa
 }
 
 // GetK8sDynamicClient initializes and returns a new dynamic k8s client by calling the dynamic.NewForConfig()
-// function with the configuration defined in the BBCTL config layered together with any existing
+// function with the configuration defined in the bbctl config layered together with any existing
 // KUBECONFIG settings and k8s config CLI parameters
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the BBCTL configurations
+// Panics when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {
@@ -270,7 +270,7 @@ func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient
 	return runtimeClient, err
 }
 
-// GetRestConfig returns the k8s REST configuration defined in the BBCTL config layered together with any existing
+// GetRestConfig returns the k8s REST configuration defined in the bbctl config layered together with any existing
 // KUBECONFIG settings and k8s config CLI parameters
 //
 // # Returns a nil client and an error if there are any issues with the intialization
@@ -365,7 +365,7 @@ func (f *UtilityFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.
 	return clientSet, err
 }
 
-// GetConfigClient initializes and returns a new BBCTL config client
+// GetConfigClient initializes and returns a new bbctl config client
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {

@@ -15,7 +15,7 @@ import (
 var (
 	fluxUse     = `flux`
 	fluxShort   = i18n.T(`Deploy flux to your kubernetes cluster`)
-	fluxLong    = templates.LongDesc(i18n.T(`Deploy flux to your kubernetes cluster in a way specifically designed to support the deployment of bigbang`))
+	fluxLong    = templates.LongDesc(i18n.T(`Deploy flux to your kubernetes cluster in a way specifically designed to support the deployment of Big Bang`))
 	fluxExample = templates.Examples(i18n.T(`# Deploy flux to your cluster
 		bbctl deploy flux`))
 )

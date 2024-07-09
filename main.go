@@ -50,7 +50,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		"Location of a program that bbctl can use as a credential helper")
 	flags.String("big-bang-repo",
 		"",
-		"Location on the filesystem where the bigbang product repo is checked out")
+		"Location on the filesystem where the Big Bang product repo is checked out")
 
 	// setup the init logger
 	initSlogHandlerOptions := slog.HandlerOptions{

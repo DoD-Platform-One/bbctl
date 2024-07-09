@@ -13,11 +13,11 @@ import (
 var (
 	deployUse = `deploy`
 
-	deployShort = i18n.T(`Deploy bigbang components and preqrequisites`)
+	deployShort = i18n.T(`Deploy Big Bang components and preqrequisites`)
 
-	deployLong = templates.LongDesc(i18n.T(`Deploy bigbang components and prerequisites.
+	deployLong = templates.LongDesc(i18n.T(`Deploy Big Bang components and prerequisites.
 
-	Note: Before deploying bigbang, you must first deploy flux into the cluster. See "bigbang deploy flux --help" for more information.
+	Note: Before deploying Big Bang, you must first deploy flux into the cluster. See "bbctl deploy flux --help" for more information.
 	`))
 
 	deployExample = templates.Examples(i18n.T(``))
