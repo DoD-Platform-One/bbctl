@@ -10,64 +10,68 @@ import (
 )
 
 var (
-	completionUse = `completion [bash|zsh|fish]`
+	completionUse = `completion [bash|zsh|fish|powershell]`
 
-	completionShort = i18n.T(`Generate completion script.`)
+	completionShort = i18n.T(`Generates a completion script for a specified shell environment.`)
 
 	completionLong = templates.LongDesc(i18n.T(`
-		To load completions:
-		
-		Bash:
+		Generates a completion script for a specified shell environment.
 
+		Following script generation, it must be loaded into that environment in order to enable completions. 
+
+		See command examples for shell-specific instructions on enabling completions.
+	`))
+
+	completionExample = templates.Examples(i18n.T(`		
+		bash
+
+		# To load completions for single session
 		$ source <(bbctl completion bash)
 
-		Note: you will need to install "bash-completion" with your OS's package manager first.
-
-		To load completions for each session, execute once:
-		
-		Linux:
-		
+		# To load completions for each session on linux
+		# First install "bash-completion" with your OS's package manager
 		$ bbctl completion bash > /etc/bash_completion.d/bbctl
 		
-		macOS:
-
+		# To load completions for each session on macOS
+		# First install "bash-completion" with your OS's package manager
 		$ bbctl completion bash > /usr/local/etc/bash_completion.d/bbctl
 
-		Zsh:
 
-		If shell completion is not already enabled in your environment,
-		you will need to enable it.  You can execute the following once:
+		zsh
 
+		# Enable shell completion if it is not already enabled in your environment
 		$ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
-		To load completions for each session, execute once:
-		
+		# To load completions for each session
 		$ bbctl completion zsh > "${fpath[1]}/_bbctl"
 
-		You may need to create the directory with "mkdir -p ${fpath[1]}" if it does not already exist.
+		Note: You may need to create the directory with "mkdir -p ${fpath[1]}" if it does not already exist.
 
 		Note: You will need to start a new shell for this setup to take effect.
 
-		fish:
-
-		$ bbctl completion fish | source
-
-		To load completions for each session, execute once:
 		
+		fish
+
+		# To load completions for single session
+		$ bbctl completion fish | source
+		
+		# To load completions for each session
 		$ bbctl completion fish > ~/.config/fish/completions/bbctl.fish
 
-		PowerShell:
 
+		PowerShell
+
+		# To load completions for single session
  		PS> bbctl completion powershell | Out-String | Invoke -Expression
 
 		# To load completions for every new session, run:
-
 		PS> bbctl completion powershell > bbctl.ps1
-
 		# and source this file from your PowerShell profile. `))
 )
 
-// NewCompletionCmd - create a new Cobra completion command
+// NewCompletionCmd create a new Cobra completion command which generates a completion script
+//
+// Returns a cobra.Command configured to return a completion script for a specified shell environment
 func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	var err error
 	includeDesc := true
@@ -75,6 +79,7 @@ func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		Use:                   completionUse,
 		Short:                 completionShort,
 		Long:                  completionLong,
+		Example:               completionExample,
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),

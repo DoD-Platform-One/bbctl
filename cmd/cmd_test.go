@@ -30,7 +30,7 @@ func TestGetHelpUsage(t *testing.T) {
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
-	assert.Contains(t, commandUseNamesList, "completion [bash|zsh|fish]")
+	assert.Contains(t, commandUseNamesList, "completion [bash|zsh|fish|powershell]")
 	assert.Contains(t, commandUseNamesList, "config [key]")
 	assert.Contains(t, commandUseNamesList, "deploy")
 	assert.Contains(t, commandUseNamesList, "k3d")
