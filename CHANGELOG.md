@@ -3,6 +3,20 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.7.3] - 2024-07-11
+
+### Changed
+
+- Vetted and extended testing to >=80% coverage
+- Added more documentation
+- Standardized help output
+- Updated the Makefile to include more commands
+
+## [0.7.2] - 2024-05-20
+
+### Changed
+
+- Preparing everything for kickoff presentation
 
 ## [0.7.1] - 2024-04-19
 
