@@ -3,4 +3,4 @@ BigBangHelmReleaseName: "bigbang"
 # BigBangNamespace - Namespace where Big Bang Helm Chart is deployed
 BigBangNamespace: "bigbang"
 # BigBangCliVersion - constance for sematic versioning
-BigBangCliVersion: "0.7.2"
+BigBangCliVersion: "0.7.3"
