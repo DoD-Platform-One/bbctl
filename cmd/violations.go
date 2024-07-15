@@ -8,16 +8,21 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
-	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 )
 
 var (
@@ -67,6 +72,47 @@ type policyViolation struct {
 	timestamp  string // utc time
 }
 
+// violationsCmdHelper is a container to store the various shared clients and fields
+// that are used by the various components of the violations command
+//
+// This prevents us from having to pass the same clients and fields to each component
+// or create new instasnces of clients within each function
+type violationsCmdHelper struct {
+	// Clients
+	k8sClient    dynamic.Interface
+	k8sClientSet kubernetes.Interface
+	configClient *config.ConfigClient
+	logger       log.Client
+	streams      genericIOOptions.IOStreams
+}
+
+func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*violationsCmdHelper, error) {
+	k8sClient, err := factory.GetK8sDynamicClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sClientSet, err := factory.GetK8sClientset(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	loggingClient := factory.GetLoggingClient()
+
+	configClient, err := factory.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &violationsCmdHelper{
+		k8sClient:    k8sClient,
+		k8sClientSet: k8sClientSet,
+		logger:       loggingClient,
+		configClient: configClient,
+		streams:      streams,
+	}, nil
+}
+
 // NewViolationsCmd - new violations command
 func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
@@ -75,7 +121,12 @@ func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		Long:    violationsLong,
 		Example: violationsExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return getViolations(cmd, factory, streams)
+			v, err := newViolationsCmdHelper(cmd, factory, streams)
+			if err != nil {
+				return fmt.Errorf("Error getting violations helper client: %v", err)
+			}
+
+			return v.getViolations()
 		},
 	}
 
@@ -95,47 +146,51 @@ func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 	return cmd
 }
 
-func getViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	logger := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	if err != nil {
-		return err
-	}
-	config := configClient.GetConfig()
+// getViolations detects if the cluster has gatekeeper or kyverno installed and
+// prints out the violations in the cluster.
+func (v *violationsCmdHelper) getViolations() error {
+	config := v.configClient.GetConfig()
 
 	namespace := config.UtilK8sConfiguration.Namespace
 	audit := config.ViolationsConfiguration.Audit
 
-	gkFound, err := gatekeeperExists(cmd, factory, streams)
+	// Aggregate fetching errors to prevent short-circuiting
+	var errs []error
+
+	gkFound, err := v.gatekeeperExists()
 	if err != nil {
-		return err
+		errs = append(errs, err)
+	}
+
+	kyvernoFound, err := v.kyvernoExists()
+	if err != nil {
+		errs = append(errs, err)
 	}
 
 	if gkFound {
-		logger.Debug("Gatekeeper exists in cluster. Checking for Gatekeeper violations.")
-		return listGkViolations(cmd, factory, streams, namespace, audit)
-	}
-
-	kyvernoFound, err := kyvernoExists(cmd, factory, streams)
-	if err != nil {
-		return err
+		v.logger.Debug("Gatekeeper exists in cluster. Checking for Gatekeeper violations.")
+		if err := v.listGkViolations(namespace, audit); err != nil {
+			errs = append(errs, fmt.Errorf("error listing gatekeeper violations: %v", err))
+		}
 	}
 
 	if kyvernoFound {
-		logger.Debug("Kyverno exists in cluster. Checking for Kyverno violations.")
-		return listKyvernoViolations(cmd, factory, streams, namespace, audit)
+		v.logger.Debug("Kyverno exists in cluster. Checking for Kyverno violations.")
+		if err := v.listKyvernoViolations(namespace, audit); err != nil {
+			errs = append(errs, fmt.Errorf("error listing kyverno violations: %v", err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("Errors occurred while listing violations: %v", errs)
 	}
 
 	return nil
 }
 
-func kyvernoExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
-	client, err := factory.GetK8sDynamicClient(cmd)
-	if err != nil {
-		return false, err
-	}
-
-	kyvernoCrds, err := kyverno.FetchKyvernoCrds(client)
+// kyvernoExists checks if kyverno is installed in the cluster by checking if the kyverno crds are present
+func (v *violationsCmdHelper) kyvernoExists() (bool, error) {
+	kyvernoCrds, err := kyverno.FetchKyvernoCrds(v.k8sClient)
 	if err != nil {
 		return false, err
 	}
@@ -143,13 +198,9 @@ func kyvernoExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOption
 	return len(kyvernoCrds.Items) != 0, nil
 }
 
-func listKyvernoViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, listAuditViolations bool) error {
-	client, err := factory.GetK8sClientset(cmd)
-	if err != nil {
-		return err
-	}
-
-	events, err := client.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
+// listKyvernoViolations prints the violations in the cluster using the kyverno crds
+func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditViolations bool) error {
+	events, err := v.k8sClientSet.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
 		FieldSelector: fmt.Sprintf("%s=%s", "reason", "PolicyViolation"),
 	})
 	if err != nil {
@@ -201,23 +252,19 @@ func listKyvernoViolations(cmd *cobra.Command, factory bbUtil.Factory, streams g
 
 		violationsFound = true
 
-		printViolation(violation, streams.Out)
+		printViolation(violation, v.streams.Out)
 	}
 
 	if !violationsFound {
-		fmt.Fprintf(streams.Out, "No events found for policy violations\n\n")
+		fmt.Fprintf(v.streams.Out, "No events found for policy violations\n\n")
 	}
 
 	return nil
 }
 
-func gatekeeperExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) (bool, error) {
-	client, err := factory.GetK8sDynamicClient(cmd)
-	if err != nil {
-		return false, err
-	}
-
-	gkCrds, err := gatekeeper.FetchGatekeeperCrds(client)
+// gatekeeperExists	queries the cluster for gatekeeper CRDs and returns true if the CRDs are present
+func (v *violationsCmdHelper) gatekeeperExists() (bool, error) {
+	gkCrds, err := gatekeeper.FetchGatekeeperCrds(v.k8sClient)
 	if err != nil {
 		return false, err
 	}
@@ -225,21 +272,19 @@ func gatekeeperExists(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOpt
 	return len(gkCrds.Items) != 0, nil
 }
 
-func listGkViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string, audit bool) error {
+// listGkViolations prints the violations in the cluster using the gatekeeper crds. If audit is true, it prints the audit violations,
+// otherwise it prints the deny violations by default.
+func (v *violationsCmdHelper) listGkViolations(namespace string, audit bool) error {
 	if audit {
-		return listGkAuditViolations(cmd, factory, streams, namespace)
+		return v.listGkAuditViolations(namespace)
 	}
 
-	return listGkDenyViolations(cmd, factory, streams, namespace)
+	return v.listGkDenyViolations(namespace)
 }
 
-func listGkDenyViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
-	client, err := factory.GetK8sClientset(cmd)
-	if err != nil {
-		return err
-	}
-
-	events, err := client.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
+// listGkDenyViolations prints the deny violations in the cluster using the gatekeeper crds
+func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
+	events, err := v.k8sClientSet.CoreV1().Events("").List(context.TODO(), metaV1.ListOptions{
 		FieldSelector: fmt.Sprintf("%s=%s", "reason", "FailedAdmission"),
 	})
 	if err != nil {
@@ -264,42 +309,37 @@ func listGkDenyViolations(cmd *cobra.Command, factory bbUtil.Factory, streams ge
 			timestamp:  event.CreationTimestamp.UTC().Format(time.RFC3339),
 		}
 
-		printViolation(violation, streams.Out)
+		printViolation(violation, v.streams.Out)
 	}
 
 	if !violationsFound {
-		fmt.Fprintf(streams.Out, "No events found for deny violations\n\n")
-		fmt.Fprintf(streams.Out, "Do you have the following values defined for the gatekeeper chart?\n\n")
-		fmt.Fprintf(streams.Out, "gatekeeper:\n")
-		fmt.Fprintf(streams.Out, "  emitAdmissionEvents: true\n")
-		fmt.Fprintf(streams.Out, "  logDenies: true\n\n")
-		fmt.Fprintf(streams.Out, "Note that violations in dryrun and warn mode are not effected by these settings.\n")
-		fmt.Fprintf(streams.Out, "To list dryrun violations, use --audit flag.\n")
+		fmt.Fprintf(v.streams.Out, "No events found for deny violations\n\n")
+		fmt.Fprintf(v.streams.Out, "Do you have the following values defined for the gatekeeper chart?\n\n")
+		fmt.Fprintf(v.streams.Out, "gatekeeper:\n")
+		fmt.Fprintf(v.streams.Out, "  emitAdmissionEvents: true\n")
+		fmt.Fprintf(v.streams.Out, "  logDenies: true\n\n")
+		fmt.Fprintf(v.streams.Out, "Note that violations in dryrun and warn mode are not effected by these settings.\n")
+		fmt.Fprintf(v.streams.Out, "To list dryrun violations, use --audit flag.\n")
 	}
 
 	return nil
 }
 
-// query the cluster using dynamic client to get audit violation information from gatekeeper constraint crds
-func listGkAuditViolations(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, namespace string) error {
-	client, err := factory.GetK8sDynamicClient(cmd)
-	if err != nil {
-		return err
-	}
-
-	gkCrds, err := gatekeeper.FetchGatekeeperCrds(client)
+// listGkAuditViolations prints the audit violations in the cluster using the gatekeeper crds
+func (v *violationsCmdHelper) listGkAuditViolations(namespace string) error {
+	gkCrds, err := gatekeeper.FetchGatekeeperCrds(v.k8sClient)
 	if err != nil {
 		return err
 	}
 
 	if len(gkCrds.Items) == 0 {
-		fmt.Fprintf(streams.Out, "No violations found in audit\n\n\n")
+		fmt.Fprintf(v.streams.Out, "No violations found in audit\n\n\n")
 		return nil
 	}
 
 	for _, crd := range gkCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
-		constraints, err := gatekeeper.FetchGatekeeperConstraints(client, crdName)
+		constraints, err := gatekeeper.FetchGatekeeperConstraints(v.k8sClient, crdName)
 		if err != nil {
 			return err
 		}
@@ -307,13 +347,14 @@ func listGkAuditViolations(cmd *cobra.Command, factory bbUtil.Factory, streams g
 			// get violations
 			violations, _ := getGkConstraintViolations(&c)
 			// process violations
-			processGkViolations(namespace, violations, crdName, streams)
+			v.processGkViolations(namespace, violations, crdName)
 		}
 	}
 
 	return nil
 }
 
+// getGkConstraintViolations queries the cluster using dynamic client to get audit violation information from gatekeeper constraint crds
 func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyViolation, error) {
 	var violationTimestamp string = ""
 	ts, ok, err := unstructured.NestedFieldNoCopy(resource.Object, "status", "auditTimestamp")
@@ -347,23 +388,25 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 	return &violations, nil
 }
 
-func processGkViolations(namespace string, violations *[]policyViolation, crdName string, streams genericIOOptions.IOStreams) {
+// processGkViolations filters the violations based on the namespace and prints them out
+func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) {
 	if len(*violations) != 0 {
-		fmt.Fprintf(streams.Out, "%s\n\n", crdName)
+		fmt.Fprintf(v.streams.Out, "%s\n\n", crdName)
 		violationsFound := false
-		for _, v := range *violations {
-			if namespace != "" && v.namespace != namespace {
+		for _, violation := range *violations {
+			if namespace != "" && violation.namespace != namespace {
 				continue
 			}
 			violationsFound = true
-			printViolation(&v, streams.Out)
+			printViolation(&violation, v.streams.Out)
 		}
 		if !violationsFound {
-			fmt.Fprintf(streams.Out, "No violations found in audit\n\n\n")
+			fmt.Fprintf(v.streams.Out, "No violations found in audit\n\n\n")
 		}
 	}
 }
 
+// printViolation prints the violation information to the defined io.Writer
 func printViolation(v *policyViolation, w io.Writer) {
 	fmt.Fprintf(w, "Time: %s, Resource: %s, Kind: %s, Namespace: %s\n", v.timestamp, v.name, v.kind, v.namespace)
 	if v.constraint != "" {
