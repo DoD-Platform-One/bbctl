@@ -475,45 +475,41 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 
 func TestGetViolations(t *testing.T) {
 	tests := []struct {
-		desc                       string
-		expected                   string
-		out                        string
-		errout                     string
-		errorGettingConfigClient   bool
-		errorCheckingForGatekeeper bool
-		errorCheckingForKyverno    bool
+		desc                          string
+		expected                      string
+		out                           string
+		errorCheckingGatekeeperExists bool
+		errorCheckingKyvernoExists    bool
+		errorCheckingViolations       bool
 	}{
 		{
 			"no errors",
 			"",
 			"",
-			"",
 			false,
 			false,
 			false,
 		},
 		{
-			"error getting config client",
-			"failed to get config client",
-			"",
+			"error checking gatekeeper exists",
+			"Errors occurred while listing violations: [error getting gatekeeper crds: error in list crds]",
 			"",
 			true,
 			false,
 			false,
 		},
 		{
-			"error checking for gatekeeper",
-			"failed to get K8sDynamicClient client",
-			"",
+			"error checking kyverno exists",
+			"Errors occurred while listing violations: [error getting kyverno crds: error in list crds]",
 			"",
 			false,
 			true,
 			false,
 		},
+
 		{
-			"error checking for kyverno",
-			"error getting kyverno crds: error in list crds",
-			"",
+			"errors listing both kyverno and gatekeeper",
+			"Errors occurred while listing violations: [error listing gatekeeper violations: error in list events error listing kyverno violations: error in list events]",
 			"",
 			false,
 			false,
@@ -526,9 +522,9 @@ func TestGetViolations(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.GetViper().Set("big-bang-repo", "test")
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
-			factory.SetFail.GetConfigClient = test.errorGettingConfigClient
+
 			gvrs := map[runtimeSchema.GroupVersionResource]string{}
 			for gvr, listKind := range gvrToListKindForGatekeeper() {
 				gvrs[gvr] = listKind
@@ -537,36 +533,109 @@ func TestGetViolations(t *testing.T) {
 				gvrs[gvr] = listKind
 			}
 			factory.SetGVRToListKind(gvrs)
-			if test.errorCheckingForGatekeeper {
-				factory.SetFail.GetK8sDynamicClient = true
-			}
-			if test.errorCheckingForKyverno {
-				runCount := 0 // hack to only fail on the second call
+
+			// Fail to list CRDs only on the first call (checking for gatekeeper CRDs), succeed on subquent calls
+			if test.errorCheckingGatekeeperExists {
+				var runCount int
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
 					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						if runCount == 0 {
-							runCount++
-							return false, nil, nil
+						runCount++
+						if runCount == 1 {
+							return true, nil, fmt.Errorf("error in list crds")
 						}
-						return true, nil, fmt.Errorf("error in list crds")
+						return false, nil, nil
 					})
 				}
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 			}
 
-			// Act
-			err := getViolations(cmd, factory, streams)
+			// Fail to list CRDs only on the second call (checking for Kyverno CRDs), succeed on first and subquent calls
+			if test.errorCheckingKyvernoExists {
+				var runCount int
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						runCount++
+						if runCount == 2 {
+							return true, nil, fmt.Errorf("error in list crds")
+						}
+						return false, nil, nil
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+			}
+
+			// Fail to list CRDs on the third and beyond call (after the xExists calls have been made, when violations are checked)
+			if test.errorCheckingViolations {
+				runCount := 0
+				modFunc := func(client *dynamicFake.FakeDynamicClient) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						runCount++
+
+						// Error on the third and beyond calls
+						if runCount >= 3 {
+							return true, nil, fmt.Errorf("error in list crds")
+						}
+
+						// Return a valid list of CRDs on the first call
+						crds := &unstructured.UnstructuredList{
+							Object: map[string]interface{}{
+								"kind":       "CustomResourceDefinitionList",
+								"apiVersion": "apiextensions.k8s.io/v1",
+							},
+							Items: []unstructured.Unstructured{
+								{
+									Object: map[string]interface{}{
+										"kind":       "CustomResourceDefinition",
+										"apiVersion": "apiextensions.k8s.io/v1",
+										"metadata": map[string]interface{}{
+											"name": "example1.kyverno.io",
+										},
+										"spec": map[string]interface{}{
+											"group": "kyverno.io",
+										},
+									},
+								},
+								{
+									Object: map[string]interface{}{
+										"kind":       "CustomResourceDefinition",
+										"apiVersion": "apiextensions.k8s.io/v1",
+										"metadata": map[string]interface{}{
+											"name": "example2.gatekeeper.sh",
+											"labels": map[string]interface{}{
+												"app.kubernetes.io/name": "gatekeeper",
+											},
+										},
+									},
+								},
+							},
+						}
+						return true, crds, nil
+					})
+				}
+				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
+
+				clientSetModFunc := func(client *fake.Clientset) {
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, fmt.Errorf("error in list events")
+					})
+				}
+				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &clientSetModFunc)
+
+			}
+
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
+
+			// if test.errorCheckingForKyverno or test.errorCheckingForGatekeeper is true,
+			// we'll expect the fake kubernetes client to return an error when listing violations
+			err = tv.getViolations()
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Equal(t, test.errout, errout.String())
-			assert.Equal(t, test.out, out.String())
-			if test.errorGettingConfigClient || test.errorCheckingForGatekeeper || test.errorCheckingForKyverno {
-				assert.NotNil(t, err)
+			if err != nil {
 				assert.Equal(t, test.expected, err.Error())
-			} else {
-				assert.Nil(t, err)
 			}
+			assert.Equal(t, test.out, out.String())
 		})
 	}
 }
@@ -585,12 +654,6 @@ func TestKyvernoExists(t *testing.T) {
 			false,
 		},
 		{
-			"error getting dynamic client",
-			"failed to get K8sDynamicClient client",
-			true,
-			false,
-		},
-		{
 			"error listing crds",
 			"error getting kyverno crds: error in list crds",
 			false,
@@ -602,9 +665,11 @@ func TestKyvernoExists(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
 					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
@@ -613,23 +678,25 @@ func TestKyvernoExists(t *testing.T) {
 				}
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 			}
-			factory.SetGVRToListKind(gvrToListKindForKyverno())
+
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
 
 			// Act
-			exists, err := kyvernoExists(cmd, factory, streams)
+			exists, err := tv.kyvernoExists()
 
 			// Assert
-			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
-			assert.False(t, exists)
-			if test.errorOnDynamicClient || test.errorOnListCRDs {
+			if test.errorOnListCRDs {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Empty(t, out.String())
-			} else {
-				assert.Nil(t, err)
-				assert.Equal(t, test.expected, out.String())
+				assert.False(t, exists)
+				return
 			}
+
+			assert.Empty(t, in.String())
+			assert.False(t, exists)
+			assert.Nil(t, err)
+			assert.Equal(t, test.expected, out.String())
 		})
 	}
 }
@@ -638,7 +705,6 @@ func TestListKyvernoViolations(t *testing.T) {
 	tests := []struct {
 		desc              string
 		expected          string
-		errorGetClientset bool
 		errorOnListEvents bool
 		noViolations      bool
 		auditViolations   bool
@@ -646,7 +712,6 @@ func TestListKyvernoViolations(t *testing.T) {
 		{
 			"no violations",
 			"No events found for policy violations\n\n",
-			false,
 			false,
 			true,
 			false,
@@ -657,28 +722,17 @@ func TestListKyvernoViolations(t *testing.T) {
 			false,
 			false,
 			false,
-			false,
 		},
 		{
 			"audit violations",
 			"Resource: bar, Kind: k2, Namespace: ns1\nFailedAudit\n\n",
 			false,
 			false,
-			false,
 			true,
-		},
-		{
-			"error getting clientset",
-			"failed to get k8s clientset",
-			true,
-			false,
-			false,
-			false,
 		},
 		{
 			"error listing events",
 			"error in list events",
-			false,
 			true,
 			false,
 			false,
@@ -689,9 +743,9 @@ func TestListKyvernoViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
-			factory.SetFail.GetK8sClientset = test.errorGetClientset
+
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
 					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
@@ -701,6 +755,7 @@ func TestListKyvernoViolations(t *testing.T) {
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			}
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
+
 			if !test.noViolations {
 				eventList := &v1.EventList{
 					Items: []v1.Event{
@@ -711,47 +766,41 @@ func TestListKyvernoViolations(t *testing.T) {
 				factory.SetObjects([]runtime.Object{eventList})
 			}
 
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
+
 			// Act
-			err := listKyvernoViolations(cmd, factory, streams, "ns1", test.auditViolations)
+			err = tv.listKyvernoViolations("ns1", test.auditViolations)
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
-			if test.errorGetClientset || test.errorOnListEvents {
+			if test.errorOnListEvents {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
-			} else {
-				assert.Nil(t, err)
-				assert.Contains(t, out.String(), test.expected)
+				return
 			}
+
+			assert.Nil(t, err)
+			assert.Contains(t, out.String(), test.expected)
 		})
 	}
 }
 
 func TestGatekeeperExists(t *testing.T) {
 	tests := []struct {
-		desc                 string
-		expected             string
-		errorOnDynamicClient bool
-		errorOnListCRDs      bool
+		desc            string
+		expected        string
+		errorOnListCRDs bool
 	}{
 		{
 			"no errors",
 			"",
 			false,
-			false,
-		},
-		{
-			"error getting dynamic client",
-			"failed to get K8sDynamicClient client",
-			true,
-			false,
 		},
 		{
 			"error listing crds",
 			"error getting gatekeeper crds: error in list crds",
-			false,
 			true,
 		},
 	}
@@ -760,9 +809,9 @@ func TestGatekeeperExists(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
-			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
+
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
 					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
@@ -773,21 +822,24 @@ func TestGatekeeperExists(t *testing.T) {
 			}
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
+
 			// Act
-			exists, err := gatekeeperExists(cmd, factory, streams)
+			exists, err := tv.gatekeeperExists()
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
 			assert.False(t, exists)
-			if test.errorOnDynamicClient || test.errorOnListCRDs {
+			if test.errorOnListCRDs {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
-			} else {
-				assert.Nil(t, err)
-				assert.Equal(t, test.expected, out.String())
+				return
 			}
+
+			assert.Nil(t, err)
+			assert.Equal(t, test.expected, out.String())
 		})
 	}
 }
@@ -798,14 +850,12 @@ func TestListGkDenyViolations(t *testing.T) {
 	tests := []struct {
 		desc              string
 		expected          string
-		errorGetClientset bool
 		errorOnListEvents bool
 		noViolations      bool
 	}{
 		{
 			"no violations",
 			"No events found for deny violations\n\n",
-			false,
 			false,
 			true,
 		},
@@ -814,19 +864,10 @@ func TestListGkDenyViolations(t *testing.T) {
 			"Resource: foo, Kind: k1, Namespace: ns1\nConstraint: \nabc\n\n",
 			false,
 			false,
-			false,
-		},
-		{
-			"error getting clientset",
-			"failed to get k8s clientset",
-			true,
-			false,
-			false,
 		},
 		{
 			"error listing events",
 			"error in list events",
-			false,
 			true,
 			false,
 		},
@@ -836,9 +877,9 @@ func TestListGkDenyViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
-			factory.SetFail.GetK8sClientset = test.errorGetClientset
+
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
 					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
@@ -856,20 +897,22 @@ func TestListGkDenyViolations(t *testing.T) {
 				factory.SetObjects([]runtime.Object{eventList})
 			}
 
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
+
 			// Act
-			err := listGkDenyViolations(cmd, factory, streams, "ns1")
+			err = tv.listGkDenyViolations("ns1")
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
-			if test.errorGetClientset || test.errorOnListEvents {
+			if test.errorOnListEvents {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
-			} else {
-				assert.Nil(t, err)
-				assert.Contains(t, out.String(), test.expected)
+				return
 			}
+			assert.Nil(t, err)
+			assert.Contains(t, out.String(), test.expected)
 		})
 	}
 }
@@ -878,7 +921,6 @@ func TestListGkAuditViolations(t *testing.T) {
 	tests := []struct {
 		desc                   string
 		expected               string
-		errorGetDynamicClient  bool
 		errorOnListCrds        bool
 		noViolations           bool
 		errorOnListConstraints bool
@@ -886,7 +928,6 @@ func TestListGkAuditViolations(t *testing.T) {
 		{
 			"no violations",
 			"No violations found in audit\n\n\n",
-			false,
 			false,
 			true,
 			false,
@@ -897,20 +938,10 @@ func TestListGkAuditViolations(t *testing.T) {
 			false,
 			false,
 			false,
-			false,
-		},
-		{
-			"error getting dynamic clientset",
-			"failed to get K8sDynamicClient client",
-			true,
-			false,
-			false,
-			false,
 		},
 		{
 			"error listing crds",
 			"error getting gatekeeper crds: error in list events",
-			false,
 			true,
 			false,
 			false,
@@ -918,7 +949,6 @@ func TestListGkAuditViolations(t *testing.T) {
 		{
 			"error listing constraints",
 			"error getting gatekeeper constraint: error in list constraints",
-			false,
 			false,
 			false,
 			true,
@@ -929,10 +959,10 @@ func TestListGkAuditViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
 			cmd := violationsCmd(factory, streams, "", nil)
-			factory.SetFail.GetK8sDynamicClient = test.errorGetDynamicClient
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
+
 			if test.errorOnListCrds {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
 					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
@@ -1002,20 +1032,22 @@ func TestListGkAuditViolations(t *testing.T) {
 				factory.SetObjects(objects)
 			}
 
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			assert.Nil(t, err)
+
 			// Act
-			err := listGkAuditViolations(cmd, factory, streams, "ns1")
+			err = tv.listGkAuditViolations("ns1")
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
-			if test.errorGetDynamicClient || test.errorOnListCrds || test.errorOnListConstraints {
+			if test.errorOnListCrds || test.errorOnListConstraints {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
-			} else {
-				assert.Nil(t, err)
-				assert.Contains(t, out.String(), test.expected)
+				return
 			}
+			assert.Nil(t, err)
+			assert.Contains(t, out.String(), test.expected)
 		})
 	}
 }
@@ -1089,20 +1121,93 @@ func TestGetGkConstraintViolations(t *testing.T) {
 				assert.NotNil(t, err)
 				assert.Contains(t, err.Error(), test.expected)
 				assert.Nil(t, violations)
-			} else {
-				assert.Nil(t, err)
-				assert.NotNil(t, violations)
-				assert.Equal(t, 1, len(*violations))
-				violation := (*violations)[0]
-				assert.Equal(t, "foo", violation.name)
-				assert.Equal(t, "ns1", violation.namespace)
-				assert.Equal(t, "k1", violation.kind)
-				assert.Equal(t, "deny", violation.action)
-				assert.Equal(t, "FailedAdmission", violation.message)
-				assert.Equal(t, "2021-11-27T23:55:33Z", violation.timestamp)
+				return
 			}
+			assert.Nil(t, err)
+			assert.NotNil(t, violations)
+			assert.Equal(t, 1, len(*violations))
+			violation := (*violations)[0]
+			assert.Equal(t, "foo", violation.name)
+			assert.Equal(t, "ns1", violation.namespace)
+			assert.Equal(t, "k1", violation.kind)
+			assert.Equal(t, "deny", violation.action)
+			assert.Equal(t, "FailedAdmission", violation.message)
+			assert.Equal(t, "2021-11-27T23:55:33Z", violation.timestamp)
 		})
 	}
+}
+
+func TestNewViolationsCmdHelper(t *testing.T) {
+	tests := []struct {
+		desc                    string
+		expected                string
+		errorOnK8sDynamicClient bool
+		errorOnK8sClientSet     bool
+		errorOnConfigClient     bool
+	}{
+		{
+			desc:                    "no errors",
+			expected:                "",
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientSet:     false,
+			errorOnConfigClient:     false,
+		},
+		{
+			desc:                    "error getting k8s dynamic client",
+			expected:                "failed to get K8sDynamicClient client",
+			errorOnK8sDynamicClient: true,
+			errorOnK8sClientSet:     false,
+			errorOnConfigClient:     false,
+		},
+		{
+			desc:                    "error getting k8s clientset",
+			expected:                "failed to get k8s clientset",
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientSet:     true,
+			errorOnConfigClient:     false,
+		},
+		{
+			desc:                    "error getting config client",
+			expected:                "failed to get config client",
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientSet:     false,
+			errorOnConfigClient:     true,
+		},
+	}
+
+	for _, test := range tests {
+
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			streams, _, out, _ := genericIOOptions.NewTestIOStreams()
+			cmd := violationsCmd(factory, streams, "", nil)
+			factory.SetFail.GetK8sDynamicClient = test.errorOnK8sDynamicClient
+			factory.SetFail.GetK8sClientset = test.errorOnK8sClientSet
+			factory.SetFail.GetConfigClient = test.errorOnConfigClient
+			factory.SetGVRToListKind(gvrToListKindForKyverno())
+
+			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+
+			// This is the only test case where we don't expect an error
+			if test.desc == "no errors" {
+				assert.NotNil(t, tv)
+				assert.Nil(t, err)
+				return
+			}
+
+			// We should return an empty pointer if we fail any setup instructions
+			assert.Nil(t, tv)
+			assert.Empty(t, out.String())
+
+			// We expect an error
+			assert.NotNil(t, err)
+
+			// Assert that the error is as expected for the given failed client
+			assert.Equal(t, test.expected, err.Error())
+
+		})
+	}
+
 }
 
 // processGkViolations tested in previous tests
