@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
@@ -73,7 +75,6 @@ var (
 //
 // Returns a cobra.Command configured to return a completion script for a specified shell environment
 func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
-	var err error
 	includeDesc := true
 	cmd := &cobra.Command{
 		Use:                   completionUse,
@@ -83,7 +84,8 @@ func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 			switch args[0] {
 			case "bash":
 				err = cmd.Root().GenBashCompletionV2(streams.Out, includeDesc)
@@ -93,10 +95,17 @@ func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams
 				err = cmd.Root().GenFishCompletion(streams.Out, includeDesc)
 			case "powershell":
 				err = cmd.Root().GenPowerShellCompletionWithDesc(streams.Out)
+			default:
+				return fmt.Errorf("unknown shell: %s", args[0])
 			}
+
+			if err != nil {
+				return fmt.Errorf("Unable to generate completion script: %v", err)
+			}
+
+			return nil
+
 		},
 	}
-	factory.GetLoggingClient().HandleError("Unable to generate completion script: %v", err)
-
 	return cmd
 }
