@@ -70,7 +70,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		homeDirname, err := os.UserHomeDir()
 		if err != nil {
 			initLogger.Error("Error getting user home directory: %v", err)
-			panic(err)
+			os.Exit(1)
 		}
 		viperInstance.SetConfigName("config")
 		viperInstance.SetConfigType("yaml")
@@ -92,19 +92,19 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 			} else {
 				// Config file was found but another error was produced
 				initLogger.Error("Error reading config file: %v", err)
-				panic(err)
+				os.Exit(1)
 			}
 		}
 
 		err = viperInstance.BindPFlags(flags)
 		if err != nil {
 			initLogger.Error("Error binding flags to viper: %v", err)
-			panic(err)
+			os.Exit(1)
 		}
 		configClient, err := factory.GetConfigClient(nil)
 		if err != nil {
 			initLogger.Error("Error getting config client: %v", err)
-			panic(err)
+			os.Exit(1)
 		}
 		config := configClient.GetConfig()
 		logger := setupSlog(initLogger,
@@ -119,7 +119,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		allSettings, err := json.Marshal(viperInstance.AllSettings())
 		if err != nil {
 			logger.Error("Error marshalling all settings: %v", err)
-			panic(err)
+			os.Exit(1)
 		}
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
 	})
@@ -173,7 +173,7 @@ func setupSlog(
 		initLogger.Warn("No log level defined, defaulting to warn")
 	default:
 		initLogger.Error(fmt.Sprintf("Invalid log level: %v", ll))
-		panic("Invalid log level")
+		os.Exit(1)
 	}
 
 	// handler options
@@ -188,12 +188,12 @@ func setupSlog(
 	case "file":
 		if logFileString == "" {
 			initLogger.Error("Log file not defined")
-			panic("Log file not defined")
+			os.Exit(1)
 		}
 		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			initLogger.Error(fmt.Sprintf("Error opening log file: %v", err))
-			panic(err)
+			os.Exit(1)
 		}
 		defer file.Close()
 		writer = file
@@ -206,7 +206,7 @@ func setupSlog(
 		initLogger.Warn("No log output defined, defaulting to stderr")
 	default:
 		initLogger.Error(fmt.Sprintf("Invalid log output: %v", logOutputString))
-		panic("Invalid log output")
+		os.Exit(1)
 	}
 
 	// logger
@@ -221,7 +221,7 @@ func setupSlog(
 		initLogger.Warn("No log format defined, defaulting to text")
 	default:
 		initLogger.Error(fmt.Sprintf("Invalid log format: %v", logFormatString))
-		panic("Invalid log format")
+		os.Exit(1)
 	}
 
 	slog.SetDefault(logger)
