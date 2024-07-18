@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -35,22 +34,20 @@ var (
 
 // NewConfigCmd - create a new Cobra config command
 func NewConfigCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
-	var err error
 	cmd := &cobra.Command{
 		Use:                   configUse,
 		Short:                 configShort,
 		Long:                  configLong,
 		DisableFlagsInUseLine: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(func(factory bbUtil.Factory, args []string) error {
-				output, err := getBBConfig(cmd, factory, args)
-				fmt.Println(output)
-				return err
-			}(factory, args))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			output, err := getBBConfig(cmd, factory, args)
+			if err != nil {
+				return fmt.Errorf("Unable to fetch current bbctl configuration: %v", err)
+			}
+			fmt.Println(output)
+			return nil
 		},
 	}
-	factory.GetLoggingClient().HandleError("Unable to local configuration:", err)
-
 	return cmd
 }
 

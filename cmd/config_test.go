@@ -22,7 +22,10 @@ func TestGetConfig(t *testing.T) {
 	viper.Set("big-bang-repo", "/path/to/repo")
 
 	cmd := NewConfigCmd(factory, streams)
-	cmd.Run(cmd, []string{})
+	err := cmd.RunE(cmd, []string{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 
 	response := strings.Split(buf.String(), "\n")
 
@@ -237,9 +240,10 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 	viper.Set("big-bang-repo", "/path/to/repo")
 
 	factory.SetFail.GetConfigClient = true
-	_, err := getBBConfig(cmd, factory, []string{"invalid.key"})
+	err := cmd.RunE(cmd, []string{"invalid.key"})
+
 	// The code splits keys at the dot, so it should look for a parent object "invalid" her
-	expectedError := "error getting config client: failed to get config client"
+	expectedError := "Unable to fetch current bbctl configuration: error getting config client: failed to get config client"
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
