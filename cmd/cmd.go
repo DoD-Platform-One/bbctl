@@ -7,6 +7,7 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 	deploy "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/deploy"
 	k3d "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/k3d"
+	update "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/update"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 )
 
@@ -50,6 +51,7 @@ func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cob
 
 	cmd.AddCommand(k3d.NewK3dCmd(factory, streams))
 	cmd.AddCommand(deploy.NewDeployCmd(factory, streams))
+	cmd.AddCommand(update.NewUpdateCmd(factory, streams))
 
 	return cmd
 }

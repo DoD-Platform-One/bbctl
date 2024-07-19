@@ -25,7 +25,7 @@ func TestGetHelpUsage(t *testing.T) {
 	assert.True(t, cmd.CompletionOptions.DisableNoDescFlag)
 
 	commandsList := cmd.Commands()
-	assert.Len(t, commandsList, 11)
+	assert.Len(t, commandsList, 12)
 	var commandUseNamesList []string
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
@@ -34,6 +34,7 @@ func TestGetHelpUsage(t *testing.T) {
 	assert.Contains(t, commandUseNamesList, "config [key]")
 	assert.Contains(t, commandUseNamesList, "deploy")
 	assert.Contains(t, commandUseNamesList, "k3d")
+	assert.Contains(t, commandUseNamesList, "update")
 	assert.Contains(t, commandUseNamesList, "list")
 	assert.Contains(t, commandUseNamesList, "policy --PROVIDER CONSTRAINT_NAME")
 	assert.Contains(t, commandUseNamesList, "preflight-check")
