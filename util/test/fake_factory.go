@@ -181,19 +181,19 @@ type FakeFactory struct {
 }
 
 // GetCredentialHelper - get credential helper
-func (f *FakeFactory) GetCredentialHelper() func(string, string) string {
-	return func(arg1 string, arg2 string) string {
-		return ""
+func (f *FakeFactory) GetCredentialHelper() func(string, string) (string, error) {
+	return func(arg1 string, arg2 string) (string, error) {
+		return "", nil
 	}
 }
 
-// GetAWSClient - get aws client
-func (f *FakeFactory) GetAWSClient() bbAws.Client {
+// GetAWSClient constructs a fake AWS client
+func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
 	fakeClient, err := fakeAws.NewFakeClient(f.clusterIPs, &f.awsConfig, f.ec2Client, f.callerIdentity, f.stsClient)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to get AWS client: %w", err)
 	}
-	return fakeClient
+	return fakeClient, nil
 }
 
 // GetHelmClient - get helm client
@@ -251,7 +251,9 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 
 	scheme := runtime.NewScheme()
 	err := coreV1.AddToScheme(scheme)
-	f.GetLoggingClient().HandleError("failed to add coreV1 to scheme", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add coreV1 to scheme: %w", err)
+	}
 	client := dynamicFake.NewSimpleDynamicClientWithCustomListKinds(scheme, f.gvrToListKind, f.objects...)
 	for _, prepFunc := range f.SetFail.GetK8sDynamicClientPrepFuncs {
 		(*prepFunc)(client)

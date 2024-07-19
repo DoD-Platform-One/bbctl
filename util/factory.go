@@ -35,7 +35,7 @@ import (
 
 // Factory is an interface providing initialization methods for various external clients
 type Factory interface {
-	GetAWSClient() bbAws.Client
+	GetAWSClient() (bbAws.Client, error)
 	GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error)
 	GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error)
 	GetLoggingClient() bbLog.Client                              // this can't bubble up an error, if it fails it will panic
@@ -44,7 +44,7 @@ type Factory interface {
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
-	GetCredentialHelper() func(string, string) string
+	GetCredentialHelper() func(string, string) (string, error)
 	GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
@@ -83,32 +83,38 @@ type Credentials struct {
 //
 // Credentials file path is pulled from the bbctl config and will default to ~/.bbctl/credentials.yaml when not set
 //
-// # Valid component values are `username` and `password`, any other value will panic
+// # Valid component values are `username` and `password`, any other value will return an error
 //
-// Panics when the credentials file cannot be accessed or parsed, component value is invalid,
+// Errors when the credentials file cannot be accessed or parsed, component value is invalid,
 // and when uri is not found in credentials list
-func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) string {
-	// Get credentials path
-	loggingClient := f.GetLoggingClient()
+func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (string, error) {
 	configClient, err := f.GetConfigClient(nil)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return "", fmt.Errorf("unable to get config client: %w", err)
+	}
 	config := configClient.GetConfig()
 	credentialsPath := config.UtilCredentialHelperConfiguration.FilePath
 	if credentialsPath == "" {
 		// Get the home directory
 		homeDir, err := os.UserHomeDir()
-		loggingClient.HandleError("Unable to get home directory: %v", err)
+		if err != nil {
+			return "", fmt.Errorf("unable to get home directory: %w", err)
+		}
 		credentialsPath = path.Join(homeDir, ".bbctl", "credentials.yaml")
 	}
 
 	// Read the credentials file
 	credentialsYaml, err := os.ReadFile(credentialsPath)
-	loggingClient.HandleError("Unable to read credentials file %v: %v", err, credentialsPath)
+	if err != nil {
+		return "", fmt.Errorf("unable to read credentials file %v: %w", credentialsPath, err)
+	}
 
 	// Unmarshal the credentials file
 	var credentialsFile CredentialsFile
 	err = yaml.Unmarshal(credentialsYaml, &credentialsFile)
-	loggingClient.HandleError("Unable to unmarshal credentials file %v: %v", err, credentialsPath)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal credentials file %v: %w", credentialsPath, err)
+	}
 
 	// Find the credentials for the uri
 	credentials := Credentials{}
@@ -118,19 +124,19 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 			break
 		}
 	}
+	// If the credentials URI is empty, return an error
 	if credentials.URI == "" {
-		loggingClient.Error(fmt.Sprintf("No credentials found for %v in %v", uri, credentialsPath))
+		return "", fmt.Errorf("no credentials found for %v in %v", uri, credentialsPath)
 	}
 
 	// Return the requested component
-	if component == "username" {
-		return credentials.Username
-	} else if component == "password" {
-		return credentials.Password
-	} else {
-		// this will panic
-		loggingClient.Error(fmt.Sprintf("Invalid component %v", component))
-		return ""
+	switch component {
+	case "username":
+		return credentials.Username, nil
+	case "password":
+		return credentials.Password, nil
+	default:
+		return "", fmt.Errorf("invalid component %v", component)
 	}
 }
 
@@ -146,51 +152,57 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) strin
 //
 // These parameters are passed into custom credential helpers as CLI arguments in the same order.
 //
-// Panics when no credential helper is defined, there is an issue reading credentials from a file,
+// Errors when no credential helper is defined, there is an issue reading credentials from a file,
 // there is an issue running a custom credential helper script, and when an empty value is returned
 // for a requested credential component
-func (f *UtilityFactory) GetCredentialHelper() func(string, string) string {
-	return func(component string, uri string) string {
-		loggingClient := f.GetLoggingClient()
+func (f *UtilityFactory) GetCredentialHelper() func(string, string) (string, error) {
+	return func(component string, uri string) (string, error) {
 		configClient, err := f.GetConfigClient(nil)
-		loggingClient.HandleError("Unable to get config client: %v", err)
+		if err != nil {
+			return "", fmt.Errorf("unable to get config client: %w", err)
+		}
 		config := configClient.GetConfig()
 		helper := config.UtilCredentialHelperConfiguration.CredentialHelper
 		if helper == "" {
-			loggingClient.Error("No credential helper defined (\"big-bang-credential-helper\")")
+			return "", fmt.Errorf("no credential helper defined (\"big-bang-credential-helper\")")
 		}
 		output := ""
 		if helper == "credentials-file" {
-			output = f.ReadCredentialsFile(component, uri)
+			output, err = f.ReadCredentialsFile(component, uri)
+			if err != nil {
+				return "", fmt.Errorf("unable to read credentials file: %w", err)
+			}
 		} else {
 			cmd := exec.Command(helper, component, uri)
 			rawOutput, err := cmd.Output()
-			loggingClient.HandleError("Unable to get %v for %v from %v: %v", err, component, uri, helper)
+			if err != nil {
+				return "", fmt.Errorf("unable to get %v from %v using %v: %w", component, uri, helper, err)
+			}
 			output = string(rawOutput[:])
 		}
 		if output == "" {
-			loggingClient.Error(fmt.Sprintf("No %v found for %v in %v", component, uri, helper))
+			return "", fmt.Errorf("no %v found for %v in %v", component, uri, helper)
 		}
-		return output
+		return output, nil
 	}
 }
 
 // GetAWSClient initializes and returns a new AWS API client
-//
-// Panics when there are issues with the bbctl configurations
-func (f *UtilityFactory) GetAWSClient() bbAws.Client {
+func (f *UtilityFactory) GetAWSClient() (bbAws.Client, error) {
 	loggingClient := f.GetLoggingClient()
 	clientGetter := bbAws.ClientGetter{}
 	client, err := clientGetter.GetClient(loggingClient)
-	loggingClient.HandleError("Unable to get AWS client: %v", err)
-	return client
+	if err != nil {
+		return nil, fmt.Errorf("unable to get AWS client: %w", err)
+	}
+	return client, nil
 }
 
 // GetHelmClient initializes and returns a new Helm client that can perform operations in the given namespace
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the bbctl configurations
+// Errors when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
 	actionConfig, err := f.getHelmConfig(cmd, namespace)
 	if err != nil {
@@ -213,7 +225,7 @@ func (f *UtilityFactory) GetHelmClient(cmd *cobra.Command, namespace string) (he
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the bbctl configurations
+// Errors when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
 	config, err := f.GetRestConfig(cmd)
 	if err != nil {
@@ -229,7 +241,7 @@ func (f *UtilityFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interfa
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues with the bbctl configurations
+// Errors when there are issues with the bbctl configurations
 func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {
@@ -241,14 +253,14 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 
 // GetLoggingClient initializes and returns a new logging client using the default slog logger implementation
 //
-// Panics when there are issues initializing the logger
+// Errors when there are issues initializing the logger
 func (f *UtilityFactory) GetLoggingClient() bbLog.Client {
 	return f.GetLoggingClientWithLogger(nil)
 }
 
 // GetLoggingClientWithLogger initializes and returns a new logging client using the given logger implementation
 //
-// Panics when there are issues initializing the logger
+// Errors when there are issues initializing the logger
 func (f *UtilityFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Client {
 	clientGetter := bbLog.ClientGetter{}
 	client := clientGetter.GetClient(logger)
@@ -259,7 +271,7 @@ func (f *UtilityFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.C
 //
 // # Returns a nil client and an error if there are any issues with the intialization
 //
-// Panics when there are issues creating the k8s REST config
+// Errors when there are issues creating the k8s REST config
 func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error) {
 	// init runtime controller client
 	runtimeClient, err := runtimeClient.New(ctrl.GetConfigOrDie(), runtimeClient.Options{Scheme: scheme})
@@ -316,7 +328,7 @@ func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod,
 
 // Internal helper function to create configs for GetHelmClient
 //
-// Panics if Helm action.Configuration.Init fails
+// Errors if Helm action.Configuration.Init fails
 func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*action.Configuration, error) {
 	configClient, err := f.GetConfigClient(cmd)
 	if err != nil {

@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -15,10 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func TestReadDefaultCredentialsFile(t *testing.T) {
+// TestReadDefaultCredentialsFileMissing tests that a missing credentials file returns an error
+func TestReadDefaultCredentialsFileMissing(t *testing.T) {
 	// Arrange
 	factory := NewFactory()
 	viperInstance := factory.GetViper()
+	// Set the big-bang-repo and kubeconfig to local test files to avoid reading the default credentials file
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 
@@ -27,9 +30,11 @@ func TestReadDefaultCredentialsFile(t *testing.T) {
 	os.Rename(path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "old-credentials.yaml"))
 
 	// Act & Assert
-	assert.Panics(t, func() {
-		factory.ReadCredentialsFile("", "")
-	})
+	value, err := factory.ReadCredentialsFile("", "")
+	assert.Equal(t, "", value)
+	assert.NotNil(t, err)
+	expectedError := fmt.Sprintf("unable to read credentials file %s: open %s: no such file or directory", path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
+	assert.Equal(t, expectedError, err.Error())
 
 	// Cleanup
 	os.Rename(path.Join(credsDir, "old-credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
@@ -44,18 +49,39 @@ func TestReadCredentialsFile(t *testing.T) {
 	viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
 
 	// Act
-	username := factory.ReadCredentialsFile("username", "https://test.com:6443")
-	password := factory.ReadCredentialsFile("password", "https://test.com:6443")
+	// Test reading valid components
+	username, err := factory.ReadCredentialsFile("username", "https://test.com:6443")
+	if err != nil {
+		t.Errorf("unexpected error getting username: %v", err)
+	}
+	password, err := factory.ReadCredentialsFile("password", "https://test.com:6443")
+	if err != nil {
+		t.Errorf("unexpected error getting password: %v", err)
+	}
 
 	// Assert
 	assert.Equal(t, username, "username")
 	assert.Equal(t, password, "password")
-	assert.Panics(t, func() {
-		factory.ReadCredentialsFile("invalidFieldName", "https://test.com:6443")
-	})
-	assert.Panics(t, func() {
-		factory.ReadCredentialsFile("username", "invalidURI")
-	})
+
+	// Test reading an invalid component
+	invalid, err := factory.ReadCredentialsFile("invalidFieldName", "https://test.com:6443")
+	assert.Equal(t, "", invalid)
+	assert.NotNil(t, err)
+	assert.Equal(t, "invalid component invalidFieldName", err.Error())
+
+	// Test reading an invalid URI
+	invalidURI, err := factory.ReadCredentialsFile("username", "invalidURI")
+	assert.Equal(t, "", invalidURI)
+	assert.NotNil(t, err)
+	assert.Equal(t, "no credentials found for invalidURI in ./test/data/test-credentials.yaml", err.Error())
+
+	// Force the viper instance to be nil to cause this to error downstream
+	factory.viperInstance = nil
+	username, err = factory.ReadCredentialsFile("username", "https://test.com:6443")
+	assert.Empty(t, username)
+	assert.NotNil(t, err)
+	assert.Equal(t, "unable to get config client: viper instance is required", err.Error())
+
 }
 
 func TestGetCredentialHelper(t *testing.T) {
@@ -71,49 +97,56 @@ func TestGetCredentialHelper(t *testing.T) {
 		credentialHelper string
 		field            string
 		expected         string
-		panics           bool
+		error            string
 	}{
 		{
 			name:             "EmptyCredsHelper",
 			credentialHelper: "",
 			field:            "username",
 			expected:         "",
-			panics:           true,
+			error:            "no credential helper defined (\"big-bang-credential-helper\")",
 		},
 		{
 			name:             "CustomCredsHelperNonEmpty",
 			credentialHelper: "./../scripts/factory-tests/fake-credentials-helper.sh",
 			field:            "username",
 			expected:         "username",
-			panics:           false,
+			error:            "",
 		},
 		{
 			name:             "CustomCredsHelperEmpty",
 			credentialHelper: "./../scripts/factory-tests/fake-credentials-helper.sh",
 			field:            "password",
 			expected:         "",
-			panics:           true,
+			error:            "no password found for https://invalidUri.com:6443 in ./../scripts/factory-tests/fake-credentials-helper.sh",
 		},
 		{
 			name:             "InvalidCredsField",
 			credentialHelper: "./../scripts/factory-tests/fake-credentials-helper.sh",
 			field:            "invalidCredsField",
 			expected:         "",
-			panics:           true,
+			error:            "unable to get invalidCredsField from https://invalidUri.com:6443 using ./../scripts/factory-tests/fake-credentials-helper.sh: exit status 1",
 		},
 		{
 			name:             "InvalidUriForDefaultHelper",
 			credentialHelper: "credentials-file",
 			field:            "username",
-			expected:         "",
-			panics:           true,
+			expected:         "username",
+			error:            "",
 		},
 		{
 			name:             "ValidUriForDefaultHelper",
 			credentialHelper: "credentials-file",
 			field:            "username",
 			expected:         "username",
-			panics:           false,
+			error:            "",
+		},
+		{
+			name:             "GetConfigClientError",
+			credentialHelper: "credentials-file",
+			field:            "username",
+			expected:         "",
+			error:            "unable to get config client: viper instance is required",
 		},
 	}
 
@@ -122,23 +155,66 @@ func TestGetCredentialHelper(t *testing.T) {
 			// Act
 			viperInstance.Set("big-bang-credential-helper", test.credentialHelper)
 			helper := factory.GetCredentialHelper()
-			// Assert
-			if test.panics {
-				assert.Panics(t, func() {
-					helper(test.field, "https://invalidUri.com:6443")
-				})
-			} else {
-				assert.Equal(t, test.expected, strings.TrimSuffix(helper(test.field, "https://test.com:6443"), "\n"))
+
+			uri := "https://test.com:6443"
+			if test.error != "" {
+				uri = "https://invalidUri.com:6443"
 			}
+
+			// Force the viper instance to be nil to cause this to error downstream
+			if test.name == "GetConfigClientError" {
+				factory.viperInstance = nil
+			}
+
+			value, err := helper(test.field, uri)
+
+			// Assert
+			if test.error != "" {
+				assert.Equal(t, test.error, err.Error())
+			} else {
+				assert.Nil(t, err)
+			}
+
+			assert.Equal(t, test.expected, strings.TrimSuffix(value, "\n"))
 		})
 	}
+}
+
+func TestGetCredentialHelperMissingFilePath(t *testing.T) {
+	// Arrange
+	factory := NewFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+	viperInstance.Set("big-bang-credential-helper", "credentials-file")
+
+	homeDir, _ := os.UserHomeDir()
+	credsDir := path.Join(homeDir, ".bbctl")
+	credsPath := path.Join(credsDir, "credentials.yaml")
+	os.Rename(path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "old-credentials.yaml"))
+
+	// Act
+	helper := factory.GetCredentialHelper()
+	username, err := helper("username", "https://test.com:6443")
+
+	// Assert
+	assert.NotNil(t, helper)
+	assert.Empty(t, username)
+	assert.NotNil(t, err)
+	assert.Equal(t, fmt.Sprintf("unable to read credentials file: unable to read credentials file %s: open %s: no such file or directory", credsPath, credsPath), err.Error())
+
+	// Cleanup
+	os.Rename(path.Join(credsDir, "old-credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
 }
 
 func TestGetAWSClient(t *testing.T) {
 	// Arrange
 	factory := NewFactory()
 	// Act
-	client := factory.GetAWSClient()
+	client, err := factory.GetAWSClient()
+	if err != nil {
+		t.Errorf("unexpected error getting AWS client: %v", err)
+	}
 	// Assert
 	assert.NotNil(t, client)
 }

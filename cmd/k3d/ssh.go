@@ -58,7 +58,10 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 
 // sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
 func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
-	awsClient := factory.GetAWSClient()
+	awsClient, err := factory.GetAWSClient()
+	if err != nil {
+		return fmt.Errorf("unable to get AWS client: %w", err)
+	}
 	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
 	stsClient := awsClient.GetStsClient(context.TODO(), cfg)

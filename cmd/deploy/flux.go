@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"fmt"
 	"path"
 	"slices"
 
@@ -44,8 +45,14 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, streams
 	loggingClient.HandleError("error getting config client: %v", err)
 	config := configClient.GetConfig()
 	credentialHelper := factory.GetCredentialHelper()
-	username := credentialHelper("username", "registry1.dso.mil")
-	password := credentialHelper("password", "registry1.dso.mil")
+	username, err := credentialHelper("username", "registry1.dso.mil")
+	if err != nil {
+		return fmt.Errorf("unable to get username: %w", err)
+	}
+	password, err := credentialHelper("password", "registry1.dso.mil")
+	if err != nil {
+		return fmt.Errorf("unable to get password: %w", err)
+	}
 	installFluxPath := path.Join(config.BigBangRepo,
 		"scripts",
 		"install_flux.sh",
