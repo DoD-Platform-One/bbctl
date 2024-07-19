@@ -69,7 +69,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 
 		homeDirname, err := os.UserHomeDir()
 		if err != nil {
-			initLogger.Error("Error getting user home directory: %v", err)
+			initLogger.Error(fmt.Sprintf("Error getting user home directory: %v", err.Error()))
 			os.Exit(1)
 		}
 		viperInstance.SetConfigName("config")
@@ -91,19 +91,19 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 				initLogger.Warn("Config file not found (~/.bbctl/config, /etc/bbctl/config, or ./config).")
 			} else {
 				// Config file was found but another error was produced
-				initLogger.Error("Error reading config file: %v", err)
+				initLogger.Error(fmt.Sprintf("Error reading config file: %v", err.Error()))
 				os.Exit(1)
 			}
 		}
 
 		err = viperInstance.BindPFlags(flags)
 		if err != nil {
-			initLogger.Error("Error binding flags to viper: %v", err)
+			initLogger.Error(fmt.Sprintf("Error binding flags to viper: %v", err.Error()))
 			os.Exit(1)
 		}
 		configClient, err := factory.GetConfigClient(nil)
 		if err != nil {
-			initLogger.Error("Error getting config client: %v", err)
+			initLogger.Error(fmt.Sprintf("Error getting config client: %v", err.Error()))
 			os.Exit(1)
 		}
 		config := configClient.GetConfig()
@@ -118,7 +118,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		logger.Debug("Logger setup complete")
 		allSettings, err := json.Marshal(viperInstance.AllSettings())
 		if err != nil {
-			logger.Error("Error marshalling all settings: %v", err)
+			logger.Error(fmt.Sprintf("Error marshalling all settings: %v", err.Error()))
 			os.Exit(1)
 		}
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
@@ -139,7 +139,11 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 	kubeResourceBuilderFlags.AddFlags(flags)
 
 	// Bind the flags to viper
-	factory.GetLoggingClient().HandleError("error binding flags to viper: %v", viperInstance.BindPFlags(flags))
+	err := viperInstance.BindPFlags(flags)
+	if err != nil {
+		initLogger.Error(fmt.Sprintf("error binding flags to viper: %v", err.Error()))
+		os.Exit(1)
+	}
 
 	// echo the flags
 	factory.GetLoggingClient().Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
@@ -192,7 +196,7 @@ func setupSlog(
 		}
 		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error opening log file: %v", err))
+			initLogger.Error(fmt.Sprintf("Error opening log file: %v", err.Error()))
 			os.Exit(1)
 		}
 		defer file.Close()
