@@ -41,7 +41,10 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 
 // shellProfileCluster - Returns the error (nil if no error) when generating a BASH compatible shell profile for your cluster
 func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	awsClient := factory.GetAWSClient()
+	awsClient, err := factory.GetAWSClient()
+	if err != nil {
+		return fmt.Errorf("unable to get AWS client: %w", err)
+	}
 	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
 	stsClient := awsClient.GetStsClient(context.TODO(), cfg)

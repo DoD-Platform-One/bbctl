@@ -112,8 +112,14 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, stre
 	}
 	config := configClient.GetConfig()
 	credentialHelper := factory.GetCredentialHelper()
-	username := credentialHelper("username", "registry1.dso.mil")
-	password := credentialHelper("password", "registry1.dso.mil")
+	username, err := credentialHelper("username", "registry1.dso.mil")
+	if err != nil {
+		return fmt.Errorf("unable to get username: %w", err)
+	}
+	password, err := credentialHelper("password", "registry1.dso.mil")
+	if err != nil {
+		return fmt.Errorf("unable to get password: %w", err)
+	}
 
 	chartPath := getChartRelativePath(config, "chart")
 	helmOpts := slices.Clone(args)
