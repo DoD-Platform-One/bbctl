@@ -124,9 +124,9 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
 	})
 
-	bbctlCmd, err := cmd.NewRootCmd(factory, streams)
-	if err != nil {
-		initLogger.Error(fmt.Sprintf("Error retrieving root command: %v", err.Error()))
+	bbctlCmd, rootCmdError := cmd.NewRootCmd(factory, streams)
+	if rootCmdError != nil {
+		initLogger.Error(fmt.Sprintf("Error retrieving root command: %v", rootCmdError.Error()))
 		os.Exit(1)
 	}
 
