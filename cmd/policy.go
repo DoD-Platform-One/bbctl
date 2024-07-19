@@ -54,7 +54,7 @@ type policyDescriptor struct {
 }
 
 // NewPoliciesCmd - Creates a new Cobra command which implements the `bbctl policy` functionality
-func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     policyUse,
 		Short:   policyShort,
@@ -77,35 +77,30 @@ func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 		SilenceErrors: true,
 	}
 
-	loggingClient := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	configClient, clientError := factory.GetConfigClient(cmd)
+	if clientError != nil {
+		return nil, fmt.Errorf("Unable to get config client: %v", clientError)
+	}
 
-	loggingClient.HandleError(
-		"Unable to add flags to command: %v",
-		configClient.SetAndBindFlag(
-			"gatekeeper",
-			false,
-			"Print gatekeeper policy",
-		),
-	)
-	loggingClient.HandleError(
-		"Unable to add flags to command: %v",
-		configClient.SetAndBindFlag(
-			"kyverno",
-			false,
-			"Print kyverno policy",
-		),
-	)
+	gatekeeperError := configClient.SetAndBindFlag("gatekeeper", false, "Print gatekeeper policy")
+	if gatekeeperError != nil {
+		return nil, fmt.Errorf("Unable to add flags to command: %v", gatekeeperError)
+	}
 
-	return cmd
+	kyvernoError := configClient.SetAndBindFlag("kyverno", false, "Print kyverno policy")
+	if kyvernoError != nil {
+		return nil, fmt.Errorf("Unable to add flags to command: %v", kyvernoError)
+	}
+
+	return cmd, nil
 }
 
 // Internal helper function to find policy CRDs matching the given the prefix hint for command completion
 func matchingPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string) ([]string, cobra.ShellCompDirective) {
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
 	config := configClient.GetConfig()
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
@@ -180,9 +175,10 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 //   - Gatekeeper constraint CRDs
 //   - Kyverno cluster policy CRDs
 func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return fmt.Errorf("Unable to get config client: %v", err)
+	}
 	config := configClient.GetConfig()
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
@@ -268,9 +264,10 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, strea
 //   - All Gatekeeper constraint CRDs
 //   - All Kyverno policy CRDs
 func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return fmt.Errorf("Unable to get config client: %v", err)
+	}
 	config := configClient.GetConfig()
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
