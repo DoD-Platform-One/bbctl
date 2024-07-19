@@ -14,7 +14,7 @@ func TestGetHelpUsage(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	// Act
-	cmd := NewRootCmd(factory, streams)
+	cmd, _ := NewRootCmd(factory, streams)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "bbctl", cmd.Use)

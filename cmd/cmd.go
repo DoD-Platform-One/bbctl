@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -25,7 +27,7 @@ var (
 )
 
 // NewRootCmd - create a new Cobra root command
-func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 
 	cmd := &cobra.Command{
 		Use:     cmdUse,
@@ -45,11 +47,15 @@ func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cob
 	cmd.AddCommand(NewValuesCmd(factory, streams))
 	cmd.AddCommand(NewStatusCmd(factory, streams))
 	cmd.AddCommand(NewViolationsCmd(factory, streams))
-	cmd.AddCommand(NewPoliciesCmd(factory, streams))
+	policiesCmd, policiesCmdError := NewPoliciesCmd(factory, streams)
+	if policiesCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Policies Command: %v", policiesCmdError)
+	}
+	cmd.AddCommand(policiesCmd)
 	cmd.AddCommand(NewPreflightCheckCmd(factory, streams))
 
 	cmd.AddCommand(k3d.NewK3dCmd(factory, streams))
 	cmd.AddCommand(deploy.NewDeployCmd(factory, streams))
 
-	return cmd
+	return cmd, nil
 }

@@ -17,9 +17,24 @@ import (
 )
 
 func policiesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) *cobra.Command {
-	cmd := NewPoliciesCmd(factory, streams)
+	cmd, _ := NewPoliciesCmd(factory, streams)
 	cmd.SetArgs(args)
 	return cmd
+}
+
+func TestGetPolicyCmdConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	factory.SetFail.GetConfigClient = true
+	// Act
+	cmd, err := NewPoliciesCmd(factory, streams)
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 }
 
 func TestGetPolicyUsage(t *testing.T) {
@@ -175,6 +190,19 @@ func gvrToListKindForPolicies() map[schema.GroupVersionResource]string {
 	}
 }
 
+func TestMatchingPolicyConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	// Act
+	cmd, _ := NewPoliciesCmd(factory, streams)
+	factory.SetFail.GetConfigClient = true
+	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Nil(t, res)
+}
+
 func TestNoMatchingPrefix(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
@@ -204,11 +232,35 @@ func TestGetK8sDynamicClientErrorGatekeeper(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
+	assert.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "failed to get K8sDynamicClient client") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
 	assert.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "failed to get K8sDynamicClient client") {
+		t.Errorf("unexpected output: %s", err2.Error())
+	}
+}
+
+func TestGetConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	cmd := policiesCmd(factory, streams, []string{})
+	// Act
+	factory.SetFail.GetConfigClient = true
+	err1 := cmd.RunE(cmd, []string{})
+	err2 := cmd.RunE(cmd, []string{""})
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
+	assert.Error(t, err2)
+	if !assert.Contains(t, err2.Error(), "Unable to get config client:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
 }
@@ -959,7 +1011,7 @@ func TestGatekeeperPoliciesCompletion(t *testing.T) {
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("gatekeeper", true)
 			streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-			cmd := NewPoliciesCmd(factory, streams)
+			cmd, _ := NewPoliciesCmd(factory, streams)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
@@ -1081,7 +1133,7 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kyverno", true)
 			streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-			cmd := NewPoliciesCmd(factory, streams)
+			cmd, _ := NewPoliciesCmd(factory, streams)
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
