@@ -74,16 +74,18 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		}
 		viperInstance.SetConfigName("config")
 		viperInstance.SetConfigType("yaml")
+		// Order the config paths so that the search is from most specific to least specific
+		viperInstance.AddConfigPath(".")
+		viperInstance.AddConfigPath(path.Join(".", ".bbctl"))
 		viperInstance.AddConfigPath(path.Join(homeDirname,
 			".bbctl"))
-		viperInstance.AddConfigPath("/etc/bbctl")
-		viperInstance.AddConfigPath(".")
 		// Support XDG_CONFIG_HOME standard, default to $HOME/.config/bbctl
 		xdgConfigHome, exists := os.LookupEnv("XDG_CONFIG_HOME")
 		if !exists {
 			xdgConfigHome = filepath.Join(homeDirname, ".config")
 		}
 		viperInstance.AddConfigPath(filepath.Join(xdgConfigHome, "bbctl"))
+		viperInstance.AddConfigPath("/etc/bbctl")
 
 		if err := viperInstance.ReadInConfig(); err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
