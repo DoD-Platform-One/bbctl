@@ -14,7 +14,7 @@ func TestK3d_RootUsage(t *testing.T) {
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewK3dCmd(factory, streams)
+	cmd, _ := NewK3dCmd(factory, streams)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "k3d", cmd.Use)
@@ -36,7 +36,7 @@ func TestK3d_RootNoSubcommand(t *testing.T) {
 	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewK3dCmd(factory, streams)
+	cmd, _ := NewK3dCmd(factory, streams)
 	// Assert
 	assert.Nil(t, cmd.Execute())
 	assert.Empty(t, in.String())

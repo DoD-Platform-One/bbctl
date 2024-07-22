@@ -18,10 +18,11 @@ func TestK3d_SshUsage(t *testing.T) {
 	streams, _, _, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewSSHCmd(factory, streams)
+	cmd, sshCmdError := NewSSHCmd(factory, streams)
 	cmd.SetArgs([]string{"-h"})
 	// Assert
 	assert.NotNil(t, cmd)
+	assert.Nil(t, sshCmdError)
 	assert.Equal(t, "ssh", cmd.Use)
 	assert.Empty(t, errout.String())
 }
@@ -64,11 +65,12 @@ func TestK3d_SshDryRun(t *testing.T) {
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	// Act
-	cmd := NewSSHCmd(factory, streams)
+	cmd, sshCmdError := NewSSHCmd(factory, streams)
 	cmd.SetArgs([]string{"--dry-run"})
 	// Assert
 	assert.Equal(t, "ssh", cmd.Use)
 	assert.Nil(t, cmd.Execute())
+	assert.Nil(t, sshCmdError)
 	assert.Empty(t, in.String())
 	assert.Empty(t, errout.String())
 	assert.Contains(t, out.String(), fmt.Sprintf("/usr/bin/ssh -o IdentitiesOnly=yes -i ~/.ssh/%v-dev.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ubuntu@%s", callerIdentity.Username, privateIP))
@@ -112,10 +114,11 @@ func TestK3d_SshBadArgs(t *testing.T) {
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	// Act
-	cmd := NewSSHCmd(factory, streams)
+	cmd, sshCmdError := NewSSHCmd(factory, streams)
 	cmd.SetArgs([]string{"--ssh-username="})
 	result := cmd.Execute()
 	// Assert
+	assert.Nil(t, sshCmdError)
 	assert.Error(t, result)
 	if exiterr, ok := result.(*exec.ExitError); ok {
 		assert.Equal(t, exiterr.ExitCode(), 255)
