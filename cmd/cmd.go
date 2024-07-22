@@ -55,7 +55,11 @@ func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*co
 	cmd.AddCommand(policiesCmd)
 	cmd.AddCommand(NewPreflightCheckCmd(factory, streams))
 
-	cmd.AddCommand(k3d.NewK3dCmd(factory, streams))
+	k3dCmd, K3dCmdError := k3d.NewK3dCmd(factory, streams)
+	if K3dCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving k3d Command: %v", K3dCmdError)
+	}
+	cmd.AddCommand(k3dCmd)
 	cmd.AddCommand(deploy.NewDeployCmd(factory, streams))
 	cmd.AddCommand(update.NewUpdateCmd(factory, streams))
 

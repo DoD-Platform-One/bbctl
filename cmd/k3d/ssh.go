@@ -29,7 +29,7 @@ var (
 )
 
 // NewSSHCmd - Returns a command to ssh to your k3d cluster using sshToK3dCluster
-func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     sshUse,
 		Short:   sshShort,
@@ -41,19 +41,21 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 		SilenceUsage: true,
 	}
 
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get config client: %v", err)
+	}
+	// make sure to sync this default with the one in the configuration schema
+	err = configClient.SetAndBindFlag("ssh-username", "ubuntu", "Username to use for SSH connection")
+	if err != nil {
+		return nil, fmt.Errorf("Unable to bind flags: %v", err)
+	}
+	err = configClient.SetAndBindFlag("dry-run", false, "Print command but don't actually establish an SSH connection")
+	if err != nil {
+		return nil, fmt.Errorf("Unable to bind flags: %v", err)
+	}
 
-	loggingClient.HandleError("Unable to bind flags: %v",
-		// make sure to sync this default with the one in the configuration schema
-		configClient.SetAndBindFlag("ssh-username", "ubuntu", "Username to use for SSH connection"),
-	)
-	loggingClient.HandleError("Unable to bind flags: %v",
-		configClient.SetAndBindFlag("dry-run", false, "Print command but don't actually establish an SSH connection"),
-	)
-
-	return cmd
+	return cmd, nil
 }
 
 // sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
@@ -68,9 +70,13 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, streams gen
 	userInfo := awsClient.GetIdentity(context.TODO(), stsClient)
 	ec2Client := awsClient.GetEc2Client(context.TODO(), cfg)
 	ips, err := awsClient.GetClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposurePublic)
-	loggingClient.HandleError("Unable to fetch cluster information: %v", err)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch cluster information: %v", err)
+	}
 	configClient, err := factory.GetConfigClient(command)
-	loggingClient.HandleError("Unable to get config client: %v", err)
+	if err != nil {
+		return fmt.Errorf("Unable to get config client: %v", err)
+	}
 	config := configClient.GetConfig()
 
 	loggingClient.Debug(fmt.Sprintf("Args: %v", strings.Join(args, " ")))

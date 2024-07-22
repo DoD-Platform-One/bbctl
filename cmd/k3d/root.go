@@ -24,7 +24,7 @@ var (
 )
 
 // NewK3dCmd - Returns a minimal parent command for the default k3d commands
-func NewK3dCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewK3dCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     k3dUse,
 		Short:   k3dShort,
@@ -39,8 +39,12 @@ func NewK3dCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobr
 	cmd.AddCommand(NewCreateClusterCmd(factory, streams))
 	cmd.AddCommand(NewDestroyClusterCmd(factory, streams))
 	cmd.AddCommand(NewShellProfileCmd(factory, streams))
-	cmd.AddCommand(NewSSHCmd(factory, streams))
+	sshCmd, sshCmdError := NewSSHCmd(factory, streams)
+	if sshCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving ssh Command: %v", sshCmdError)
+	}
+	cmd.AddCommand(sshCmd)
 	cmd.AddCommand(NewHostsCmd(factory, streams))
 
-	return cmd
+	return cmd, nil
 }
