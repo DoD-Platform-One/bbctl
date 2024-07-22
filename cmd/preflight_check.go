@@ -21,7 +21,6 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/kubernetes"
 	remoteCommand "k8s.io/client-go/tools/remotecommand"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	metricsApi "k8s.io/metrics/pkg/apis/metrics"
@@ -183,56 +182,60 @@ var fluxControllerPods []string = []string{
 }
 
 // NewPreflightCheckCmd - Creates a new Cobra command which implements the `bbctl preflight-check` functionality
-func NewPreflightCheckCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewPreflightCheckCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     preflightCheckUse,
 		Short:   preflightCheckShort,
 		Long:    preflightCheckLong,
 		Example: preflightCheckExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(bbPreflightCheck(cmd, factory, streams, cmd, preflightChecks))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return bbPreflightCheck(cmd, factory, streams, cmd, preflightChecks)
 		},
 	}
 
-	loggingClient := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("error getting config client", err)
+	configClient, clientError := factory.GetConfigClient(cmd)
+	if clientError != nil {
+		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+	}
 
-	loggingClient.HandleError(
-		"error setting registryserver flag: %v",
-		configClient.SetAndBindFlag(
-			"registryserver",
-			"",
-			"Image registry server url",
-		),
+	registryServerError := configClient.SetAndBindFlag(
+		"registryserver",
+		"",
+		"Image registry server url",
 	)
-	loggingClient.HandleError(
-		"error setting registryusername flag: %v",
-		configClient.SetAndBindFlag(
-			"registryusername",
-			"",
-			"Image registry username",
-		),
-	)
-	loggingClient.HandleError(
-		"error setting registrypassword flag: %v",
-		configClient.SetAndBindFlag(
-			"registrypassword",
-			"",
-			"Image registry password",
-		),
-	)
+	if registryServerError != nil {
+		return nil, fmt.Errorf("Error setting registryserver flag: %w", registryServerError)
+	}
 
-	return cmd
+	registryUserError := configClient.SetAndBindFlag(
+		"registryusername",
+		"",
+		"Image registry username",
+	)
+	if registryUserError != nil {
+		return nil, fmt.Errorf("Error setting registryusername flag: %w", registryUserError)
+	}
+
+	registryPasswordError := configClient.SetAndBindFlag(
+		"registrypassword",
+		"",
+		"Image registry password",
+	)
+	if registryPasswordError != nil {
+		return nil, fmt.Errorf("Error setting registrypassword flag: %w", registryPasswordError)
+	}
+
+	return cmd, nil
 }
 
 // Internal helper function to implement the preflight check command
 //
 // Runs the sequence of predefined checks in the preflightChecks array and summarizes the results
 func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, command *cobra.Command, preflightChecks []preflightCheck) error {
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(command)
-	loggingClient.HandleError("error getting config client", err)
+	if err != nil {
+		return fmt.Errorf("Unable to get config client: %w", err)
+	}
 	config := configClient.GetConfig()
 	for i, check := range preflightChecks {
 		status := check.function(cmd, factory, streams, config)

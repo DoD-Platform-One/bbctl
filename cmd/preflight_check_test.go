@@ -1243,7 +1243,8 @@ func TestPreflightCheckCmd(t *testing.T) {
 	factory.SetObjects([]runtime.Object{})
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 	factory.GetViper().Set("big-bang-repo", "/tmp")
-	cmd := NewPreflightCheckCmd(factory, streams)
+	cmd, cmdError := NewPreflightCheckCmd(factory, streams)
+	assert.NoError(t, cmdError)
 	err := cmd.Execute()
 	assert.NoError(t, err)
 	output := buf.String()
@@ -1253,4 +1254,40 @@ func TestPreflightCheckCmd(t *testing.T) {
 	assert.Contains(t, output, "Bar Service Up")
 	assert.Contains(t, output, "Hello Service Check Unknown")
 	assert.Contains(t, output, "System Error - Execute command again to run Hello Service Check")
+}
+
+func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{})
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	factory.GetViper().Set("big-bang-repo", "/tmp")
+	factory.SetFail.GetConfigClient = true
+	// Act
+	cmd, cmdError := NewPreflightCheckCmd(factory, streams)
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, cmdError)
+	if !assert.Contains(t, cmdError.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", cmdError.Error())
+	}
+}
+
+func TestBBPreflightCheckConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetObjects([]runtime.Object{})
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	factory.GetViper().Set("big-bang-repo", "/tmp")
+	cmd, _ := NewPreflightCheckCmd(factory, streams)
+	// Act
+	factory.SetFail.GetConfigClient = true
+	err := cmd.Execute()
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+
 }
