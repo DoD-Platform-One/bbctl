@@ -30,7 +30,7 @@ var (
 )
 
 // NewVersionCmd - Creates a new Cobra command which implements the `bbctl version` functionality
-func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     versionUse,
 		Short:   versionShort,
@@ -43,20 +43,21 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *
 		SilenceErrors: true,
 	}
 
-	loggingClient := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("error getting config client: %v", err)
+	configClient, clientError := factory.GetConfigClient(cmd)
+	if clientError != nil {
+		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+	}
 
-	loggingClient.HandleError(
-		"error setting and binding flags: %v",
-		configClient.SetAndBindFlag(
-			"client",
-			false,
-			"Print the bbctl client version only",
-		),
+	flagError := configClient.SetAndBindFlag(
+		"client",
+		false,
+		"Print the bbctl client version only",
 	)
+	if flagError != nil {
+		return nil, fmt.Errorf("Error setting and binding flags: %w", flagError)
+	}
 
-	return cmd
+	return cmd, nil
 }
 
 // bbVersion queries the cluster using helm module to get information on Big Bang release

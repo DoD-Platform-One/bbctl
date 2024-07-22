@@ -20,7 +20,7 @@ func TestGetVersionUsage(t *testing.T) {
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 
 	// Assert
 	assert.NotNil(t, cmd)
@@ -56,7 +56,7 @@ func TestGetVersion(t *testing.T) {
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	res := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -98,7 +98,7 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -120,7 +120,7 @@ func TestGetVersionInvalidClientFlag(t *testing.T) {
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	cmd.SetArgs([]string{"--client=string-value"})
 	err := cmd.Execute()
 
@@ -140,7 +140,7 @@ func TestGetVersionWithError(t *testing.T) {
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -158,7 +158,7 @@ func TestGetVersionWithBadParams(t *testing.T) {
 	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	// Act
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	cmd.SetArgs([]string{"--invalid-parameter"})
 	res := cmd.Execute()
 
@@ -177,11 +177,14 @@ func TestGetVersionWithConfigError(t *testing.T) {
 
 	// Act
 	factory.SetFail.GetConfigClient = true
+	cmd, err := NewVersionCmd(factory, streams)
 
 	// Assert
-	assert.Panics(t, func() {
-		NewVersionCmd(factory, streams)
-	})
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 }
 
 func TestGetVersionWithHelmError(t *testing.T) {
@@ -194,7 +197,7 @@ func TestGetVersionWithHelmError(t *testing.T) {
 
 	// Act
 	factory.SetFail.GetHelmClient = true
-	cmd := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory, streams)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert

@@ -43,7 +43,11 @@ func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*co
 
 	cmd.AddCommand(NewCompletionCmd(factory, streams))
 	cmd.AddCommand(NewConfigCmd(factory, streams))
-	cmd.AddCommand(NewVersionCmd(factory, streams))
+	versionCmd, versionCmdError := NewVersionCmd(factory, streams)
+	if versionCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Version Command: %w", versionCmdError)
+	}
+	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(NewReleasesCmd(factory, streams))
 	cmd.AddCommand(NewValuesCmd(factory, streams))
 	cmd.AddCommand(NewStatusCmd(factory, streams))
