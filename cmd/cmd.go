@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	deploy "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/deploy"
@@ -28,8 +27,8 @@ var (
 )
 
 // NewRootCmd - create a new Cobra root command
-func NewRootCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
-
+func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	streams := factory.GetIOStream()
 	cmd := &cobra.Command{
 		Use:     cmdUse,
 		Short:   cmdShort,
