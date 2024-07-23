@@ -534,3 +534,16 @@ func TestGetRuntimeClient(t *testing.T) {
 	// Cleanup
 	os.Setenv("KUBECONFIG", "")
 }
+
+func TestGetIOStreams(t *testing.T) {
+	// Arrange
+	factory := NewFactory()
+
+	// Act
+	ios := factory.GetIOStream()
+
+	// Assert
+	assert.Equal(t, os.Stdin, ios.In)
+	assert.Equal(t, os.Stdout, ios.Out)
+	assert.Equal(t, os.Stderr, ios.ErrOut)
+}

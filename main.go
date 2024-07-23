@@ -17,14 +17,13 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/cmd"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 )
 
 // main - main exectable function for bbctl
 func main() {
 	flags := pFlag.NewFlagSet("bbctl", pFlag.ExitOnError)
 	factory := bbUtil.NewFactory()
-	streams := bbK8sUtil.GetIOStream()
+	streams := factory.GetIOStream()
 	injectableMain(factory, flags, streams)
 }
 
@@ -126,7 +125,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
 	})
 
-	bbctlCmd, rootCmdError := cmd.NewRootCmd(factory, streams)
+	bbctlCmd, rootCmdError := cmd.NewRootCmd(factory)
 	if rootCmdError != nil {
 		initLogger.Error(fmt.Sprintf("Error retrieving root command: %v", rootCmdError.Error()))
 		os.Exit(1)

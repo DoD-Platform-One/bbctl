@@ -14,6 +14,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"istio.io/client-go/pkg/clientset/versioned"
 
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
@@ -49,6 +50,7 @@ type Factory interface {
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
 	GetViper() *viper.Viper
+	GetIOStream() genericIOOptions.IOStreams
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
@@ -393,4 +395,15 @@ func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 // GetViper returns the viper instance
 func (f *UtilityFactory) GetViper() *viper.Viper {
 	return f.viperInstance
+}
+
+// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
+func (f *UtilityFactory) GetIOStream() genericIOOptions.IOStreams {
+	streams := genericIOOptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+
+	return streams
 }

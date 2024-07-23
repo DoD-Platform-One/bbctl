@@ -5,16 +5,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
-
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestGetHelpUsage(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	// Act
-	cmd, _ := NewRootCmd(factory, streams)
+	cmd, _ := NewRootCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "bbctl", cmd.Use)

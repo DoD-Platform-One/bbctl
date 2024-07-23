@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
@@ -371,4 +373,15 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 // GetViper - get viper
 func (f *FakeFactory) GetViper() *viper.Viper {
 	return f.viperInstance
+}
+
+// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
+func (f *FakeFactory) GetIOStream() genericIOOptions.IOStreams {
+	streams := genericIOOptions.IOStreams{
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
+	}
+
+	return streams
 }
