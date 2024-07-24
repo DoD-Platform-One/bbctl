@@ -45,13 +45,14 @@ func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)
 	}
-	loggingClient := factory.GetLoggingClient()
 	cfg := awsClient.Config(context.TODO())
 	stsClient := awsClient.GetStsClient(context.TODO(), cfg)
 	userInfo := awsClient.GetIdentity(context.TODO(), stsClient)
 	ec2Client := awsClient.GetEc2Client(context.TODO(), cfg)
 	ips, err := awsClient.GetSortedClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposureAll)
-	loggingClient.HandleError("Unable to fetch cluster information: %v", err)
+	if err != nil {
+		return fmt.Errorf("Unable to fetch cluster information: %w", err)
+	}
 	var publicIP, privateIP string
 	if len(ips.PublicIPs) > 0 {
 		publicIP = *ips.PublicIPs[0].IP
