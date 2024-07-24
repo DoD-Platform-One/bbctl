@@ -45,13 +45,25 @@ func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStre
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)
 	}
-	cfg := awsClient.Config(context.TODO())
-	stsClient := awsClient.GetStsClient(context.TODO(), cfg)
-	userInfo := awsClient.GetIdentity(context.TODO(), stsClient)
-	ec2Client := awsClient.GetEc2Client(context.TODO(), cfg)
+	cfg, err := awsClient.Config(context.TODO())
+	if err != nil {
+		return fmt.Errorf("unable to get AWS SDK configuration: %w", err)
+	}
+	stsClient, err := awsClient.GetStsClient(context.TODO(), cfg)
+	if err != nil {
+		return fmt.Errorf("unable to get STS client: %w", err)
+	}
+	userInfo, err := awsClient.GetIdentity(context.TODO(), stsClient)
+	if err != nil {
+		return fmt.Errorf("unable to get AWS identity: %w", err)
+	}
+	ec2Client, err := awsClient.GetEc2Client(context.TODO(), cfg)
+	if err != nil {
+		return fmt.Errorf("unable to get EC2 client: %w", err)
+	}
 	ips, err := awsClient.GetSortedClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposureAll)
 	if err != nil {
-		return fmt.Errorf("Unable to fetch cluster information: %w", err)
+		return fmt.Errorf("unable to get cluster IPs: %w", err)
 	}
 	var publicIP, privateIP string
 	if len(ips.PublicIPs) > 0 {

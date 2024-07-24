@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -47,12 +45,17 @@ func ensureContext(ctx context.Context) context.Context {
 	return ctx
 }
 
-func ensureConfig(ctx context.Context, loggingClient bbLog.Client, cfg *aws.Config) *aws.Config {
+// ensureConfig ensures that the AWS SK configuration is loaded and returns it
+func ensureConfig(ctx context.Context, cfg *aws.Config) (*aws.Config, error) {
 	contextToUse := ensureContext(ctx)
 	if cfg == nil {
-		return config(contextToUse, loggingClient)
+		awsConfig, err := config(contextToUse)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get AWS SDK configuration: %w", err)
+		}
+		return awsConfig, nil
 	}
-	return cfg
+	return cfg, nil
 }
 
 // filterIPsByExposure - filter IPs by exposure
@@ -84,11 +87,13 @@ func toCallerIdentity(output *sts.GetCallerIdentityOutput) *CallerIdentity {
 }
 
 // config - get the AWS SDK configuration
-func config(ctx context.Context, loggingClient bbLog.Client) *aws.Config {
+func config(ctx context.Context) (*aws.Config, error) {
 	contextToUse := ensureContext(ctx)
 	cfg, err := awsConfig.LoadDefaultConfig(contextToUse)
-	loggingClient.HandleError("failed to load AWS SDK configuration", err)
-	return &cfg
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS SDK configuration: %w", err)
+	}
+	return &cfg, nil
 }
 
 // getClusterIPs - get the cluster IPs
@@ -154,24 +159,32 @@ func getSortedClusterIPs(ctx context.Context, api DescribeInstancesAPI, username
 }
 
 // getEc2Client - get the EC2 client
-func getEc2Client(ctx context.Context, loggingClient bbLog.Client, awsConfig *aws.Config) *ec2.Client {
-	config := ensureConfig(ctx, loggingClient, awsConfig)
-	return ec2.NewFromConfig(*config)
+func getEc2Client(ctx context.Context, awsConfig *aws.Config) (*ec2.Client, error) {
+	config, err := ensureConfig(ctx, awsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure AWS SDK configuration: %w", err)
+	}
+	return ec2.NewFromConfig(*config), nil
 }
 
 // getIdentity - get the AWS identity
-func getIdentity(ctx context.Context, loggingClient bbLog.Client, api GetCallerIdentityAPI) *CallerIdentity {
+func getIdentity(ctx context.Context, api GetCallerIdentityAPI) (*CallerIdentity, error) {
 	contextToUse := ensureContext(ctx)
 	result, err := api.GetCallerIdentity(
 		contextToUse,
 		&sts.GetCallerIdentityInput{},
 	)
-	loggingClient.HandleError("failed to get caller identity", err)
-	return toCallerIdentity(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get caller identity: %w", err)
+	}
+	return toCallerIdentity(result), nil
 }
 
 // getStsClient - get the STS client
-func getStsClient(ctx context.Context, loggingClient bbLog.Client, awsConfig *aws.Config) *sts.Client {
-	config := ensureConfig(ctx, loggingClient, awsConfig)
-	return sts.NewFromConfig(*config)
+func getStsClient(ctx context.Context, awsConfig *aws.Config) (*sts.Client, error) {
+	config, err := ensureConfig(ctx, awsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure AWS SDK configuration: %w", err)
+	}
+	return sts.NewFromConfig(*config), nil
 }

@@ -191,9 +191,8 @@ func (f *UtilityFactory) GetCredentialHelper() func(string, string) (string, err
 
 // GetAWSClient initializes and returns a new AWS API client
 func (f *UtilityFactory) GetAWSClient() (bbAws.Client, error) {
-	loggingClient := f.GetLoggingClient()
 	clientGetter := bbAws.ClientGetter{}
-	client, err := clientGetter.GetClient(loggingClient)
+	client, err := clientGetter.GetClient()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get AWS client: %w", err)
 	}
