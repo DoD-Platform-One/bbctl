@@ -1,11 +1,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 
@@ -387,13 +387,19 @@ func (f *FakeFactory) GetViper() *viper.Viper {
 var streams *genericIOOptions.IOStreams
 var oneStream sync.Once
 
+// ResetIOStream resets the IOStreams singleton
+func (f *FakeFactory) ResetIOStream() {
+	streams = nil
+	oneStream = sync.Once{}
+}
+
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
 func (f *FakeFactory) GetIOStream() *genericIOOptions.IOStreams {
 	oneStream.Do(func() {
 		streams = &genericIOOptions.IOStreams{
-			In:     os.Stdin,
-			Out:    os.Stdout,
-			ErrOut: os.Stderr,
+			In:     &bytes.Buffer{},
+			Out:    &bytes.Buffer{},
+			ErrOut: &bytes.Buffer{},
 		}
 	})
 	return streams
