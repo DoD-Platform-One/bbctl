@@ -116,7 +116,7 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violat
 }
 
 // NewViolationsCmd - new violations command
-func NewViolationsCmd(factory bbUtil.Factory) *cobra.Command {
+func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     violationsUse,
 		Short:   violationsShort,
@@ -132,20 +132,21 @@ func NewViolationsCmd(factory bbUtil.Factory) *cobra.Command {
 		},
 	}
 
-	loggingClient := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("Error getting config client: %v", err)
+	configClient, clientError := factory.GetConfigClient(cmd)
+	if clientError != nil {
+		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+	}
 
-	loggingClient.HandleError(
-		"Error binding flags: %v",
-		configClient.SetAndBindFlag(
-			"audit",
-			false,
-			"list violations in audit mode",
-		),
+	flagError := configClient.SetAndBindFlag(
+		"audit",
+		false,
+		"list violations in audit mode",
 	)
+	if flagError != nil {
+		return nil, fmt.Errorf("Error setting and binding flags: %w", flagError)
+	}
 
-	return cmd
+	return cmd, nil
 }
 
 // getViolations detects if the cluster has gatekeeper or kyverno installed and
