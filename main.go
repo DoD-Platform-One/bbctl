@@ -23,7 +23,7 @@ import (
 func main() {
 	flags := pFlag.NewFlagSet("bbctl", pFlag.ExitOnError)
 	factory := bbUtil.NewFactory()
-	streams := factory.GetIOStream()
+	streams := *factory.GetIOStream()
 	injectableMain(factory, flags, streams)
 }
 

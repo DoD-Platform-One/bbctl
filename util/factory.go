@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,7 +51,7 @@ type Factory interface {
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
 	GetViper() *viper.Viper
-	GetIOStream() genericIOOptions.IOStreams
+	GetIOStream() *genericIOOptions.IOStreams
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
@@ -396,13 +397,18 @@ func (f *UtilityFactory) GetViper() *viper.Viper {
 	return f.viperInstance
 }
 
-// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
-func (f *UtilityFactory) GetIOStream() genericIOOptions.IOStreams {
-	streams := genericIOOptions.IOStreams{
-		In:     os.Stdin,
-		Out:    os.Stdout,
-		ErrOut: os.Stderr,
-	}
+// Temporary Singleton for IO Streams until implementation of bbctl #214
+var streams *genericIOOptions.IOStreams
+var oneStream sync.Once
 
+// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
+func (f *UtilityFactory) GetIOStream() *genericIOOptions.IOStreams {
+	oneStream.Do(func() {
+		streams = &genericIOOptions.IOStreams{
+			In:     os.Stdin,
+			Out:    os.Stdout,
+			ErrOut: os.Stderr,
+		}
+	})
 	return streams
 }

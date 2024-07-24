@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
@@ -382,13 +383,22 @@ func (f *FakeFactory) GetViper() *viper.Viper {
 	return f.viperInstance
 }
 
-// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
-func (f *FakeFactory) GetIOStream() genericIOOptions.IOStreams {
-	streams := genericIOOptions.IOStreams{
-		In:     os.Stdin,
-		Out:    os.Stdout,
-		ErrOut: os.Stderr,
-	}
+// Temporary Singleton for IO Streams until implementation of bbctl #214
+var streams *genericIOOptions.IOStreams
+var oneStream sync.Once
 
+// GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
+func (f *FakeFactory) GetIOStream() *genericIOOptions.IOStreams {
+	oneStream.Do(func() {
+		streams = &genericIOOptions.IOStreams{
+			In:     os.Stdin,
+			Out:    os.Stdout,
+			ErrOut: os.Stderr,
+		}
+	})
 	return streams
+}
+
+func (f *FakeFactory) SetIOStream(stream genericIOOptions.IOStreams) {
+	streams = &stream
 }
