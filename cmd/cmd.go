@@ -28,7 +28,7 @@ var (
 
 // NewRootCmd - create a new Cobra root command
 func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
-	streams := factory.GetIOStream()
+	streams := *factory.GetIOStream()
 	cmd := &cobra.Command{
 		Use:     cmdUse,
 		Short:   cmdShort,
@@ -42,7 +42,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	cmd.AddCommand(NewCompletionCmd(factory, streams))
 	cmd.AddCommand(NewConfigCmd(factory, streams))
-	versionCmd, versionCmdError := NewVersionCmd(factory, streams)
+	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Version Command: %w", versionCmdError)
 	}

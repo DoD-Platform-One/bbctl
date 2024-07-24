@@ -17,10 +17,8 @@ func TestGetVersionUsage(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 
 	// Assert
 	assert.NotNil(t, cmd)
@@ -53,10 +51,11 @@ func TestGetVersion(t *testing.T) {
 	factory.SetHelmReleases(releaseFixture)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	stream, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	factory.SetIOStream(stream)
 
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	res := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -95,10 +94,11 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	factory.GetViper().Set("big-bang-repo", "test")
 	factory.GetViper().Set("client", true)
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	stream, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	factory.SetIOStream(stream)
 
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -117,10 +117,8 @@ func TestGetVersionInvalidClientFlag(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	cmd.SetArgs([]string{"--client=string-value"})
 	err := cmd.Execute()
 
@@ -137,10 +135,8 @@ func TestGetVersionWithError(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
@@ -155,10 +151,8 @@ func TestGetVersionWithBadParams(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	cmd.SetArgs([]string{"--invalid-parameter"})
 	res := cmd.Execute()
 
@@ -173,11 +167,9 @@ func TestGetVersionWithConfigError(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
 	factory.SetFail.GetConfigClient = true
-	cmd, err := NewVersionCmd(factory, streams)
+	cmd, err := NewVersionCmd(factory)
 
 	// Assert
 	assert.Nil(t, cmd)
@@ -193,11 +185,9 @@ func TestGetVersionWithHelmError(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Act
 	factory.SetFail.GetHelmClient = true
-	cmd, _ := NewVersionCmd(factory, streams)
+	cmd, _ := NewVersionCmd(factory)
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert

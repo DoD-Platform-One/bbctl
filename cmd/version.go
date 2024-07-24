@@ -7,7 +7,6 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -30,14 +29,14 @@ var (
 )
 
 // NewVersionCmd - Creates a new Cobra command which implements the `bbctl version` functionality
-func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
+func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     versionUse,
 		Short:   versionShort,
 		Long:    versionLong,
 		Example: versionExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return bbVersion(cmd, factory, streams)
+			return bbVersion(cmd, factory)
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -61,7 +60,8 @@ func NewVersionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (
 }
 
 // bbVersion queries the cluster using helm module to get information on Big Bang release
-func bbVersion(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func bbVersion(cmd *cobra.Command, factory bbUtil.Factory) error {
+	streams := factory.GetIOStream()
 	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		return err
