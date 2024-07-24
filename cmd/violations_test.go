@@ -63,7 +63,7 @@ func eventKyverno(rName string, rKind string, ns string, component string, msg s
 }
 
 func violationsCmd(factory bbUtil.Factory, ns string, args []string) *cobra.Command {
-	cmd := NewViolationsCmd(factory)
+	cmd, _ := NewViolationsCmd(factory)
 	cmd.PersistentFlags().StringP("namespace", "n", "", "namespace")
 	cmdArgs := []string{}
 	if ns != "" {
@@ -72,6 +72,43 @@ func violationsCmd(factory bbUtil.Factory, ns string, args []string) *cobra.Comm
 	cmdArgs = append(cmdArgs, args...)
 	cmd.SetArgs(cmdArgs)
 	return cmd
+}
+
+func TestGetViolationsWithConfigError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetHelmReleases(nil)
+	factory.GetViper().Set("big-bang-repo", "test")
+
+	// Act
+	factory.SetFail.GetConfigClient = true
+	cmd, err := NewViolationsCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestViolationsCmdHelperError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetHelmReleases(nil)
+	factory.GetViper().Set("big-bang-repo", "test")
+	cmd, _ := NewViolationsCmd(factory)
+	factory.SetFail.GetK8sDynamicClient = true
+
+	// Act
+	err := cmd.Execute()
+
+	// Assert
+	assert.NotNil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Error getting violations helper client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 }
 
 func gvrToListKindForGatekeeper() map[runtimeSchema.GroupVersionResource]string {
