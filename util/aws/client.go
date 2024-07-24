@@ -2,27 +2,24 @@ package aws
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-
-	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 )
 
 // Client holds the method signatures for an AWS client.
 type Client interface {
-	Config(context.Context) *aws.Config
+	Config(context.Context) (*aws.Config, error)
 	GetClusterIPs(context.Context, DescribeInstancesAPI, string, FilterExposure) ([]ClusterIP, error)
 	GetSortedClusterIPs(context.Context, DescribeInstancesAPI, string, FilterExposure) (SortedClusterIPs, error)
-	GetEc2Client(context.Context, *aws.Config) *ec2.Client
-	GetIdentity(context.Context, GetCallerIdentityAPI) *CallerIdentity
-	GetStsClient(context.Context, *aws.Config) *sts.Client
+	GetEc2Client(context.Context, *aws.Config) (*ec2.Client, error)
+	GetIdentity(context.Context, GetCallerIdentityAPI) (*CallerIdentity, error)
+	GetStsClient(context.Context, *aws.Config) (*sts.Client, error)
 }
 
 // ConfigFunc type
-type ConfigFunc func(context.Context, bbLog.Client) *aws.Config
+type ConfigFunc func(context.Context) (*aws.Config, error)
 
 // GetClusterIPsFunc type
 type GetClusterIPsFunc func(context.Context, DescribeInstancesAPI, string, FilterExposure) ([]ClusterIP, error)
@@ -31,13 +28,13 @@ type GetClusterIPsFunc func(context.Context, DescribeInstancesAPI, string, Filte
 type GetSortedClusterIPsFunc func(context.Context, DescribeInstancesAPI, string, FilterExposure) (SortedClusterIPs, error)
 
 // GetEc2ClientFunc type
-type GetEc2ClientFunc func(context.Context, bbLog.Client, *aws.Config) *ec2.Client
+type GetEc2ClientFunc func(context.Context, *aws.Config) (*ec2.Client, error)
 
 // GetIdentityFunc type
-type GetIdentityFunc func(context.Context, bbLog.Client, GetCallerIdentityAPI) *CallerIdentity
+type GetIdentityFunc func(context.Context, GetCallerIdentityAPI) (*CallerIdentity, error)
 
 // GetStsClientFunc type
-type GetStsClientFunc func(context.Context, bbLog.Client, *aws.Config) *sts.Client
+type GetStsClientFunc func(context.Context, *aws.Config) (*sts.Client, error)
 
 // awsClient is composed of functions to interact with AWS API
 type awsClient struct {
@@ -47,7 +44,6 @@ type awsClient struct {
 	getEc2Client            GetEc2ClientFunc
 	getIdentity             GetIdentityFunc
 	getStsClient            GetStsClientFunc
-	loggingClient           bbLog.Client
 }
 
 // NewClient returns a new AWS client with the provided configuration
@@ -58,11 +54,7 @@ func NewClient(
 	getEc2Client GetEc2ClientFunc,
 	getIdentity GetIdentityFunc,
 	getStsClient GetStsClientFunc,
-	loggingClient bbLog.Client,
 ) (Client, error) {
-	if loggingClient == nil {
-		return nil, fmt.Errorf("loggingClient is nil, but is required for awsClient")
-	}
 	return &awsClient{
 		config:                  config,
 		getClusterIps:           getClusterIPs,
@@ -70,13 +62,12 @@ func NewClient(
 		getEc2Client:            getEc2Client,
 		getIdentity:             getIdentity,
 		getStsClient:            getStsClient,
-		loggingClient:           loggingClient,
 	}, nil
 }
 
 // Config - get the AWS SDK configuration
-func (c *awsClient) Config(ctx context.Context) *aws.Config {
-	return c.config(ctx, c.loggingClient)
+func (c *awsClient) Config(ctx context.Context) (*aws.Config, error) {
+	return c.config(ctx)
 }
 
 // GetClusterIPs - get the cluster IPs
@@ -90,16 +81,16 @@ func (c *awsClient) GetSortedClusterIPs(ctx context.Context, api DescribeInstanc
 }
 
 // GetEc2Client - get the EC2 client
-func (c *awsClient) GetEc2Client(ctx context.Context, awsConfig *aws.Config) *ec2.Client {
-	return c.getEc2Client(ctx, c.loggingClient, awsConfig)
+func (c *awsClient) GetEc2Client(ctx context.Context, awsConfig *aws.Config) (*ec2.Client, error) {
+	return c.getEc2Client(ctx, awsConfig)
 }
 
 // GetIdentity - get the AWS caller identity
-func (c *awsClient) GetIdentity(ctx context.Context, api GetCallerIdentityAPI) *CallerIdentity {
-	return c.getIdentity(ctx, c.loggingClient, api)
+func (c *awsClient) GetIdentity(ctx context.Context, api GetCallerIdentityAPI) (*CallerIdentity, error) {
+	return c.getIdentity(ctx, api)
 }
 
 // GetStsClient - get the STS client
-func (c *awsClient) GetStsClient(ctx context.Context, awsConfig *aws.Config) *sts.Client {
-	return c.getStsClient(ctx, c.loggingClient, awsConfig)
+func (c *awsClient) GetStsClient(ctx context.Context, awsConfig *aws.Config) (*sts.Client, error) {
+	return c.getStsClient(ctx, awsConfig)
 }

@@ -109,3 +109,89 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	assert.Empty(t, out.String())
 	assert.Empty(t, errout.String())
 }
+
+func TestK3d_ShellProfileErrors(t *testing.T) {
+
+	var tests = []struct {
+		name string
+		// errorFunc is a function that will be called with the awsClient and factory
+		// at the start of a test case to allow setting flags to force errors
+		errorFunc func(factory *bbTestUtil.FakeFactory)
+		errmsg    string
+	}{
+		{
+			name: "ErrorGettingAWSClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetAWSClient = true
+			},
+			errmsg: "unable to get AWS client: failed to get AWS client",
+		},
+		{
+			name: "ErrorGettingAWSConfig",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.AWS.Config = true
+			},
+			errmsg: "unable to get AWS SDK configuration: failed to get AWS config",
+		},
+		{
+			name: "ErrorGettingAWSStsClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.AWS.GetStsClient = true
+			},
+			errmsg: "unable to get STS client: failed to get STS client",
+		},
+		{
+			name: "ErrorGettingAWSIdentity",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.AWS.GetIdentity = true
+			},
+			errmsg: "unable to get AWS identity: failed to get AWS identity",
+		},
+		{
+			name: "ErrorGettingAWSEc2Client",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.AWS.GetEc2Client = true
+			},
+			errmsg: "unable to get EC2 client: failed to get EC2 client",
+		},
+		{
+			name: "ErrorGettingSortedClusterIPs",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.AWS.GetSortedClusterIPs = true
+			},
+			errmsg: "unable to get cluster IPs: failed to get sorted cluster IPs",
+		},
+	}
+
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	account := callerIdentityAccount
+	arn := callerIdentityArn
+	callerIdentity := bbAwsUtil.CallerIdentity{
+		GetCallerIdentityOutput: sts.GetCallerIdentityOutput{
+			Account: &account,
+			Arn:     &arn,
+		},
+		Username: "developer",
+	}
+	clusterIPs := []bbAwsUtil.ClusterIP{}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetCallerIdentity(&callerIdentity)
+			factory.SetClusterIPs(&clusterIPs)
+			viperInstance := factory.GetViper()
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+
+			// Trigger our errors
+			test.errorFunc(factory)
+
+			err := shellProfileCluster(factory, streams)
+
+			assert.NotNil(t, err)
+			assert.Equal(t, test.errmsg, err.Error())
+		})
+	}
+}

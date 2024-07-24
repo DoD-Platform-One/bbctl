@@ -172,6 +172,10 @@ type FakeFactory struct {
 		GetCrds                      bool
 		GetDescriptor                bool
 		DescriptorType               string
+		GetAWSClient                 bool
+
+		// configure the AWS fake client to fail on certain calls
+		AWS fakeAws.SetFail
 	}
 
 	helm struct {
@@ -191,7 +195,10 @@ func (f *FakeFactory) GetCredentialHelper() func(string, string) (string, error)
 
 // GetAWSClient constructs a fake AWS client
 func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
-	fakeClient, err := fakeAws.NewFakeClient(f.clusterIPs, &f.awsConfig, f.ec2Client, f.callerIdentity, f.stsClient)
+	if f.SetFail.GetAWSClient {
+		return nil, fmt.Errorf("failed to get AWS client")
+	}
+	fakeClient, err := fakeAws.NewFakeClient(f.clusterIPs, &f.awsConfig, f.ec2Client, f.callerIdentity, f.stsClient, f.SetFail.AWS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AWS client: %w", err)
 	}

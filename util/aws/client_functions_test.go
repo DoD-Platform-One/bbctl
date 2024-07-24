@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	awsTypes "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
-	bbUtilTestLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 )
 
 const region = "us-gov-west-1"
@@ -156,41 +154,31 @@ func TestEnsureContextNotNil(t *testing.T) {
 
 func TestEnsureConfigNil(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	GenerateTestConfig(t, nil)
 	// Act
-	cfg := ensureConfig(context.TODO(), loggingClient, nil)
+	cfg, err := ensureConfig(context.TODO(), nil)
+	assert.Nil(t, err)
+
 	// Assert
 	assert.NotNil(t, cfg)
 	assert.NotEmpty(t, cfg.Region)
 	assert.Equal(t, region, cfg.Region)
-	assert.Empty(t, stringBuilder.String())
 }
 
 func TestEnsureConfigNotNil(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	GenerateTestConfig(t, nil)
 	// Act
-	origCfg := ensureConfig(context.TODO(), loggingClient, nil)
-	cfg := ensureConfig(context.TODO(), loggingClient, origCfg)
+	origCfg, err := ensureConfig(context.TODO(), nil)
+	assert.Nil(t, err)
+
+	cfg, err := ensureConfig(context.TODO(), origCfg)
+	assert.Nil(t, err)
+
 	// Assert
 	assert.NotNil(t, origCfg)
 	assert.Equal(t, region, origCfg.Region)
 	assert.Equal(t, origCfg, cfg)
-	assert.Empty(t, stringBuilder.String())
 }
 
 func TestFilterIPsByExposurePublic(t *testing.T) {
@@ -247,21 +235,15 @@ func TestToCallerIdentityPass(t *testing.T) {
 
 func TestConfigPass(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	GenerateTestConfig(t, nil)
 	// Act
-	cfg := config(context.TODO(), loggingClient)
+	cfg, err := config(context.TODO())
+	assert.Nil(t, err)
+
 	// Assert
 	assert.NotNil(t, cfg)
 	assert.NotEmpty(t, cfg.Region)
 	assert.Equal(t, region, cfg.Region)
-	assert.Empty(t, stringBuilder.String())
 }
 
 func TestGetClusterIPsPass(t *testing.T) {
@@ -490,29 +472,17 @@ func TestGetSortedClusterIPsError(t *testing.T) {
 
 func TestGetEc2ClientPass(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	GenerateTestConfig(t, nil)
 	// Act
-	ec2Client := getEc2Client(context.TODO(), loggingClient, nil)
+	ec2Client, err := getEc2Client(context.TODO(), nil)
+	assert.Nil(t, err)
+
 	// Assert
 	assert.NotNil(t, ec2Client)
 }
 
 func TestGetIdentityPass(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	arn := "arn:aws:iam::123456789012:user/test-user"
 	output := &sts.GetCallerIdentityOutput{
 		Arn: &arn,
@@ -528,26 +498,22 @@ func TestGetIdentityPass(t *testing.T) {
 		},
 	)
 	// Act
-	identity := getIdentity(context.TODO(), loggingClient, api)
+	identity, err := getIdentity(context.TODO(), api)
+	assert.Nil(t, err)
+
 	// Assert
 	assert.NotNil(t, identity)
 	assert.Equal(t, "test-user", identity.Username)
 	assert.Equal(t, arn, *identity.Arn)
-	assert.Empty(t, stringBuilder.String())
 }
 
 func TestGetStsClientPass(t *testing.T) {
 	// Arrange
-	var stringBuilder strings.Builder
-	logFunc := func(s ...string) {
-		for _, str := range s {
-			stringBuilder.WriteString(str)
-		}
-	}
-	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
 	GenerateTestConfig(t, nil)
 	// Act
-	stsClient := getStsClient(context.TODO(), loggingClient, nil)
+	stsClient, ert := getStsClient(context.TODO(), nil)
+	assert.Nil(t, ert)
+
 	// Assert
 	assert.NotNil(t, stsClient)
 }
