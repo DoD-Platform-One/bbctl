@@ -86,7 +86,7 @@ type violationsCmdHelper struct {
 	streams      genericIOOptions.IOStreams
 }
 
-func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*violationsCmdHelper, error) {
+func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violationsCmdHelper, error) {
 	k8sClient, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return nil, err
@@ -104,24 +104,26 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, streams 
 		return nil, err
 	}
 
+	streams := factory.GetIOStream()
+
 	return &violationsCmdHelper{
 		k8sClient:    k8sClient,
 		k8sClientSet: k8sClientSet,
 		logger:       loggingClient,
 		configClient: configClient,
-		streams:      streams,
+		streams:      *streams,
 	}, nil
 }
 
 // NewViolationsCmd - new violations command
-func NewViolationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewViolationsCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     violationsUse,
 		Short:   violationsShort,
 		Long:    violationsLong,
 		Example: violationsExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			v, err := newViolationsCmdHelper(cmd, factory, streams)
+			v, err := newViolationsCmdHelper(cmd, factory)
 			if err != nil {
 				return fmt.Errorf("Error getting violations helper client: %v", err)
 			}

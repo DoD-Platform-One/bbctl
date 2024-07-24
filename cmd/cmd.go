@@ -50,7 +50,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(NewReleasesCmd(factory, streams))
 	cmd.AddCommand(NewValuesCmd(factory, streams))
 	cmd.AddCommand(NewStatusCmd(factory, streams))
-	cmd.AddCommand(NewViolationsCmd(factory, streams))
+	cmd.AddCommand(NewViolationsCmd(factory))
 	policiesCmd, policiesCmdError := NewPoliciesCmd(factory, streams)
 	if policiesCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Policies Command: %v", policiesCmdError)

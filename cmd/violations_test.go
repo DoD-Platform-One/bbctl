@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -16,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeSchema "k8s.io/apimachinery/pkg/runtime/schema"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	dynamicFake "k8s.io/client-go/dynamic/fake"
 	fake "k8s.io/client-go/kubernetes/fake"
 	typedFake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
@@ -62,8 +62,8 @@ func eventKyverno(rName string, rKind string, ns string, component string, msg s
 	return evt
 }
 
-func violationsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams, ns string, args []string) *cobra.Command {
-	cmd := NewViolationsCmd(factory, streams)
+func violationsCmd(factory bbUtil.Factory, ns string, args []string) *cobra.Command {
+	cmd := NewViolationsCmd(factory)
 	cmd.PersistentFlags().StringP("namespace", "n", "", "namespace")
 	cmdArgs := []string{}
 	if ns != "" {
@@ -198,17 +198,19 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
-			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+			streams := factory.GetIOStream()
+			buf := streams.Out.(*bytes.Buffer)
 			factory.GetViper().Set("big-bang-repo", "test")
-			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
+			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
 			}
-			if strings.Contains(buf.String(), test.unexpected) {
-				t.Errorf("unexpected output: %s", buf.String())
+			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
+				t.Errorf("unexpected output: %s; checked for '%s'", buf.String(), test.unexpected)
 			}
 			assert.Nil(t, err)
 		})
@@ -282,11 +284,13 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 			factory.GetViper().Set("big-bang-repo", "test")
-			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, test.namespace, nil)
+			streams := factory.GetIOStream()
+			buf := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
@@ -369,11 +373,13 @@ func TestKyvernoAuditViolations(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 			factory.GetViper().Set("big-bang-repo", "test")
-			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, test.namespace, []string{"--audit"})
+			streams := factory.GetIOStream()
+			buf := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
@@ -456,11 +462,13 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 			factory.GetViper().Set("big-bang-repo", "test")
-			streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, test.namespace, nil)
+			streams := factory.GetIOStream()
+			buf := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
 				t.Errorf("unexpected output: %s", buf.String())
@@ -521,9 +529,12 @@ func TestGetViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.GetViper().Set("big-bang-repo", "test")
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 
 			gvrs := map[runtimeSchema.GroupVersionResource]string{}
 			for gvr, listKind := range gvrToListKindForGatekeeper() {
@@ -623,7 +634,7 @@ func TestGetViolations(t *testing.T) {
 
 			}
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// if test.errorCheckingForKyverno or test.errorCheckingForGatekeeper is true,
@@ -665,8 +676,11 @@ func TestKyvernoExists(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 
@@ -679,7 +693,7 @@ func TestKyvernoExists(t *testing.T) {
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 			}
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// Act
@@ -743,8 +757,11 @@ func TestListKyvernoViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
@@ -766,7 +783,7 @@ func TestListKyvernoViolations(t *testing.T) {
 				factory.SetObjects([]runtime.Object{eventList})
 			}
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// Act
@@ -809,8 +826,11 @@ func TestGatekeeperExists(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
@@ -822,7 +842,7 @@ func TestGatekeeperExists(t *testing.T) {
 			}
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// Act
@@ -877,8 +897,11 @@ func TestListGkDenyViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
@@ -897,7 +920,7 @@ func TestListGkDenyViolations(t *testing.T) {
 				factory.SetObjects([]runtime.Object{eventList})
 			}
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// Act
@@ -959,8 +982,11 @@ func TestListGkAuditViolations(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 
 			if test.errorOnListCrds {
@@ -1032,7 +1058,7 @@ func TestListGkAuditViolations(t *testing.T) {
 				factory.SetObjects(objects)
 			}
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
 
 			// Act
@@ -1179,14 +1205,16 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
-			streams, _, out, _ := genericIOOptions.NewTestIOStreams()
-			cmd := violationsCmd(factory, streams, "", nil)
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			out := streams.Out.(*bytes.Buffer)
+			cmd := violationsCmd(factory, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnK8sDynamicClient
 			factory.SetFail.GetK8sClientset = test.errorOnK8sClientSet
 			factory.SetFail.GetConfigClient = test.errorOnConfigClient
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 
-			tv, err := newViolationsCmdHelper(cmd, factory, streams)
+			tv, err := newViolationsCmdHelper(cmd, factory)
 
 			// This is the only test case where we don't expect an error
 			if test.desc == "no errors" {
