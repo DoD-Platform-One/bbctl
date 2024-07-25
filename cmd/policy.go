@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
@@ -54,7 +53,7 @@ type policyDescriptor struct {
 }
 
 // NewPoliciesCmd - Creates a new Cobra command which implements the `bbctl policy` functionality
-func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
+func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     policyUse,
 		Short:   policyShort,
@@ -68,9 +67,9 @@ func NewPoliciesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				return listPoliciesByName(cmd, factory, streams, args[0])
+				return listPoliciesByName(cmd, factory, args[0])
 			} else {
-				return listAllPolicies(cmd, factory, streams)
+				return listAllPolicies(cmd, factory)
 			}
 		},
 		SilenceUsage:  true,
@@ -174,7 +173,7 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 // Internal helper function to query the cluster for resources matching the given the prefix hint on the following:
 //   - Gatekeeper constraint CRDs
 //   - Kyverno cluster policy CRDs
-func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
+func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return fmt.Errorf("Unable to get config client: %v", err)
@@ -182,18 +181,19 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams gene
 	config := configClient.GetConfig()
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
-		return listGatekeeperPoliciesByName(cmd, factory, streams, name)
+		return listGatekeeperPoliciesByName(cmd, factory, name)
 	}
 
 	if !config.PolicyConfiguration.Gatekeeper && config.PolicyConfiguration.Kyverno {
-		return listKyvernoPoliciesByName(cmd, factory, streams, name)
+		return listKyvernoPoliciesByName(cmd, factory, name)
 	}
 
 	return fmt.Errorf("either --gatekeeper or --kyverno must be specified, but not both")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs matching the given prefix
-func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
+func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
+	streams := factory.GetIOStream()
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -224,7 +224,8 @@ func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, st
 }
 
 // Internal helper function to query the cluster for Kyverno cluster policy CRDs matching the given name
-func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, name string) error {
+func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
+	streams := factory.GetIOStream()
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -263,7 +264,7 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, strea
 // Internal helper function to query the cluster using the dynamic client to get information on the following:
 //   - All Gatekeeper constraint CRDs
 //   - All Kyverno policy CRDs
-func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return fmt.Errorf("Unable to get config client: %v", err)
@@ -271,18 +272,19 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams generic
 	config := configClient.GetConfig()
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
-		return listAllGatekeeperPolicies(cmd, factory, streams)
+		return listAllGatekeeperPolicies(cmd, factory)
 	}
 
 	if !config.PolicyConfiguration.Gatekeeper && config.PolicyConfiguration.Kyverno {
-		return listAllKyvernoPolicies(cmd, factory, streams)
+		return listAllKyvernoPolicies(cmd, factory)
 	}
 
 	return fmt.Errorf("either --gatekeeper or --kyverno must be specified")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs
-func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
+	streams := factory.GetIOStream()
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -322,7 +324,8 @@ func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory, strea
 }
 
 // Internal helper function to query the cluster for Kyverno policy CRDs
-func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
+	streams := factory.GetIOStream()
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
