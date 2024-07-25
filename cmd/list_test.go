@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -13,8 +14,6 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestListHelmReleases_HappyPath(t *testing.T) {
@@ -54,11 +53,13 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 	}
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
-	cmd := NewReleasesCmd(factory, streams)
+	cmd := NewReleasesCmd(factory)
 	cmd.Run(cmd, []string{})
 
 	response := strings.Split(buf.String(), "\n")
@@ -81,17 +82,17 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 func TestListHelmReleases_NoList(t *testing.T) {
 	// given
 	errorMessage := "error retrieving list"
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 
-	cmd := NewReleasesCmd(factory, streams)
+	cmd := NewReleasesCmd(factory)
 
 	// when
 	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
 		return nil, fmt.Errorf(errorMessage)
 	})
-	error := listHelmReleases(cmd, factory, streams, static.DefaultClient)
+	error := listHelmReleases(cmd, factory, static.DefaultClient)
 
 	// then
 	assert.NotNil(t, error)
@@ -100,15 +101,15 @@ func TestListHelmReleases_NoList(t *testing.T) {
 
 func TestListHelmReleases_NoHelmClient(t *testing.T) {
 	// given
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 
-	cmd := NewReleasesCmd(factory, streams)
+	cmd := NewReleasesCmd(factory)
 
 	// when
 	factory.SetFail.GetHelmClient = true
-	error := listHelmReleases(cmd, factory, streams, static.DefaultClient)
+	error := listHelmReleases(cmd, factory, static.DefaultClient)
 
 	// then
 	assert.NotNil(t, error)
@@ -118,16 +119,16 @@ func TestListHelmReleases_NoHelmClient(t *testing.T) {
 func TestListHelmReleases_NoConstants(t *testing.T) {
 	// given
 	expectedError := fmt.Errorf("failed to get constants")
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 
-	cmd := NewReleasesCmd(factory, streams)
+	cmd := NewReleasesCmd(factory)
 
 	// when
 	constantsClient := mock.MockConstantsClient{}
 	constantsClient.On("GetConstants").Return(static.Constants{BigBangNamespace: "bigbang"}, expectedError)
-	error := listHelmReleases(cmd, factory, streams, &constantsClient)
+	error := listHelmReleases(cmd, factory, &constantsClient)
 
 	// then
 	assert.NotNil(t, error)

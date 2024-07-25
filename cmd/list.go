@@ -9,7 +9,6 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/cli/output"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -36,14 +35,14 @@ var (
 // NewReleasesCmd creates a new command for listing new releases.
 //
 // Returns a cobra.Command configured to list releases.
-func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewReleasesCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     listUse,
 		Short:   listShort,
 		Long:    listLong,
 		Example: listExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(listHelmReleases(cmd, factory, streams, static.DefaultClient))
+			cmdUtil.CheckErr(listHelmReleases(cmd, factory, static.DefaultClient))
 		},
 	}
 
@@ -53,7 +52,8 @@ func NewReleasesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) 
 // listHelmReleases queries the cluster and retrieves information about helm releases in the bigbang namespace
 //
 // Returns an error if the release information could not be found
-func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, constantClient static.ConstantsClient) error {
+func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, constantClient static.ConstantsClient) error {
+	streams := factory.GetIOStream()
 	constants, err := constantClient.GetConstants()
 	if err != nil {
 		return err
