@@ -19,6 +19,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 			&GlobalConfiguration{
 				DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 				ExampleConfiguration:              ExampleConfiguration{},
+				GitLabConfiguration:               GitLabConfiguration{},
 				K3dSshConfiguration:               K3dSshConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 				UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
@@ -34,6 +35,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 			&GlobalConfiguration{
 				DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 				ExampleConfiguration:              ExampleConfiguration{},
+				GitLabConfiguration:               GitLabConfiguration{},
 				K3dSshConfiguration:               K3dSshConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 				UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
@@ -51,6 +53,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 			instance := viper.New()
 			instance.Set("big-bang-repo", "test1")                                    // root
 			instance.Set("k3d", true)                                                 // DeployBigBangConfiguration
+			instance.Set("gitlab-access-token", "token")                              // GitLabConfiguration
 			instance.Set("ssh-username", "test2")                                     // K3dSshConfiguration
 			instance.Set("gatekeeper", true)                                          // PolicyConfiguration
 			instance.Set("registryserver", "test3")                                   // PreflightCheckConfiguration
@@ -73,6 +76,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				assert.Equal(t, "test1", tt.arg.BigBangRepo)
 				assert.Equal(t, true, tt.arg.DeployBigBangConfiguration.K3d)
 				assert.Equal(t, "test2", tt.arg.K3dSshConfiguration.User)
+				assert.Equal(t, "token", tt.arg.GitLabConfiguration.Token)
 				assert.Equal(t, true, tt.arg.PolicyConfiguration.Gatekeeper)
 				assert.Equal(t, "test3", tt.arg.PreflightCheckConfiguration.RegistryServer)
 				assert.Equal(t, "test4", tt.arg.UtilCredentialHelperConfiguration.FilePath)
@@ -89,6 +93,7 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 	arg := &GlobalConfiguration{
 		DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 		ExampleConfiguration:              ExampleConfiguration{},
+		GitLabConfiguration:               GitLabConfiguration{},
 		K3dSshConfiguration:               K3dSshConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -100,14 +105,15 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 	// Act
 	result := arg.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 9, len(result))
+	assert.Equal(t, 10, len(result))
 	assert.Equal(t, &arg.DeployBigBangConfiguration, result[0])
 	assert.Equal(t, &arg.ExampleConfiguration, result[1])
 	assert.Equal(t, &arg.K3dSshConfiguration, result[2])
-	assert.Equal(t, &arg.PolicyConfiguration, result[3])
-	assert.Equal(t, &arg.PreflightCheckConfiguration, result[4])
-	assert.Equal(t, &arg.UtilCredentialHelperConfiguration, result[5])
-	assert.Equal(t, &arg.UtilK8sConfiguration, result[6])
-	assert.Equal(t, &arg.VersionConfiguration, result[7])
-	assert.Equal(t, &arg.ViolationsConfiguration, result[8])
+	assert.Equal(t, &arg.GitLabConfiguration, result[3])
+	assert.Equal(t, &arg.PolicyConfiguration, result[4])
+	assert.Equal(t, &arg.PreflightCheckConfiguration, result[5])
+	assert.Equal(t, &arg.UtilCredentialHelperConfiguration, result[6])
+	assert.Equal(t, &arg.UtilK8sConfiguration, result[7])
+	assert.Equal(t, &arg.VersionConfiguration, result[8])
+	assert.Equal(t, &arg.ViolationsConfiguration, result[9])
 }

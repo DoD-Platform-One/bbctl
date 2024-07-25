@@ -19,6 +19,7 @@ import (
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -40,6 +41,7 @@ import (
 // Factory is an interface providing initialization methods for various external clients
 type Factory interface {
 	GetAWSClient() (bbAws.Client, error)
+	GetGitLabClient() (bbGitLab.Client, error)
 	GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error)
 	GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error)
 	GetLoggingClient() bbLog.Client                              // this can't bubble up an error, if it fails it will panic
@@ -199,6 +201,21 @@ func (f *UtilityFactory) GetAWSClient() (bbAws.Client, error) {
 	client, err := clientGetter.GetClient()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get AWS client: %w", err)
+	}
+	return client, nil
+}
+
+// GetGitLabClient initializes and returns a new GitLab API client
+func (f *UtilityFactory) GetGitLabClient() (bbGitLab.Client, error) {
+	configClient, err := f.GetConfigClient(nil)
+	if err != nil {
+		return nil, err
+	}
+	config := configClient.GetConfig()
+	clientGetter := bbGitLab.ClientGetter{}
+	client, err := clientGetter.GetClient(config.GitLabConfiguration.BaseURL, config.GitLabConfiguration.Token)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get GitLab client: %w", err)
 	}
 	return client, nil
 }
