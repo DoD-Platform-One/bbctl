@@ -9,12 +9,14 @@ import (
 	"strings"
 	"sync"
 
+	"k8s.io/cli-runtime/pkg/genericiooptions"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
+	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	fakeApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 	fakeAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/aws"
 	fakeHelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
@@ -219,6 +221,15 @@ func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.
 func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 	fakeClient := fake.NewSimpleClientset()
 	return fakeClient, nil
+}
+
+// GetOutputClient
+func (f *FakeFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) bbOutput.Client {
+	outputFlag, _ := cmd.Flags().GetString("format")
+	outputCLientGetter := bbOutput.ClientGetter{}
+	outputClient := outputCLientGetter.GetClient(outputFlag, streams)
+
+	return outputClient
 }
 
 // GetK8sClientset - get k8s clientset

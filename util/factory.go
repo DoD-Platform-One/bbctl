@@ -22,10 +22,12 @@ import (
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
+	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -44,6 +46,7 @@ type Factory interface {
 	GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Client // this can't bubble up an error, if it fails it will panic
 	GetRuntimeClient(*runtime.Scheme) (runtimeClient.Client, error)
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
+	GetOutputClient(cmd *cobra.Command, streams genericIOOptions.IOStreams) bbOutput.Client
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
 	GetCredentialHelper() func(string, string) (string, error)
@@ -251,6 +254,19 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 	}
 	config := configClient.GetConfig()
 	return bbK8sUtil.BuildDynamicClient(config)
+}
+
+// GetOutputClient initializes and returns an output client based on the specified format flag and I/O streams.
+// It retrieves the "format" flag from the provided command, initializes an output client getter,
+// and obtains the appropriate output client using the specified format and streams. Default format is "text"
+//
+// Errors when issues occur using the clients Output method.
+func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) bbOutput.Client {
+	outputFlag, _ := cmd.Flags().GetString("format")
+	outputCLientGetter := bbOutput.ClientGetter{}
+	outputClient := outputCLientGetter.GetClient(outputFlag, streams)
+
+	return outputClient
 }
 
 // GetLoggingClient initializes and returns a new logging client using the default slog logger implementation
