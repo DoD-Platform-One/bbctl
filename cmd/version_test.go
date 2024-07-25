@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +9,6 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestGetVersionUsage(t *testing.T) {
@@ -48,11 +48,12 @@ func TestGetVersion(t *testing.T) {
 	}
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 	factory.GetViper().Set("big-bang-repo", "test")
 
-	stream, _, buf, _ := genericIOOptions.NewTestIOStreams()
-	factory.SetIOStream(stream)
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
@@ -90,12 +91,13 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	}
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 	factory.GetViper().Set("big-bang-repo", "test")
 	factory.GetViper().Set("client", true)
 
-	stream, _, buf, _ := genericIOOptions.NewTestIOStreams()
-	factory.SetIOStream(stream)
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
