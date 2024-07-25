@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 	"time"
@@ -18,7 +19,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	fake "k8s.io/client-go/kubernetes/fake"
 	fakeTypedBatchV1 "k8s.io/client-go/kubernetes/typed/batch/v1/fake"
 	fakeTypedCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1/fake"
@@ -114,17 +114,22 @@ func TestCheckMetricsServer(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetResources(test.resources)
 			factory.SetFail.GetK8sClientset = test.failGetClient
 
-			streams, in, out, err := genericIOOptions.NewTestIOStreams()
-			checkMetricsServer(nil, factory, streams, nil)
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
+			checkMetricsServer(nil, factory, nil)
 			assert.Empty(t, in.String())
 			if !(test.failGetClient || test.failServerGroups) {
 				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, err.String())
+				assert.Empty(t, errOut.String())
 			} else {
-				assert.Contains(t, err.String(), test.expected)
+				assert.Contains(t, errOut.String(), test.expected)
 				assert.Equal(t, "Checking metrics server...\n", out.String())
 			}
 		})
@@ -195,9 +200,15 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
 			if test.failListStorageClass {
 				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
 					return true, nil, fmt.Errorf("failed to list storage class")
@@ -209,16 +220,16 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			}
 
 			// Act
-			checkDefaultStorageClass(nil, factory, streams, nil)
+			checkDefaultStorageClass(nil, factory, nil)
 
 			// Assert
 			assert.Empty(t, in.String())
 			if !(test.failGetClientset || test.failListStorageClass) {
 				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errout.String())
+				assert.Empty(t, errOut.String())
 			} else {
 				assert.Equal(t, "Checking default storage class...\n", out.String())
-				assert.Contains(t, errout.String(), test.expected)
+				assert.Contains(t, errOut.String(), test.expected)
 			}
 		})
 	}
@@ -289,9 +300,15 @@ func TestCheckFluxController(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
 			if test.failListPods {
 				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
 					return true, nil, fmt.Errorf("failed to list pods")
@@ -303,16 +320,16 @@ func TestCheckFluxController(t *testing.T) {
 			}
 
 			// Act
-			checkFluxController(nil, factory, streams, nil)
+			checkFluxController(nil, factory, nil)
 
 			// Assert
 			assert.Empty(t, in.String())
 			if !(test.failGetClientset || test.failListPods) {
 				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errout.String())
+				assert.Empty(t, errOut.String())
 			} else {
 				assert.Equal(t, "Checking flux installation...\n", out.String())
-				assert.Contains(t, errout.String(), test.expected)
+				assert.Contains(t, errOut.String(), test.expected)
 			}
 		})
 	}
@@ -521,6 +538,7 @@ func TestCheckSystemParameters(t *testing.T) {
 
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
 			configClient, err := factory.GetConfigClient(command)
 			assert.Nil(t, err)
 			viperInstance := factory.GetViper()
@@ -544,7 +562,11 @@ func TestCheckSystemParameters(t *testing.T) {
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 			factory.SetFail.GetCommandExecutor = test.failGetCommandExecutor
 			modifiedParams := make(map[string]string)
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
 
 		CHECK_DEFAULTS:
 			for dk, dv := range defaultPassingParams {
@@ -559,13 +581,13 @@ func TestCheckSystemParameters(t *testing.T) {
 			executor.CommandResult = modifiedParams
 
 			// Act
-			status := checkSystemParameters(command, factory, streams, config)
+			status := checkSystemParameters(command, factory, config)
 
 			// Assert
 			assert.Empty(t, in.String())
 			if !(test.failGetClientset || test.failGetCommandExecutor || test.failDeleteNamespace) {
 				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errout.String())
+				assert.Empty(t, errOut.String())
 				if test.checkFailed {
 					assert.Equal(t, failed, status)
 				} else {
@@ -575,7 +597,7 @@ func TestCheckSystemParameters(t *testing.T) {
 				for _, line := range test.extraExpected {
 					assert.Contains(t, out.String(), line)
 				}
-				assert.Contains(t, errout.String(), test.expected)
+				assert.Contains(t, errOut.String(), test.expected)
 				assert.Equal(t, unknown, status)
 			}
 		})
@@ -803,7 +825,12 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			startTime := time.Now()
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 			config := &schemas.GlobalConfiguration{}
 			config.PreflightCheckConfiguration.RetryCount = 1
@@ -876,12 +903,12 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 
 			// Act
-			pod, err := createResourcesForCommandExecution(command, factory, streams, config)
+			pod, err := createResourcesForCommandExecution(command, factory, config)
 
 			// Assert
 			assert.Empty(t, in.String())
 			assert.Equal(t, test.expectedOut, out.String())
-			assert.Equal(t, test.expectedErrOut, errout.String())
+			assert.Equal(t, test.expectedErrOut, errOut.String())
 			if !(test.failGetClientset || test.failCreateNamespace || test.failCreateSecret || test.failGetPod || test.failTimeoutPod || test.failDeleteNamespace || test.failTimeoutNamespace || test.failCreatePod) {
 				assert.NoError(t, err)
 				assert.NotNil(t, pod)
@@ -929,19 +956,24 @@ func TestDeleteResourcesForCommandExecution(t *testing.T) {
 			// Arrange
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 			if !test.failGetClientset {
 				factory.SetObjects([]runtime.Object{ns("preflight-check", coreV1.NamespaceActive)})
 			}
 
 			// Act
-			err := deleteResourcesForCommandExecution(command, factory, streams)
+			err := deleteResourcesForCommandExecution(command, factory)
 
 			// Assert
 			assert.Empty(t, in.String())
 			assert.Equal(t, test.expectedOut, out.String())
-			assert.Equal(t, test.expectedErrOut, errout.String())
+			assert.Equal(t, test.expectedErrOut, errOut.String())
 			if !test.failGetClientset {
 				assert.NoError(t, err)
 			} else {
@@ -967,7 +999,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			[]preflightCheck{
 				{
 					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return passed
 					},
 					failureMessage: "Check 1 Failed",
@@ -975,7 +1007,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return passed
 					},
 					failureMessage: "Check 2 Failed",
@@ -983,7 +1015,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return passed
 					},
 					failureMessage: "Check 3 Failed",
@@ -998,7 +1030,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			[]preflightCheck{
 				{
 					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return failed
 					},
 					failureMessage: "Check 1 Failed",
@@ -1006,7 +1038,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return failed
 					},
 					failureMessage: "Check 2 Failed",
@@ -1014,7 +1046,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return failed
 					},
 					failureMessage: "Check 3 Failed",
@@ -1029,7 +1061,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			[]preflightCheck{
 				{
 					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return unknown
 					},
 					failureMessage: "Check 1 Failed",
@@ -1037,7 +1069,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return unknown
 					},
 					failureMessage: "Check 2 Failed",
@@ -1045,7 +1077,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return unknown
 					},
 					failureMessage: "Check 3 Failed",
@@ -1060,7 +1092,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			[]preflightCheck{
 				{
 					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return passed
 					},
 					failureMessage: "Check 1 Failed",
@@ -1068,7 +1100,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return failed
 					},
 					failureMessage: "Check 2 Failed",
@@ -1076,7 +1108,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 				},
 				{
 					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return unknown
 					},
 					failureMessage: "Check 3 Failed",
@@ -1091,7 +1123,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			[]preflightCheck{
 				{
 					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 						return passed
 					},
 					failureMessage: "Check 1 Failed",
@@ -1105,17 +1137,23 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
-			streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
+
 			if test.failWritingOutput {
 				streams.Out = apiWrappers.CreateFakeWriterFromStream(t, test.failWritingOutput, streams.Out)
 			}
 
 			// Act
-			err := printPreflightCheckSummary(streams, test.checks)
+			err := printPreflightCheckSummary(factory, test.checks)
 
 			// Assert
 			assert.Empty(t, in.String())
-			assert.Empty(t, errout.String())
+			assert.Empty(t, errOut.String())
 			if !test.failWritingOutput {
 				assert.NoError(t, err)
 				assert.Equal(t, test.expected, out.String())
@@ -1129,15 +1167,15 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 }
 
 func TestPreflightCheck(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return unknown
 	}
 
@@ -1188,14 +1226,16 @@ func TestPreflightCheck(t *testing.T) {
 	}
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetObjects([]runtime.Object{})
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 	factory.GetViper().Set("big-bang-repo", "/tmp")
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			command := &cobra.Command{}
-			err := bbPreflightCheck(nil, factory, streams, command, []preflightCheck{test.check})
+			err := bbPreflightCheck(nil, factory, command, []preflightCheck{test.check})
 			assert.NoError(t, err)
 			output := buf.String()
 			assert.Contains(t, output, test.expected[0])
@@ -1206,15 +1246,15 @@ func TestPreflightCheck(t *testing.T) {
 }
 
 func TestPreflightCheckCmd(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, config *schemas.GlobalConfiguration) preflightCheckStatus {
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
 		return unknown
 	}
 
@@ -1240,10 +1280,12 @@ func TestPreflightCheckCmd(t *testing.T) {
 	}
 
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetObjects([]runtime.Object{})
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 	factory.GetViper().Set("big-bang-repo", "/tmp")
-	cmd, cmdError := NewPreflightCheckCmd(factory, streams)
+	cmd, cmdError := NewPreflightCheckCmd(factory)
 	assert.NoError(t, cmdError)
 	err := cmd.Execute()
 	assert.NoError(t, err)
@@ -1260,11 +1302,10 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory.GetViper().Set("big-bang-repo", "/tmp")
 	factory.SetFail.GetConfigClient = true
 	// Act
-	cmd, cmdError := NewPreflightCheckCmd(factory, streams)
+	cmd, cmdError := NewPreflightCheckCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, cmdError)
@@ -1277,9 +1318,8 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory.GetViper().Set("big-bang-repo", "/tmp")
-	cmd, _ := NewPreflightCheckCmd(factory, streams)
+	cmd, _ := NewPreflightCheckCmd(factory)
 	// Act
 	factory.SetFail.GetConfigClient = true
 	err := cmd.Execute()
@@ -1289,5 +1329,4 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
-
 }

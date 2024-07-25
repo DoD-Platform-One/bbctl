@@ -60,7 +60,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving Policies Command: %v", policiesCmdError)
 	}
 	cmd.AddCommand(policiesCmd)
-	preflightCheckCmd, preflightCheckCmdError := NewPreflightCheckCmd(factory, streams)
+	preflightCheckCmd, preflightCheckCmdError := NewPreflightCheckCmd(factory)
 	if preflightCheckCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving PreflightCheck Command: %w", preflightCheckCmdError)
 	}
