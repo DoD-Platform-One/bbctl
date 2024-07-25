@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -14,7 +15,6 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestValues(t *testing.T) {
@@ -46,11 +46,13 @@ func TestValues(t *testing.T) {
 	}
 
 	factory := bbUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 	cmd.RunE(cmd, []string{"foo"})
 
 	if !strings.Contains(buf.String(), "enabled: 2") {
@@ -110,9 +112,7 @@ func TestGetValuesCompletion(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 
 	tests := []test{
 		{input: "", output: []string{"foo", "bar"}},
@@ -131,9 +131,8 @@ func TestGetValuesCompletion(t *testing.T) {
 
 func TestGetValuesCompletionTooManyArgs(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 	suggestions, directive := cmd.ValidArgsFunction(cmd, []string{"too", "many", "args"}, "test")
 	assert.Empty(t, suggestions)
 	assert.Equal(t, cobra.ShellCompDirectiveNoFileComp, directive)
@@ -143,8 +142,7 @@ func TestGetValuesCompletionTooManyArgs(t *testing.T) {
 // constructor returns the helper successfully
 func TestNewValuesCmdHelperSucces(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 
@@ -161,8 +159,7 @@ func TestNewValuesCmdHelperSucces(t *testing.T) {
 func TestNewValuesCmdHelperFailHelmClient(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
 	factory.SetFail.GetHelmClient = true
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 
@@ -177,8 +174,7 @@ func TestNewValuesCmdHelperFailHelmClient(t *testing.T) {
 // we correctly return an error and stop execution
 func TestNewValuesCmdHelperFailConstantsClient(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 
 	expectedError := fmt.Errorf("failed to get constants")
 
@@ -201,8 +197,8 @@ func TestNewValuesCmdHelperFailConstantsClient(t *testing.T) {
 // we capture the error and exit appropriately
 func TestGetHelmValuesFailGettingValues(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewValuesCmd(factory, streams)
+	factory.ResetIOStream()
+	cmd := NewValuesCmd(factory)
 
 	expectedError := fmt.Errorf("error getting helm release values in namespace bigbang: release test not found")
 
@@ -211,7 +207,7 @@ func TestGetHelmValuesFailGettingValues(t *testing.T) {
 	assert.NotNil(t, v)
 
 	// Will fail to get helm values as we've set releases to be a nil value
-	err = v.getHelmValues(streams, "test")
+	err = v.getHelmValues(factory.GetIOStream(), "test")
 
 	assert.Equal(t, expectedError.Error(), err.Error())
 }
@@ -223,8 +219,7 @@ func TestMatchingReleaseNamesFailGettingList(t *testing.T) {
 	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
 		return nil, fmt.Errorf("error getting list")
 	})
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewValuesCmd(factory, streams)
+	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 	assert.NoError(t, err)

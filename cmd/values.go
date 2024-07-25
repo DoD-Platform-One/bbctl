@@ -63,7 +63,7 @@ func newValuesCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCli
 }
 
 // NewValuesCmd returns a new values command
-func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     valuesUse,
 		Short:   valuesShort,
@@ -89,7 +89,7 @@ func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 			if err != nil {
 				cmdUtil.CheckErr(err)
 			}
-			return v.getHelmValues(streams, args[0])
+			return v.getHelmValues(factory.GetIOStream(), args[0])
 		},
 	}
 
@@ -97,7 +97,7 @@ func NewValuesCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 }
 
 // getHelmValues queries the cluster using the helm module to get information on big bang release values
-func (v *valuesCmdHelper) getHelmValues(streams genericIOOptions.IOStreams, name string) error {
+func (v *valuesCmdHelper) getHelmValues(streams *genericIOOptions.IOStreams, name string) error {
 	// use helm get values to get release values
 	releases, err := v.helmClient.GetValues(name)
 	fmt.Println(releases)
