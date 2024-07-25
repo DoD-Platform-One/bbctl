@@ -41,7 +41,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.CompletionOptions.DisableDescriptions = false
 
 	cmd.AddCommand(NewCompletionCmd(factory, streams))
-	cmd.AddCommand(NewConfigCmd(factory, streams))
+	cmd.AddCommand(NewConfigCmd(factory))
 	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Version Command: %w", versionCmdError)

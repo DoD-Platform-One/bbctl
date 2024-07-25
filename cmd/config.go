@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -33,7 +32,7 @@ var (
 )
 
 // NewConfigCmd - create a new Cobra config command
-func NewConfigCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   configUse,
 		Short:                 configShort,
