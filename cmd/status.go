@@ -14,7 +14,6 @@ import (
 	k8sCoreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	k8sClient "k8s.io/client-go/kubernetes"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -47,14 +46,14 @@ const (
 )
 
 // NewStatusCmd - new status command
-func NewStatusCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewStatusCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     statusUse,
 		Short:   statusShort,
 		Long:    statusLong,
 		Example: statusExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return bbStatus(cmd, factory, streams)
+			return bbStatus(cmd, factory)
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -119,7 +118,7 @@ type fluxKZData struct {
 }
 
 // bbStatus queries the Kubernetes cluster and gets the Status of the various bigbang-controlled components
-func bbStatus(cmd *cobra.Command, factory bbUtil.Factory, _ genericIOOptions.IOStreams) error {
+func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
 	// get client-go client
 	clientset, err := factory.GetK8sClientset(cmd)
 	if err != nil {

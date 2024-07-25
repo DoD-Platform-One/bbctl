@@ -48,8 +48,8 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	}
 	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(NewReleasesCmd(factory, streams))
+	cmd.AddCommand(NewStatusCmd(factory))
 	cmd.AddCommand(NewValuesCmd(factory))
-	cmd.AddCommand(NewStatusCmd(factory, streams))
 	violationsCmd, violationsCmdError := NewViolationsCmd(factory)
 	if violationsCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Violations Command: %v", violationsCmdError)

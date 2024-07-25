@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -8,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
@@ -26,9 +26,7 @@ import (
 func TestGetStatusUsage(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
-	cmd := NewStatusCmd(factory, streams)
+	cmd := NewStatusCmd(factory)
 
 	assert.Equal(t, cmd.Use, "status")
 	assert.Contains(t, cmd.Example, "bbctl status")
@@ -37,9 +35,10 @@ func TestGetStatusUsage(t *testing.T) {
 func TestGetStatus(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
-	cmd := NewStatusCmd(factory, streams)
+	cmd := NewStatusCmd(factory)
 	result := cmd.RunE(cmd, []string{})
 
 	output := strings.Split(buf.String(), "\n")
