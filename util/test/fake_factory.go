@@ -14,11 +14,13 @@ import (
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	fakeApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 	fakeAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/aws"
+	fakeGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/gitlab"
 	fakeHelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
 	fakeLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 
@@ -204,6 +206,15 @@ func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
 	fakeClient, err := fakeAws.NewFakeClient(f.clusterIPs, &f.awsConfig, f.ec2Client, f.callerIdentity, f.stsClient, f.SetFail.AWS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AWS client: %w", err)
+	}
+	return fakeClient, nil
+}
+
+// GetGitLabClient constructs a fake GitLab client
+func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
+	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitLab client: %w", err)
 	}
 	return fakeClient, nil
 }
