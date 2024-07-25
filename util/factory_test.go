@@ -14,6 +14,8 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericclioptions"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
 // TestReadDefaultCredentialsFileMissing tests that a missing credentials file returns an error
@@ -546,4 +548,60 @@ func TestGetIOStreams(t *testing.T) {
 	assert.Equal(t, os.Stdin, ios.In)
 	assert.Equal(t, os.Stdout, ios.Out)
 	assert.Equal(t, os.Stderr, ios.ErrOut)
+}
+
+// TestGetOuputClient tests the GetOutputClient function using table-driven tests.
+func TestGetOutputClient(t *testing.T) {
+	// Define test cases using a table-driven approach
+	tests := []struct {
+		name         string
+		outputFormat string
+	}{
+		{
+			name:         "Test JSON output",
+			outputFormat: "json",
+		},
+		{
+			name:         "Test text output",
+			outputFormat: "text",
+		},
+		{
+			name:         "Test YAML output",
+			outputFormat: "yaml",
+		},
+	}
+
+	// Arrange
+	factory := NewFactory()
+	fakeCommand := &cobra.Command{
+		Use:     "testUse",
+		Short:   "testShort",
+		Long:    "testLong",
+		Example: "testExample",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+
+	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+
+	// Iterate through test cases
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set the "output" format using Viper
+			viperInstance := factory.GetViper()
+			viperInstance.Set("output", tc.outputFormat)
+
+			// Act
+			client := factory.GetOutputClient(fakeCommand, streams)
+
+			// Assert
+			assert.NotNil(t, client)
+
+			// Check client output
+			outputClient, ok := client.(output.Client)
+			assert.True(t, ok, "Expected client to be of type output.Client")
+			assert.NotNil(t, outputClient.Output)
+		})
+	}
 }
