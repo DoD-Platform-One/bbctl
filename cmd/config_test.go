@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -14,14 +14,15 @@ import (
 
 func TestGetConfig(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
 	viper := factory.GetViper()
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -36,8 +37,7 @@ func TestGetConfig(t *testing.T) {
 
 func TestConfigGetAll(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 
 	viper := factory.GetViper()
 
@@ -85,8 +85,7 @@ func TestConfigGetAll(t *testing.T) {
 func TestConfigGetOne(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 
 	viper := factory.GetViper()
 
@@ -164,8 +163,7 @@ func TestConfigMarshalError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	loggingClient := factory.GetLoggingClient()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 	viper := factory.GetViper()
 
 	expected := ""
@@ -197,8 +195,7 @@ func TestConfigMarshalError(t *testing.T) {
 func TestConfigTooManyKeys(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 	viper := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -214,8 +211,7 @@ func TestConfigTooManyKeys(t *testing.T) {
 func TestConfigGetInvalidKey(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 	viper := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -232,8 +228,7 @@ func TestConfigGetInvalidKey(t *testing.T) {
 func TestConfigFailToGetConfigClient(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-	cmd := NewConfigCmd(factory, streams)
+	cmd := NewConfigCmd(factory)
 	viper := factory.GetViper()
 
 	// Required value or the execution will fail
