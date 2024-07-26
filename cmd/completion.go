@@ -6,7 +6,6 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -74,7 +73,8 @@ var (
 // NewCompletionCmd create a new Cobra completion command which generates a completion script
 //
 // Returns a cobra.Command configured to return a completion script for a specified shell environment
-func NewCompletionCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewCompletionCmd(factory bbUtil.Factory) *cobra.Command {
+	streams := factory.GetIOStream()
 	includeDesc := true
 	cmd := &cobra.Command{
 		Use:                   completionUse,
