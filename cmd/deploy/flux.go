@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -22,21 +21,21 @@ var (
 )
 
 // NewDeployFluxCmd - parent for deploy commands
-func NewDeployFluxCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     fluxUse,
 		Short:   fluxShort,
 		Long:    fluxLong,
 		Example: fluxExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployFluxToCluster(factory, cmd, streams, args))
+			cmdUtil.CheckErr(deployFluxToCluster(factory, cmd, args))
 		},
 	}
 
 	return cmd
 }
 
-func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
 	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
@@ -64,6 +63,7 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, streams
 		"-p",
 		password,
 	)
+	streams := factory.GetIOStream()
 	cmd := factory.GetCommandWrapper(installFluxPath, fluxArgs...)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)

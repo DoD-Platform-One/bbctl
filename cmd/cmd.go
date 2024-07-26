@@ -70,7 +70,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving k3d Command: %v", K3dCmdError)
 	}
 	cmd.AddCommand(k3dCmd)
-	cmd.AddCommand(deploy.NewDeployCmd(factory, streams))
+	cmd.AddCommand(deploy.NewDeployCmd(factory))
 	cmd.AddCommand(update.NewUpdateCmd(factory, streams))
 
 	return cmd, nil
