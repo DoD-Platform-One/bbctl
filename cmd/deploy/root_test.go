@@ -1,20 +1,19 @@
 package deploy
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
 func TestRoot_NewDeployCmd(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewDeployCmd(factory, streams)
+	cmd := NewDeployCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deploy", cmd.Use)
@@ -30,15 +29,19 @@ func TestRoot_NewDeployCmd(t *testing.T) {
 
 func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
-	cmd := NewDeployCmd(factory, streams)
+	cmd := NewDeployCmd(factory)
 	assert.Nil(t, cmd.Execute())
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deploy", cmd.Use)
 	assert.Empty(t, in.String())
 	assert.NotEmpty(t, out.String())
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 }

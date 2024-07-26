@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -38,14 +37,14 @@ var (
 )
 
 // NewDeployBigBangCmd - deploy Big Bang to your cluster
-func NewDeployBigBangCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewDeployBigBangCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     bigBangUse,
 		Short:   bigBangShort,
 		Long:    bigBangLong,
 		Example: bigBangExample,
 		Run: func(command *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployBigBangToCluster(command, factory, streams, args))
+			cmdUtil.CheckErr(deployBigBangToCluster(command, factory, args))
 		},
 	}
 
@@ -104,7 +103,7 @@ func insertHelmOptForRelativeChart(config *schemas.GlobalConfiguration, helmOpts
 	)
 }
 
-func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams, args []string) error {
+func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) error {
 	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
@@ -151,6 +150,7 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, stre
 		fmt.Sprintf("registryCredentials.password=%v", password),
 	)
 
+	streams := factory.GetIOStream()
 	cmd := factory.GetCommandWrapper("helm", helmOpts...)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)

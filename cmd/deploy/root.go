@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -24,7 +23,7 @@ var (
 )
 
 // NewDeployCmd - parent for deploy commands
-func NewDeployCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewDeployCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     deployUse,
 		Short:   deployShort,
@@ -40,7 +39,7 @@ func NewDeployCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 					validCommands += ", "
 				}
 			}
-			_, err := streams.Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
+			_, err := factory.GetIOStream().Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
 			factory.GetLoggingClient().HandleError("Unable to write to output stream", err)
 
 			err = cmd.Help()
@@ -48,8 +47,8 @@ func NewDeployCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 		},
 	}
 
-	cmd.AddCommand(NewDeployFluxCmd(factory, streams))
-	cmd.AddCommand(NewDeployBigBangCmd(factory, streams))
+	cmd.AddCommand(NewDeployFluxCmd(factory))
+	cmd.AddCommand(NewDeployBigBangCmd(factory))
 
 	return cmd
 }
