@@ -1,14 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
-
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
 func TestAllCompletions(t *testing.T) {
@@ -36,10 +35,13 @@ func TestAllCompletions(t *testing.T) {
 
 	for _, test := range tests {
 		factory := bbTestUtil.GetFakeFactory()
-		streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+		factory.ResetIOStream()
+
+		streams := factory.GetIOStream()
+		buf := streams.Out.(*bytes.Buffer)
 
 		t.Run(test.desc, func(t *testing.T) {
-			cmd := NewCompletionCmd(factory, streams)
+			cmd := NewCompletionCmd(factory)
 			err := cmd.RunE(cmd, []string{test.shell})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -54,10 +56,12 @@ func TestAllCompletions(t *testing.T) {
 
 func TestInvalidShellCompletion(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 
-	streams, _, buf, _ := genericIOOptions.NewTestIOStreams()
+	streams := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
 
-	cmd := NewCompletionCmd(factory, streams)
+	cmd := NewCompletionCmd(factory)
 	err := cmd.RunE(cmd, []string{"foo"})
 
 	assert.Empty(t, buf.String())

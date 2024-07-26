@@ -40,7 +40,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.CompletionOptions.DisableNoDescFlag = true
 	cmd.CompletionOptions.DisableDescriptions = false
 
-	cmd.AddCommand(NewCompletionCmd(factory, streams))
+	cmd.AddCommand(NewCompletionCmd(factory))
 	cmd.AddCommand(NewConfigCmd(factory))
 	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
