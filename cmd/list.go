@@ -9,7 +9,6 @@ import (
 	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/pkg/cli/output"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -41,8 +40,8 @@ func NewReleasesCmd(factory bbUtil.Factory) *cobra.Command {
 		Short:   listShort,
 		Long:    listLong,
 		Example: listExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(listHelmReleases(cmd, factory, static.DefaultClient))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return listHelmReleases(cmd, factory, static.DefaultClient)
 		},
 	}
 
