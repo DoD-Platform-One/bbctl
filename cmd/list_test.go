@@ -60,7 +60,8 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd := NewReleasesCmd(factory)
-	cmd.Run(cmd, []string{})
+	err := cmd.RunE(cmd, []string{})
+	assert.Nil(t, err)
 
 	response := strings.Split(buf.String(), "\n")
 
