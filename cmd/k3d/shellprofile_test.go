@@ -1,12 +1,12 @@
 package k3d
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -15,20 +15,27 @@ import (
 
 func TestK3d_ShellProfileUsage(t *testing.T) {
 	// Arrange
-	streams, _, _, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
-	cmd := NewShellProfileCmd(factory, streams)
+	cmd := NewShellProfileCmd(factory)
 	cmd.SetArgs([]string{"-h"})
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "shellprofile", cmd.Use)
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 }
 
 func TestK3d_ShellProfiile(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
 	callerIdentity := bbAwsUtil.CallerIdentity{
@@ -56,7 +63,6 @@ func TestK3d_ShellProfiile(t *testing.T) {
 			IsPublic:      true,
 		},
 	}
-	factory := bbTestUtil.GetFakeFactory()
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
 	viperInstance := factory.GetViper()
@@ -66,12 +72,12 @@ func TestK3d_ShellProfiile(t *testing.T) {
 	privateIpExport := fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP)
 	publicIpExport := fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP)
 	// Act
-	cmd := NewShellProfileCmd(factory, streams)
+	cmd := NewShellProfileCmd(factory)
 	// Assert
 	assert.Equal(t, "shellprofile", cmd.Use)
 	assert.Nil(t, cmd.Execute())
 	assert.Empty(t, in.String())
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), kubeConfExport)
 	assert.Contains(t, out.String(), privateIpExport)
 	assert.Contains(t, out.String(), publicIpExport)
@@ -79,7 +85,12 @@ func TestK3d_ShellProfiile(t *testing.T) {
 
 func TestK3d_ShellProfileError(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
@@ -91,13 +102,12 @@ func TestK3d_ShellProfileError(t *testing.T) {
 		Username: "developer",
 	}
 	clusterIPs := []bbAwsUtil.ClusterIP{}
-	factory := bbTestUtil.GetFakeFactory()
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
 	viperInstance := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-	cmd := NewShellProfileCmd(factory, streams)
+	cmd := NewShellProfileCmd(factory)
 	// Act
 	err := cmd.Execute()
 	// Assert
@@ -107,7 +117,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	assert.Equal(t, "shellprofile", cmd.Use)
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 }
 
 func TestK3d_ShellProfileErrors(t *testing.T) {
@@ -163,7 +173,9 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 		},
 	}
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
 	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
@@ -188,7 +200,7 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 			// Trigger our errors
 			test.errorFunc(factory)
 
-			err := shellProfileCluster(factory, streams)
+			err := shellProfileCluster(factory)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, test.errmsg, err.Error())

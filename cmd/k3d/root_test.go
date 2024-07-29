@@ -1,20 +1,19 @@
 package k3d
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
 func TestK3d_RootUsage(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd, _ := NewK3dCmd(factory, streams)
+	cmd, _ := NewK3dCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "k3d", cmd.Use)
@@ -33,13 +32,17 @@ func TestK3d_RootUsage(t *testing.T) {
 
 func TestK3d_RootNoSubcommand(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
-	cmd, _ := NewK3dCmd(factory, streams)
+	cmd, _ := NewK3dCmd(factory)
 	// Assert
 	assert.Nil(t, cmd.Execute())
 	assert.Empty(t, in.String())
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), "Please provide a subcommand for k3d (see help)")
 }

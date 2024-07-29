@@ -1,20 +1,19 @@
 package update
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
 func TestUpdate_RootUsage(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewUpdateCmd(factory, streams)
+	cmd := NewUpdateCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "update", cmd.Use)
@@ -29,13 +28,17 @@ func TestUpdate_RootUsage(t *testing.T) {
 
 func TestUpdate_RootNoSubcommand(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
-	cmd := NewUpdateCmd(factory, streams)
+	cmd := NewUpdateCmd(factory)
 	// Assert
 	assert.Nil(t, cmd.Execute())
 	assert.Empty(t, in.String())
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), "Please provide a subcommand for update (see help)")
 }

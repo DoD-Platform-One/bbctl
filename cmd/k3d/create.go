@@ -4,7 +4,6 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -32,14 +31,14 @@ var (
 )
 
 // NewCreateClusterCmd - Returns a command to create the k3d cluster using createCluster
-func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewCreateClusterCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     createUse,
 		Short:   createShort,
 		Long:    createLong,
 		Example: createExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(createCluster(factory, cmd, streams, args))
+			cmdUtil.CheckErr(createCluster(factory, cmd, args))
 		},
 	}
 
@@ -47,7 +46,8 @@ func NewCreateClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStre
 }
 
 // createCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to create the k3d dev cluster
-func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) error {
+	streams := factory.GetIOStream()
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {
 		return err

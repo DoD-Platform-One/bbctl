@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -22,7 +21,8 @@ var (
 )
 
 // NewUpdateCmd - Returns a minimal parent command for the `bbctl update` commands
-func NewUpdateCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewUpdateCmd(factory bbUtil.Factory) *cobra.Command {
+	streams := factory.GetIOStream()
 	cmd := &cobra.Command{
 		Use:     updateRootUse,
 		Short:   updateRootShort,
@@ -39,7 +39,7 @@ func NewUpdateCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *c
 		SilenceErrors: true,
 	}
 
-	cmd.AddCommand(NewUpdateCheckCmd(factory, streams))
+	cmd.AddCommand(NewUpdateCheckCmd(factory))
 
 	return cmd
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -25,7 +24,7 @@ var (
 
 // NewUpdateCheckCmd - returns a new Cobra command which implements the `bbctl update check` functionality
 // TODO: Implement in bbctl #196
-func NewUpdateCheckCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewUpdateCheckCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     checkUse,
 		Short:   checkShort,

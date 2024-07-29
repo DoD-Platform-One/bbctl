@@ -4,17 +4,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
 func TestUpdate_CheckUsage(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewUpdateCheckCmd(factory, streams)
+	cmd := NewUpdateCheckCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "check", cmd.Use)
@@ -22,10 +20,9 @@ func TestUpdate_CheckUsage(t *testing.T) {
 
 func TestUpdateCheck(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewUpdateCheckCmd(factory, streams)
+	cmd := NewUpdateCheckCmd(factory)
 	// Assert
 	var args []string
 	err := cmd.RunE(cmd, args)

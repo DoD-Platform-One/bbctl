@@ -1,22 +1,21 @@
 package k3d
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
 func TestK3d_NewCreateClusterCmd(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewCreateClusterCmd(factory, streams)
+	cmd := NewCreateClusterCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "create", cmd.Use)
@@ -24,10 +23,9 @@ func TestK3d_NewCreateClusterCmd(t *testing.T) {
 
 func TestK3d_NewCreateClusterCmd_RunWithMissingBigBangRepo(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewCreateClusterCmd(factory, streams)
+	cmd := NewCreateClusterCmd(factory)
 	assert.Panics(t, func() { assert.Nil(t, cmd.Execute()) })
 	// Assert
 	assert.NotNil(t, cmd)
@@ -36,33 +34,41 @@ func TestK3d_NewCreateClusterCmd_RunWithMissingBigBangRepo(t *testing.T) {
 
 func TestK3d_NewCreateClusterCmd_Run(t *testing.T) {
 	// Arrange
-	streams, in, out, errout := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	bigBangRepoLocation := "/tmp/big-bang"
 	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
 	expectedCmdString := "Running command: /tmp/big-bang/docs/assets/scripts/developer/k3d-dev.sh \n"
 	// Act
-	cmd := NewCreateClusterCmd(factory, streams)
+	cmd := NewCreateClusterCmd(factory)
 	assert.Nil(t, cmd.Execute())
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "create", cmd.Use)
-	assert.Empty(t, errout.String())
+	assert.Empty(t, errOut.String())
 	assert.Empty(t, in.String())
 	assert.Equal(t, expectedCmdString, out.String())
 }
 
 func TestK3d_CreateFailToGetConfigClient(t *testing.T) {
 	// Arrange
-	streams, in, out, errOut := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
 	bigBangRepoLocation := "/tmp/big-bang"
 	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
 	factory.SetFail.GetConfigClient = true
 
 	// Act
 	if os.Getenv("BE_CRASHER") == "1" {
-		cmd := NewCreateClusterCmd(factory, streams)
+		cmd := NewCreateClusterCmd(factory)
 		cmd.Run(cmd, []string{})
 		return
 	}
