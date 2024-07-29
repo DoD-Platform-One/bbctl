@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -37,38 +36,41 @@ var (
 )
 
 // NewDeployBigBangCmd - deploy Big Bang to your cluster
-func NewDeployBigBangCmd(factory bbUtil.Factory) *cobra.Command {
+func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     bigBangUse,
 		Short:   bigBangShort,
 		Long:    bigBangLong,
 		Example: bigBangExample,
-		Run: func(command *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployBigBangToCluster(command, factory, args))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return deployBigBangToCluster(cmd, factory, args)
 		},
 	}
 
-	loggingClient := factory.GetLoggingClient()
-	configClient, err := factory.GetConfigClient(cmd)
-	loggingClient.HandleError("error getting config client", err)
-	loggingClient.HandleError(
-		"error setting k3d flag",
-		configClient.SetAndBindFlag(
-			"k3d",
-			false,
-			"Include some boilerplate suitable for deploying into k3d",
-		),
-	)
-	loggingClient.HandleError(
-		"error setting addon flag",
-		configClient.SetAndBindFlag(
-			"addon",
-			[]string(nil),
-			"Enable this Big Bang addon in the deployment",
-		),
-	)
+	configClient, clientError := factory.GetConfigClient(cmd)
+	if clientError != nil {
+		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+	}
 
-	return cmd
+	k3dFlagError := configClient.SetAndBindFlag(
+		"k3d",
+		false,
+		"Include some boilerplate suitable for deploying into k3d",
+	)
+	if k3dFlagError != nil {
+		return nil, fmt.Errorf("Error setting k3d flag: %w", k3dFlagError)
+	}
+
+	addOnFlagError := configClient.SetAndBindFlag(
+		"addon",
+		[]string(nil),
+		"Enable this Big Bang addon in the deployment",
+	)
+	if addOnFlagError != nil {
+		return nil, fmt.Errorf("error setting addon flag: %w", addOnFlagError)
+	}
+
+	return cmd, nil
 }
 
 func getChartRelativePath(configClient *schemas.GlobalConfiguration, pathCmp ...string) string {

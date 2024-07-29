@@ -51,12 +51,12 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(NewValuesCmd(factory))
 	violationsCmd, violationsCmdError := NewViolationsCmd(factory)
 	if violationsCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving Violations Command: %v", violationsCmdError)
+		return nil, fmt.Errorf("Error retrieving Violations Command: %w", violationsCmdError)
 	}
 	cmd.AddCommand(violationsCmd)
 	policiesCmd, policiesCmdError := NewPoliciesCmd(factory)
 	if policiesCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving Policies Command: %v", policiesCmdError)
+		return nil, fmt.Errorf("Error retrieving Policies Command: %w", policiesCmdError)
 	}
 	cmd.AddCommand(policiesCmd)
 	preflightCheckCmd, preflightCheckCmdError := NewPreflightCheckCmd(factory)
@@ -66,10 +66,14 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(preflightCheckCmd)
 	k3dCmd, K3dCmdError := k3d.NewK3dCmd(factory)
 	if K3dCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving k3d Command: %v", K3dCmdError)
+		return nil, fmt.Errorf("Error retrieving k3d Command: %w", K3dCmdError)
 	}
 	cmd.AddCommand(k3dCmd)
-	cmd.AddCommand(deploy.NewDeployCmd(factory))
+	deployCmd, deployCmdError := deploy.NewDeployCmd(factory)
+	if deployCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Deploy Command: %w", deployCmdError)
+	}
+	cmd.AddCommand(deployCmd)
 	cmd.AddCommand(update.NewUpdateCmd(factory))
 
 	return cmd, nil
