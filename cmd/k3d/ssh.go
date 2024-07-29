@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -29,14 +28,14 @@ var (
 )
 
 // NewSSHCmd - Returns a command to ssh to your k3d cluster using sshToK3dCluster
-func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cobra.Command, error) {
+func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     sshUse,
 		Short:   sshShort,
 		Long:    sshLong,
 		Example: sshExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return sshToK3dCluster(factory, cmd, streams, args)
+			return sshToK3dCluster(factory, cmd, args)
 		},
 		SilenceUsage: true,
 	}
@@ -59,7 +58,8 @@ func NewSSHCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) (*cob
 }
 
 // sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
-func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
+	streams := factory.GetIOStream()
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)

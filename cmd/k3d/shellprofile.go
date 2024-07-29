@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -25,14 +24,14 @@ var (
 )
 
 // NewShellProfileCmd - Returns a command to generate a shell profile for a k3d cluster using shellProfileCluster
-func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     shellProfileUse,
 		Short:   shellProfileShort,
 		Long:    shellProfileLong,
 		Example: shellProfileExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return shellProfileCluster(factory, streams)
+			return shellProfileCluster(factory)
 		},
 	}
 
@@ -40,7 +39,8 @@ func NewShellProfileCmd(factory bbUtil.Factory, streams genericIOOptions.IOStrea
 }
 
 // shellProfileCluster - Returns the error (nil if no error) when generating a BASH compatible shell profile for your cluster
-func shellProfileCluster(factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func shellProfileCluster(factory bbUtil.Factory) error {
+	streams := factory.GetIOStream()
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)

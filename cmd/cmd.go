@@ -28,7 +28,6 @@ var (
 
 // NewRootCmd - create a new Cobra root command
 func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
-	streams := *factory.GetIOStream()
 	cmd := &cobra.Command{
 		Use:     cmdUse,
 		Short:   cmdShort,
@@ -65,13 +64,13 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving PreflightCheck Command: %w", preflightCheckCmdError)
 	}
 	cmd.AddCommand(preflightCheckCmd)
-	k3dCmd, K3dCmdError := k3d.NewK3dCmd(factory, streams)
+	k3dCmd, K3dCmdError := k3d.NewK3dCmd(factory)
 	if K3dCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving k3d Command: %v", K3dCmdError)
 	}
 	cmd.AddCommand(k3dCmd)
 	cmd.AddCommand(deploy.NewDeployCmd(factory))
-	cmd.AddCommand(update.NewUpdateCmd(factory, streams))
+	cmd.AddCommand(update.NewUpdateCmd(factory))
 
 	return cmd, nil
 }

@@ -1,6 +1,7 @@
 package k3d
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,7 +13,6 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -27,10 +27,9 @@ const (
 
 func TestK3d_NewHostsCmd(t *testing.T) {
 	// Arrange
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewHostsCmd(factory, streams)
+	cmd := NewHostsCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "hosts", cmd.Use)
@@ -96,7 +95,12 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
-			streams, in, out, errOut := genericIOOptions.NewTestIOStreams()
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			streams := factory.GetIOStream()
+			in := streams.In.(*bytes.Buffer)
+			out := streams.Out.(*bytes.Buffer)
+			errOut := streams.ErrOut.(*bytes.Buffer)
 			if tc.shouldErr {
 				streams.Out = apiWrappers.CreateFakeWriterFromStream(t, tc.shouldErr, streams.Out)
 			}
@@ -142,13 +146,12 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 					svc,
 				},
 			}
-			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects([]runtime.Object{&svcList})
 			factory.SetVirtualServices(&vsList)
 			viperInstance := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-			cmd := NewHostsCmd(factory, streams)
+			cmd := NewHostsCmd(factory)
 			cmd.SetArgs([]string{"--private-ip"})
 			var err error
 

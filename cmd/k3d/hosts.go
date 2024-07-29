@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -30,14 +29,14 @@ var (
 )
 
 // NewHostsCmd - Returns a command to generate a hosts list for your k3d cluster using hostsListCluster
-func NewHostsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewHostsCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     hostsUse,
 		Short:   hostsShort,
 		Long:    hostsLong,
 		Example: hostsExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(hostsListCluster(cmd, factory, streams))
+			cmdUtil.CheckErr(hostsListCluster(cmd, factory))
 		},
 	}
 
@@ -58,7 +57,8 @@ func NewHostsCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *co
 }
 
 // hostsListCluster - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
-func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, streams genericIOOptions.IOStreams) error {
+func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
+	streams := factory.GetIOStream()
 	var virtualServices []string
 
 	loggingClient := factory.GetLoggingClient()

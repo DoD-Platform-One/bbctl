@@ -4,7 +4,6 @@ import (
 	"path"
 
 	"github.com/spf13/cobra"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -29,14 +28,14 @@ var (
 )
 
 // NewDestroyClusterCmd - Returns a command to destroy a k3d cluster using destroyCluster
-func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStreams) *cobra.Command {
+func NewDestroyClusterCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     destroyUse,
 		Short:   destroyShort,
 		Long:    destroyLong,
 		Example: destroyExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(destroyCluster(factory, cmd, streams, args))
+			cmdUtil.CheckErr(destroyCluster(factory, cmd, args))
 		},
 	}
 
@@ -44,7 +43,8 @@ func NewDestroyClusterCmd(factory bbUtil.Factory, streams genericIOOptions.IOStr
 }
 
 // destroyCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to destroy the k3d dev cluster
-func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, streams genericIOOptions.IOStreams, args []string) error {
+func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) error {
+	streams := factory.GetIOStream()
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {
 		return err
