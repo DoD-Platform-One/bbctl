@@ -13,7 +13,7 @@ func TestRoot_NewDeployCmd(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewDeployCmd(factory)
+	cmd, _ := NewDeployCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deploy", cmd.Use)
@@ -36,7 +36,7 @@ func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
-	cmd := NewDeployCmd(factory)
+	cmd, _ := NewDeployCmd(factory)
 	assert.Nil(t, cmd.Execute())
 	// Assert
 	assert.NotNil(t, cmd)

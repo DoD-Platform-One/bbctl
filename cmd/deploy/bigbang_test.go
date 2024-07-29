@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,7 @@ func TestBigBang_NewDeployBigBangCmd(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewDeployBigBangCmd(factory)
+	cmd, _ := NewDeployBigBangCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "bigbang", cmd.Use)
@@ -26,7 +25,7 @@ func TestBigBang_NewDeployBigBangCmd_MissingBigBangRepo(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.GetViper().Set("big-bang-repo", "")
 	// Act
-	cmd := NewDeployBigBangCmd(factory)
+	cmd, _ := NewDeployBigBangCmd(factory)
 	// This does panic with a value, but that includes the stack trace so we can't compare it
 	assert.Panics(t, func() { assert.Nil(t, cmd.Execute()) })
 	// Assert
@@ -47,7 +46,7 @@ func TestBigBang_NewDeployBigBangCmd_WithK3d(t *testing.T) {
 	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
 	expectedCmdString := fmt.Sprintf("Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= -f %[1]v/chart/ingress-certs.yaml -f %[1]v/docs/assets/configs/example/policy-overrides-k3d.yaml \n", bigBangRepoLocation)
 	// Act
-	cmd := NewDeployBigBangCmd(factory)
+	cmd, _ := NewDeployBigBangCmd(factory)
 	cmd.SetArgs([]string{"--k3d"})
 	assert.Nil(t, cmd.Execute())
 	// Assert
@@ -72,7 +71,7 @@ func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	// note that the order of the components is reversed
 	expectedCmdString := fmt.Sprintf("Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \n", bigBangRepoLocation)
 	// Act
-	cmd := NewDeployBigBangCmd(factory)
+	cmd, _ := NewDeployBigBangCmd(factory)
 	cmd.SetArgs([]string{"--addon=foo,bar", "--addon=baz"})
 	assert.Nil(t, cmd.Execute())
 	// Assert
@@ -83,40 +82,36 @@ func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	assert.Equal(t, expectedCmdString, out.String())
 }
 
-func TestBigBang_NewDeployBigBangFailToGetConfigClient(t *testing.T) {
+func TestGetBigBangCmdConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
-	in := streams.In.(*bytes.Buffer)
-	out := streams.Out.(*bytes.Buffer)
-	errOut := streams.ErrOut.(*bytes.Buffer)
 	bigBangRepoLocation := "/tmp/big-bang"
 	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
-
+	factory.SetFail.GetConfigClient = true
 	// Act
-	if os.Getenv("BE_CRASHER") == "1" {
-		cmd := NewDeployBigBangCmd(factory)
-		factory.SetFail.GetConfigClient = true
-		cmd.Run(cmd, []string{})
-		return
+	cmd, err := NewDeployBigBangCmd(factory)
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
-	runCrasherCommand := exec.Command(os.Args[0], "-test.run=TestBigBang_NewDeployBigBangFailToGetConfigClient")
-	runCrasherCommand.Env = append(os.Environ(), "BE_CRASHER=1")
-	runCrasherCommand.Stderr = errOut
-	runCrasherCommand.Stdout = out
-	runCrasherCommand.Stdin = in
-	err := runCrasherCommand.Run()
+}
+func TestDeployBigBangConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	bigBangRepoLocation := "/tmp/big-bang"
+	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
+	cmd, _ := NewDeployBigBangCmd(factory)
+	factory.SetFail.GetConfigClient = true
+	// Act
+	err := cmd.RunE(cmd, []string{})
 
 	// Assert
-	if e, ok := err.(*exec.ExitError); ok && !e.Success() {
-		assert.Equal(t, 1, e.ExitCode())
-		assert.NotNil(t, runCrasherCommand)
-		assert.Equal(t, "exit status 1", e.Error())
-		assert.Equal(t, "error: failed to get config client\n", errOut.String())
-		assert.Empty(t, in.String())
-		assert.Empty(t, out.String())
-		return
+	assert.NotNil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get config client") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
-	t.Fatalf("process ran with err %v, want exit status 1", err)
 }

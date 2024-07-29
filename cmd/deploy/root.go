@@ -23,7 +23,7 @@ var (
 )
 
 // NewDeployCmd - parent for deploy commands
-func NewDeployCmd(factory bbUtil.Factory) *cobra.Command {
+func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     deployUse,
 		Short:   deployShort,
@@ -48,7 +48,11 @@ func NewDeployCmd(factory bbUtil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewDeployFluxCmd(factory))
-	cmd.AddCommand(NewDeployBigBangCmd(factory))
+	bigBangCmd, bigBangCmdError := NewDeployBigBangCmd(factory)
+	if bigBangCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving BigBang Command: %w", bigBangCmdError)
+	}
+	cmd.AddCommand(bigBangCmd)
 
-	return cmd
+	return cmd, nil
 }
