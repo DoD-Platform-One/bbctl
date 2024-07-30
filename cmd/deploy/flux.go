@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -27,8 +26,8 @@ func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
 		Short:   fluxShort,
 		Long:    fluxLong,
 		Example: fluxExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(deployFluxToCluster(factory, cmd, args))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return deployFluxToCluster(factory, cmd, args)
 		},
 	}
 
@@ -36,12 +35,10 @@ func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
 }
 
 func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
-	loggingClient := factory.GetLoggingClient()
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
 		return err
 	}
-	loggingClient.HandleError("error getting config client: %v", err)
 	config := configClient.GetConfig()
 	credentialHelper := factory.GetCredentialHelper()
 	username, err := credentialHelper("username", "registry1.dso.mil")
