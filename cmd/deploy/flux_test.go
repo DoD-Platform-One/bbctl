@@ -69,7 +69,7 @@ func TestFlux_NewDeployFluxCmd_Run(t *testing.T) {
 	assert.Equal(t, expectedCmdString, out.String())
 }
 
-func TestDeployBigBangConfigClientError(t *testing.T) {
+func TestDeployFluxConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	bigBangRepoLocation := "/tmp/big-bang"
