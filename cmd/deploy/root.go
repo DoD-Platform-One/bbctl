@@ -29,7 +29,7 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		Short:   deployShort,
 		Long:    deployLong,
 		Example: deployExample,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			subCommands := cmd.Commands()
 
 			var validCommands string
@@ -40,10 +40,15 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 				}
 			}
 			_, err := factory.GetIOStream().Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
-			factory.GetLoggingClient().HandleError("Unable to write to output stream", err)
+			if err != nil {
+				return fmt.Errorf("Unable to write to output stream: %w", err)
+			}
 
 			err = cmd.Help()
-			factory.GetLoggingClient().HandleError("Unable to write to output stream", err)
+			if err != nil {
+				return fmt.Errorf("Unable to write to output stream: %w", err)
+			}
+			return nil
 		},
 	}
 

@@ -45,3 +45,17 @@ func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	assert.NotEmpty(t, out.String())
 	assert.Empty(t, errOut.String())
 }
+
+func TestRoot_NewDeployBigBang_CommandError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetConfigClient = true
+	// Act
+	cmd, err := NewDeployCmd(factory)
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Error retrieving BigBang Command:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
