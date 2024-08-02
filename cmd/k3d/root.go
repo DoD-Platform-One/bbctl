@@ -41,10 +41,14 @@ func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(NewShellProfileCmd(factory))
 	sshCmd, sshCmdError := NewSSHCmd(factory)
 	if sshCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving ssh Command: %v", sshCmdError)
+		return nil, fmt.Errorf("Error retrieving ssh Command: %w", sshCmdError)
 	}
 	cmd.AddCommand(sshCmd)
-	cmd.AddCommand(NewHostsCmd(factory))
+	hostsCmd, sshHostsError := NewHostsCmd(factory)
+	if sshHostsError != nil {
+		return nil, fmt.Errorf("Error retrieving hosts Command: %w", sshHostsError)
+	}
+	cmd.AddCommand(hostsCmd)
 
 	return cmd, nil
 }
