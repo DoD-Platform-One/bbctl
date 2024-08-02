@@ -29,8 +29,9 @@ func TestK3d_NewHostsCmd(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewHostsCmd(factory)
+	cmd, err := NewHostsCmd(factory)
 	// Assert
+	assert.Nil(t, err)
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "hosts", cmd.Use)
 }
@@ -151,7 +152,8 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			viperInstance := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-			cmd := NewHostsCmd(factory)
+			cmd, cmdErr := NewHostsCmd(factory)
+			assert.Nil(t, cmdErr)
 			cmd.SetArgs([]string{"--private-ip"})
 			var err error
 
@@ -181,7 +183,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			if tc.shouldFail {
 				if tc.shouldErr {
 					assert.NotNil(t, err)
-					assert.Empty(t, out.String())
+					assert.Contains(t, out.String(), "FAIL")
 					assert.Contains(t, errOut.String(), (&apiWrappers.FakeWriterError{}).Error())
 				} else {
 					assert.Nil(t, err)
@@ -189,12 +191,33 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 					assert.Empty(t, errOut.String())
 				}
 				assert.Empty(t, in.String())
-			} else {
+			} else { // pass
 				assert.Nil(t, err)
 				assert.Empty(t, errOut.String())
 				assert.Empty(t, in.String())
 				assert.Equal(t, fmt.Sprintf("%v\t%v\t%v\n", privateIP, vs.Spec.Hosts[0], vs.Spec.Hosts[1]), out.String())
 			}
 		})
+	}
+}
+
+func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	bigBangRepoLocation := "test"
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+	factory.SetFail.GetConfigClient = true
+
+	// Act
+	cmd, err := NewHostsCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
