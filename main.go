@@ -107,7 +107,11 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 			initLogger.Error(fmt.Sprintf("Error getting config client: %v", err.Error()))
 			os.Exit(1)
 		}
-		config := configClient.GetConfig()
+		config, configErr := configClient.GetConfig()
+		if configErr != nil {
+			initLogger.Error(fmt.Sprintf("Error getting config: %v", configErr.Error()))
+			os.Exit(1)
+		}
 		logger := setupSlog(initLogger,
 			streams,
 			config.LogAddSource,

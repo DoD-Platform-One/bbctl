@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"helm.sh/helm/v3/pkg/chart"
@@ -195,4 +198,29 @@ func TestGetVersionWithHelmError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Equal(t, err.Error(), "failed to get helm client")
+}
+
+func TestVersionFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd, _ := NewVersionCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err1 := bbVersion(cmd, factory)
+
+	// Assert
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", err1.Error())
+	}
 }

@@ -111,7 +111,10 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	if err != nil {
 		return err
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	credentialHelper := factory.GetCredentialHelper()
 	username, err := credentialHelper("username", "registry1.dso.mil")
 	if err != nil {

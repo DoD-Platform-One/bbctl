@@ -100,7 +100,10 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (stri
 	if err != nil {
 		return "", fmt.Errorf("unable to get config client: %w", err)
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return "", fmt.Errorf("unable to get client: %w", configErr)
+	}
 	credentialsPath := config.UtilCredentialHelperConfiguration.FilePath
 	if credentialsPath == "" {
 		// Get the home directory
@@ -169,7 +172,10 @@ func (f *UtilityFactory) GetCredentialHelper() func(string, string) (string, err
 		if err != nil {
 			return "", fmt.Errorf("unable to get config client: %w", err)
 		}
-		config := configClient.GetConfig()
+		config, configErr := configClient.GetConfig()
+		if configErr != nil {
+			return "", fmt.Errorf("unable to get client: %w", configErr)
+		}
 		helper := config.UtilCredentialHelperConfiguration.CredentialHelper
 		if helper == "" {
 			return "", fmt.Errorf("no credential helper defined (\"big-bang-credential-helper\")")
@@ -211,7 +217,10 @@ func (f *UtilityFactory) GetGitLabClient() (bbGitLab.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return nil, fmt.Errorf("unable to get client: %w", configErr)
+	}
 	clientGetter := bbGitLab.ClientGetter{}
 	client, err := clientGetter.GetClient(config.GitLabConfiguration.BaseURL, config.GitLabConfiguration.Token)
 	if err != nil {
@@ -269,7 +278,10 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 	if err != nil {
 		return nil, err
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return nil, fmt.Errorf("unable to get client: %w", configErr)
+	}
 	return bbK8sUtil.BuildDynamicClient(config)
 }
 
@@ -326,7 +338,10 @@ func (f *UtilityFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	if err != nil {
 		return nil, err
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return nil, fmt.Errorf("unable to get client: %w", configErr)
+	}
 	return bbK8sUtil.BuildKubeConfig(config)
 }
 
@@ -369,7 +384,10 @@ func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*a
 	if err != nil {
 		return nil, err
 	}
-	bbctlConfig := configClient.GetConfig()
+	bbctlConfig, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return nil, fmt.Errorf("unable to get client: %w", configErr)
+	}
 
 	loggingClient := f.GetLoggingClient()
 	config, err := bbK8sUtil.BuildKubeConfig(bbctlConfig)

@@ -102,7 +102,10 @@ func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) (str
 		return "", fmt.Errorf("error getting config client: %w", err)
 	}
 
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return "", fmt.Errorf("error getting config: %w", configErr)
+	}
 
 	switch len(args) {
 

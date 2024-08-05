@@ -60,6 +60,14 @@ func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 // sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
 func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
 	streams := factory.GetIOStream()
+	configClient, err := factory.GetConfigClient(command)
+	if err != nil {
+		return fmt.Errorf("unable to get config client: %w", err)
+	}
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)
@@ -85,12 +93,6 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 	if err != nil {
 		return fmt.Errorf("unable to get cluster IPs: %w", err)
 	}
-	configClient, err := factory.GetConfigClient(command)
-	if err != nil {
-		return fmt.Errorf("unable to get config client: %w", err)
-	}
-	config := configClient.GetConfig()
-
 	loggingClient.Debug(fmt.Sprintf("Args: %v", strings.Join(args, " ")))
 	sshOpts := slices.Clone(args)
 	sshOpts = append(sshOpts,

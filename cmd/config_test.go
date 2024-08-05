@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -167,13 +168,13 @@ func TestConfigMarshalError(t *testing.T) {
 	viper := factory.GetViper()
 
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) *schemas.GlobalConfiguration {
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
 			ExampleConfiguration: schemas.ExampleConfiguration{
 				ShouldFailToMarshal: func() *any { x := any(make(chan int)); return &x }(),
 			},
-		}
+		}, nil
 	}
 
 	// Get a configuration client and set our getConfigFunc
@@ -241,5 +242,34 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 	expectedError := "Unable to fetch current bbctl configuration: error getting config client: failed to get config client"
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestConfigFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd := NewConfigCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, err := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	if err != nil {
+		t.Error()
+	}
+	factory.SetConfigClient(client)
+
+	// Act
+	result, err := getBBConfig(cmd, factory, []string{})
+
+	// Assert
+	assert.Equal(t, result, "")
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
 }

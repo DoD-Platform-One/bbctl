@@ -2,10 +2,13 @@ package deploy
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -33,11 +36,14 @@ func TestFlux_NewDeployFluxCmd_MissingBigBangRepo(t *testing.T) {
 
 	// Act
 	cmd := NewDeployFluxCmd(factory)
-	// This does panic with a value, but that includes the stack trace so we can't compare it
-	assert.Panics(t, func() { assert.Nil(t, cmd.Execute()) })
+	err := cmd.Execute()
 
 	// Assert
 	assert.NotNil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Error:Field validation for 'BigBangRepo' failed on the 'required' tag") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 	assert.Equal(t, "flux", cmd.Use)
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
@@ -82,6 +88,31 @@ func TestDeployFluxConfigClientError(t *testing.T) {
 	assert.NotNil(t, cmd)
 	assert.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get config client") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd := NewDeployFluxCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
