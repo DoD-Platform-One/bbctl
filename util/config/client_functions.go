@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	validator "github.com/go-playground/validator/v10"
@@ -58,14 +59,28 @@ func SetAndBindFlag(client *ConfigClient, name string, value interface{}, descri
 }
 
 // getConfig returns the global configuration.
-func getConfig(client *ConfigClient) *schemas.GlobalConfiguration {
+func getConfig(client *ConfigClient) (*schemas.GlobalConfiguration, error) {
 	var config schemas.GlobalConfiguration
-	(*client.loggingClient).HandleError("Error unmarshalling configuration: %v", client.viperInstance.Unmarshal(&config))
-	if client.command != nil {
-		(*client.loggingClient).HandleError("Error binding flags: %v", client.viperInstance.BindPFlags(client.command.PersistentFlags()))
+	unmarshalError := client.viperInstance.Unmarshal(&config)
+	if unmarshalError != nil {
+		return nil, fmt.Errorf("Error unmarshalling configuration: %w", unmarshalError)
 	}
-	(*client.loggingClient).HandleError("Error reconciling configuration: %v", config.ReconcileConfiguration(client.viperInstance))
+
+	if client.command != nil {
+		bindingError := client.viperInstance.BindPFlags(client.command.PersistentFlags())
+		if bindingError != nil {
+			return nil, fmt.Errorf("Error binding flags: %w", bindingError)
+		}
+	}
+
+	reconcileError := config.ReconcileConfiguration(client.viperInstance)
+	if reconcileError != nil {
+		return nil, fmt.Errorf("Error reconciling configuration: %w", reconcileError)
+	}
 	validator := validator.New()
-	(*client.loggingClient).HandleError("Error during validation for configuration: %v", validator.Struct(config))
-	return &config
+	validatorError := validator.Struct(config)
+	if validatorError != nil {
+		return nil, fmt.Errorf("Error during validation for configuration: %w", validatorError)
+	}
+	return &config, nil
 }

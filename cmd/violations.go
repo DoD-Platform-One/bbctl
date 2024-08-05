@@ -152,8 +152,10 @@ func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 // getViolations detects if the cluster has gatekeeper or kyverno installed and
 // prints out the violations in the cluster.
 func (v *violationsCmdHelper) getViolations() error {
-	config := v.configClient.GetConfig()
-
+	config, configErr := v.configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	namespace := config.UtilK8sConfiguration.Namespace
 	audit := config.ViolationsConfiguration.Audit
 

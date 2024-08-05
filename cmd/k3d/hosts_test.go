@@ -14,6 +14,8 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
@@ -218,6 +220,31 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
 	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestHostsFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd, _ := NewHostsCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err := hostsListCluster(cmd, factory)
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }

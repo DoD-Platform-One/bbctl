@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -26,10 +28,13 @@ func TestBigBang_NewDeployBigBangCmd_MissingBigBangRepo(t *testing.T) {
 	factory.GetViper().Set("big-bang-repo", "")
 	// Act
 	cmd, _ := NewDeployBigBangCmd(factory)
-	// This does panic with a value, but that includes the stack trace so we can't compare it
-	assert.Panics(t, func() { assert.Nil(t, cmd.Execute()) })
+	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Error:Field validation for 'BigBangRepo' failed on the 'required' tag") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 	assert.Equal(t, "bigbang", cmd.Use)
 }
 
@@ -112,6 +117,31 @@ func TestDeployBigBangConfigClientError(t *testing.T) {
 	assert.NotNil(t, cmd)
 	assert.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get config client") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd, _ := NewDeployBigBangCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }

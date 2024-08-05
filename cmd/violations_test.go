@@ -8,6 +8,8 @@ import (
 	"time"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"github.com/spf13/cobra"
@@ -89,6 +91,31 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 	assert.Error(t, err)
 	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestViolationsFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd, _ := NewViolationsCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err1 := cmd.RunE(cmd, []string{})
+
+	// Assert
+	assert.Error(t, err1)
+	if !assert.Contains(t, err1.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", err1.Error())
 	}
 }
 

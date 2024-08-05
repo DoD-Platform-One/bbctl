@@ -84,7 +84,7 @@ func TestBuildKubeConfig(t *testing.T) {
 					assert.Nil(t, err)
 					assert.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0644))
 				}
-				config := configClient.GetConfig()
+				config, _ := configClient.GetConfig()
 
 				// Act
 				client, err := BuildKubeConfig(config)
@@ -161,7 +161,7 @@ func TestBuildDynamicClient(t *testing.T) {
 				}
 				configClient, err := factory.GetConfigClient(nil)
 				assert.Nil(t, err)
-				config := configClient.GetConfig()
+				config, err := configClient.GetConfig()
 
 				// Act
 				client, err := BuildDynamicClient(config)

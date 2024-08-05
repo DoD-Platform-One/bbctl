@@ -1,10 +1,10 @@
 package k3d
 
 import (
+	"fmt"
 	"path"
 
 	"github.com/spf13/cobra"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -34,8 +34,8 @@ func NewDestroyClusterCmd(factory bbUtil.Factory) *cobra.Command {
 		Short:   destroyShort,
 		Long:    destroyLong,
 		Example: destroyExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdUtil.CheckErr(destroyCluster(factory, cmd, args))
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return destroyCluster(factory, cmd, args)
 		},
 	}
 
@@ -49,7 +49,10 @@ func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []stri
 	if err != nil {
 		return err
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	command := path.Join(config.BigBangRepo,
 		"docs",
 		"assets",

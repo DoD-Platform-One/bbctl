@@ -100,7 +100,10 @@ func matchingPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint string
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
 		return matchingGatekeeperPolicyNames(cmd, factory, hint)
@@ -178,7 +181,10 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 	if err != nil {
 		return fmt.Errorf("Unable to get config client: %v", err)
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
 		return listGatekeeperPoliciesByName(cmd, factory, name)
@@ -269,7 +275,10 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 	if err != nil {
 		return fmt.Errorf("Unable to get config client: %v", err)
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
 		return listAllGatekeeperPolicies(cmd, factory)

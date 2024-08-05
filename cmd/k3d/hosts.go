@@ -62,8 +62,10 @@ func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
 	if err != nil {
 		return fmt.Errorf("unable to get config client: %w", err)
 	}
-	config := configClient.GetConfig()
-
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	k8sConfig, err := bbK8s.BuildKubeConfig(config)
 	if err != nil {
 		return fmt.Errorf("unable to build k8s configuration: %w", err)

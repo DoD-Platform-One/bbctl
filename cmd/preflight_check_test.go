@@ -7,6 +7,7 @@ import (
 	"time"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -548,7 +549,8 @@ func TestCheckSystemParameters(t *testing.T) {
 			assert.Nil(t, configClient.SetAndBindFlag("registrypassword", "pass", "Image registry password"))
 			assert.Nil(t, viperInstance.BindPFlags(command.Flags()))
 
-			config := configClient.GetConfig()
+			config, configErr := configClient.GetConfig()
+			assert.NoError(t, configErr)
 			config.PreflightCheckConfiguration.RegistryServer = "registry.foo"
 			config.PreflightCheckConfiguration.RegistryUsername = "user"
 			config.PreflightCheckConfiguration.RegistryPassword = "pass"
@@ -1311,6 +1313,31 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	assert.Error(t, cmdError)
 	if !assert.Contains(t, cmdError.Error(), "Unable to get config client:") {
 		t.Errorf("unexpected output: %s", cmdError.Error())
+	}
+}
+
+func TestPreflightCheckFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	loggingClient := factory.GetLoggingClient()
+	cmd, _ := NewPreflightCheckCmd(factory)
+	viper := factory.GetViper()
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
+	factory.SetConfigClient(client)
+
+	// Act
+	err := cmd.Execute()
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
 

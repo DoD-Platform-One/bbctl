@@ -70,7 +70,10 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory) error {
 
 	// Config client error handling is done in the public NewVersionCmd function above
 	configClient, _ := factory.GetConfigClient(cmd)
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 
 	if config.VersionConfiguration.Client {
 		return nil

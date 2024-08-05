@@ -11,6 +11,7 @@ import (
 
 	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
@@ -296,5 +297,33 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 			assert.NotNil(t, err)
 			assert.Equal(t, test.errmsg, err.Error())
 		})
+	}
+}
+
+func TestSSHFailToGetConfig(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance := factory.GetViper()
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+
+	expected := ""
+	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+		return &schemas.GlobalConfiguration{
+			BigBangRepo: expected,
+		}, fmt.Errorf("Dummy Error")
+	}
+
+	logClient := factory.GetLoggingClient()
+	client, _ := bbConfig.NewClient(getConfigFunc, nil, &logClient, nil, viperInstance)
+	factory.SetConfigClient(client)
+	cmd := NewShellProfileCmd(factory)
+	// Act
+	err := sshToK3dCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
 }

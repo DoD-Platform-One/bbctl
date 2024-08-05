@@ -235,7 +235,10 @@ func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, command *cobra
 	if err != nil {
 		return fmt.Errorf("Unable to get config client: %w", err)
 	}
-	config := configClient.GetConfig()
+	config, configErr := configClient.GetConfig()
+	if configErr != nil {
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
 	for i, check := range preflightChecks {
 		status := check.function(cmd, factory, config)
 		preflightChecks[i].status = status

@@ -304,12 +304,13 @@ func TestGetConfig(t *testing.T) {
 		viperInstance: v,
 	}
 	// Act
-	config := getConfig(&configClient)
+	config, err := getConfig(&configClient)
 	// Assert
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
 	assert.Empty(t, errOut.String())
 	assert.NotNil(t, config)
+	assert.NoError(t, err)
 	assert.Equal(t, "test", config.BigBangRepo)
 }
 
@@ -329,12 +330,15 @@ func TestGetConfigFailValidation(t *testing.T) {
 		viperInstance: v,
 	}
 	// Act
-	assert.Panics(t, func() { getConfig(&configClient) })
+	_, err := getConfig(&configClient)
 	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Error:Field validation for 'BigBangRepo' failed on the 'required' tag") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
-	assert.NotEmpty(t, errOut.String())
-	assert.Contains(t, errOut.String(), "Error during validation for configuration")
+	assert.Empty(t, errOut.String())
 }
 
 func TestReadConfig(t *testing.T) {
@@ -365,9 +369,10 @@ func TestReadConfig(t *testing.T) {
 	}
 	// Act
 	allSettings := v.AllSettings()
-	resultConfig := getConfig(&configClient)
+	resultConfig, err := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, allSettings)
 	assert.FileExists(t, path.Join(configDir, "config.yaml"))
 	assert.Empty(t, in.String())
@@ -405,9 +410,10 @@ func TestReadConfigAndOverride(t *testing.T) {
 	}
 	// Act
 	allSettings := v.AllSettings()
-	resultConfig := getConfig(&configClient)
+	resultConfig, err := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, allSettings)
 	assert.FileExists(t, path.Join(configDir, "config.yaml"))
 	assert.Empty(t, in.String())
