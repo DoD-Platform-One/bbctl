@@ -30,9 +30,9 @@ func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		Short:   k3dShort,
 		Long:    k3dLong,
 		Example: k3dExample,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := streams.Out.Write([]byte(fmt.Sprintln("Please provide a subcommand for k3d (see help)")))
-			factory.GetLoggingClient().HandleError("Unable to write to output stream", err)
+			return err
 		},
 	}
 
