@@ -46,3 +46,19 @@ func TestK3d_RootNoSubcommand(t *testing.T) {
 	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), "Please provide a subcommand for k3d (see help)")
 }
+
+func TestK3d_RootSshError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	factory.SetFail.GetConfigClient = true
+
+	// Act
+	cmd, err := NewK3dCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	if !assert.Contains(t, err.Error(), "Error retrieving ssh Command:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
