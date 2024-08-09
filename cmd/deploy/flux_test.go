@@ -28,11 +28,12 @@ func TestFlux_NewDeployFluxCmd_MissingBigBangRepo(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
-	factory.GetViper().Set("big-bang-repo", "")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "")
 
 	// Act
 	cmd := NewDeployFluxCmd(factory)
@@ -54,13 +55,14 @@ func TestFlux_NewDeployFluxCmd_Run(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	bigBangRepoLocation := "/tmp/big-bang"
 	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
-	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", bigBangRepoLocation)
 	expectedCmdString := "Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p  \n"
 
 	// Act
@@ -79,7 +81,8 @@ func TestDeployFluxConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	bigBangRepoLocation := "/tmp/big-bang"
-	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", bigBangRepoLocation)
 	cmd := NewDeployFluxCmd(factory)
 	factory.SetFail.GetConfigClient = true
 	// Act
@@ -95,9 +98,9 @@ func TestDeployFluxConfigClientError(t *testing.T) {
 func TestFluxFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd := NewDeployFluxCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{

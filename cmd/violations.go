@@ -97,14 +97,20 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violat
 		return nil, err
 	}
 
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, err := factory.GetLoggingClient()
+	if err != nil {
+		return nil, err
+	}
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return nil, err
+	}
 
 	return &violationsCmdHelper{
 		k8sClient:    k8sClient,

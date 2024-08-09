@@ -40,7 +40,10 @@ func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
 
 // shellProfileCluster - Returns the error (nil if no error) when generating a BASH compatible shell profile for your cluster
 func shellProfileCluster(factory bbUtil.Factory) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return fmt.Errorf("unable to get IO streams: %w", err)
+	}
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
 		return fmt.Errorf("unable to get AWS client: %w", err)

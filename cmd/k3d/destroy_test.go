@@ -24,7 +24,8 @@ func TestNewDestroyClusterCmd(t *testing.T) {
 func TestNewDestroyClusterCmd_RunWithMissingBigBangRepo(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.GetViper().Set("big-bang-repo", "")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "")
 	// Act
 	cmd := NewDestroyClusterCmd(factory)
 	err := cmd.RunE(cmd, []string{})
@@ -41,12 +42,13 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	bigBangRepoLocation := "/tmp/big-bang"
-	factory.GetViper().Set("big-bang-repo", bigBangRepoLocation)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", bigBangRepoLocation)
 	expectedCmdString := "Running command: /tmp/big-bang/docs/assets/scripts/developer/k3d-dev.sh -d \n"
 	// Act
 	cmd := NewDestroyClusterCmd(factory)
@@ -62,7 +64,10 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 func TestNewDestroyClusterFailToGetConfigClient(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.GetViper().Set("big-bang-repo", "")
+	factory.ResetIOStream()
+	bigBangRepoLocation := "/tmp/big-bang"
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", bigBangRepoLocation)
 	cmd := NewDestroyClusterCmd(factory)
 	factory.SetFail.GetConfigClient = true
 
@@ -80,9 +85,9 @@ func TestNewDestroyClusterFailToGetConfigClient(t *testing.T) {
 func TestDestroyFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd := NewDestroyClusterCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{

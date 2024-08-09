@@ -248,7 +248,10 @@ func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, command *cobra
 
 // Internal helper function to implement the metrics server check step
 func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return unknown
+	}
 	fmt.Fprintln(streams.Out, "Checking metrics server...")
 
 	client, err := factory.GetK8sClientset(cmd)
@@ -275,7 +278,10 @@ func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *sche
 
 // Internal helper function to implement the storage class check step
 func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return unknown
+	}
 	fmt.Fprintln(streams.Out, "Checking default storage class...")
 
 	client, err := factory.GetK8sClientset(cmd)
@@ -308,7 +314,10 @@ func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config
 
 // Internal helper function to implement the Flux installation check step
 func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return unknown
+	}
 	fmt.Fprintln(streams.Out, "Checking flux installation...")
 
 	client, err := factory.GetK8sClientset(cmd)
@@ -349,7 +358,10 @@ func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *sch
 
 // Internal helper function to implement the system parameters check step
 func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return unknown
+	}
 	pod, err := createResourcesForCommandExecution(cmd, factory, config)
 	if err != nil {
 		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
@@ -387,7 +399,10 @@ func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *s
 
 // Internal helper function to implement the individual system parameter checks
 func checkSystemParameter(factory bbUtil.Factory, bbPackage string, param string, value string, _ string, threshold int) bool {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return false
+	}
 	fmt.Fprintf(streams.Out, "%s = %s\n", param, value)
 
 	if value == "unlimited" {
@@ -437,7 +452,10 @@ func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metaV1.APIGroupLis
 //
 // Create a new namespace, a container registry credentials secret, and the preflight check job
 func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) (*coreV1.Pod, error) {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return nil, err
+	}
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return nil, err
@@ -540,7 +558,10 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 
 // Internal helper function to cleanup k8s resources after the system parameters check is complete
 func deleteResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
@@ -569,9 +590,12 @@ func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errO
 
 // Internal helper function to print the results of every preflight check step out to the console
 func printPreflightCheckSummary(factory bbUtil.Factory, preflightChecks []preflightCheck) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	var errorsList []error
-	_, err := fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
+	_, err = fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
 	if err != nil {
 		errorsList = append(errorsList, err)
 	}

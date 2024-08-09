@@ -73,8 +73,11 @@ var (
 // NewCompletionCmd create a new Cobra completion command which generates a completion script
 //
 // Returns a cobra.Command configured to return a completion script for a specified shell environment
-func NewCompletionCmd(factory bbUtil.Factory) *cobra.Command {
-	streams := factory.GetIOStream()
+func NewCompletionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get IO streams: %w", err)
+	}
 	includeDesc := true
 	cmd := &cobra.Command{
 		Use:                   completionUse,
@@ -107,5 +110,5 @@ func NewCompletionCmd(factory bbUtil.Factory) *cobra.Command {
 
 		},
 	}
-	return cmd
+	return cmd, nil
 }

@@ -47,7 +47,10 @@ func NewCreateClusterCmd(factory bbUtil.Factory) *cobra.Command {
 
 // createCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to create the k3d dev cluster
 func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {
 		return err
@@ -63,7 +66,10 @@ func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []strin
 		"developer",
 		"k3d-dev.sh",
 	)
-	cmd := factory.GetCommandWrapper(command, args...)
+	cmd, err := factory.GetCommandWrapper(command, args...)
+	if err != nil {
+		return err
+	}
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
 	cmd.SetStdin(streams.In)

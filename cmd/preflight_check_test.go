@@ -119,7 +119,7 @@ func TestCheckMetricsServer(t *testing.T) {
 			factory.SetResources(test.resources)
 			factory.SetFail.GetK8sClientset = test.failGetClient
 
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -205,7 +205,7 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -305,7 +305,7 @@ func TestCheckFluxController(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -542,7 +542,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			factory.ResetIOStream()
 			configClient, err := factory.GetConfigClient(command)
 			assert.Nil(t, err)
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			assert.Nil(t, configClient.SetAndBindFlag("big-bang-repo", "/tmp", "Location on the filesystem where the bigbang product repo is checked out"))
 			assert.Nil(t, configClient.SetAndBindFlag("registryserver", "registry.foo", "Image registry server url"))
 			assert.Nil(t, configClient.SetAndBindFlag("registryusername", "user", "Image registry username"))
@@ -565,7 +565,7 @@ func TestCheckSystemParameters(t *testing.T) {
 			factory.SetFail.GetCommandExecutor = test.failGetCommandExecutor
 			modifiedParams := make(map[string]string)
 
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -828,7 +828,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -959,7 +959,7 @@ func TestDeleteResourcesForCommandExecution(t *testing.T) {
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -1141,7 +1141,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -1230,9 +1230,10 @@ func TestPreflightCheck(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetObjects([]runtime.Object{})
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
-	factory.GetViper().Set("big-bang-repo", "/tmp")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
@@ -1284,9 +1285,10 @@ func TestPreflightCheckCmd(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetObjects([]runtime.Object{})
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
-	factory.GetViper().Set("big-bang-repo", "/tmp")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
 	cmd, cmdError := NewPreflightCheckCmd(factory)
 	assert.NoError(t, cmdError)
 	err := cmd.Execute()
@@ -1304,7 +1306,8 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
-	factory.GetViper().Set("big-bang-repo", "/tmp")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
 	factory.SetFail.GetConfigClient = true
 	// Act
 	cmd, cmdError := NewPreflightCheckCmd(factory)
@@ -1319,9 +1322,9 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 func TestPreflightCheckFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd, _ := NewPreflightCheckCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
@@ -1345,7 +1348,8 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetObjects([]runtime.Object{})
-	factory.GetViper().Set("big-bang-repo", "/tmp")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
 	cmd, _ := NewPreflightCheckCmd(factory)
 	// Act
 	factory.SetFail.GetConfigClient = true

@@ -39,7 +39,11 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 					validCommands += ", "
 				}
 			}
-			_, err := factory.GetIOStream().Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
+			streams, err := factory.GetIOStream()
+			if err != nil {
+				return fmt.Errorf("Unable to get IO streams: %w", err)
+			}
+			_, err = streams.Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
 			if err != nil {
 				return fmt.Errorf("Unable to write to output stream: %w", err)
 			}

@@ -31,7 +31,7 @@ func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)

@@ -24,7 +24,10 @@ var (
 
 // NewK3dCmd - Returns a minimal parent command for the default k3d commands
 func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to get IO streams: %w", err)
+	}
 	cmd := &cobra.Command{
 		Use:     k3dUse,
 		Short:   k3dShort,
