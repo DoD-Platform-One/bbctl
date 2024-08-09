@@ -17,7 +17,7 @@ func TestK3d_ShellProfileUsage(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
 	cmd := NewShellProfileCmd(factory)
@@ -32,7 +32,7 @@ func TestK3d_ShellProfiile(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
@@ -65,7 +65,7 @@ func TestK3d_ShellProfiile(t *testing.T) {
 	}
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	kubeConfExport := fmt.Sprintf("export KUBECONFIG=~/.kube/%v-dev-config\n", callerIdentity.Username)
@@ -87,7 +87,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
@@ -104,7 +104,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	clusterIPs := []bbAwsUtil.ClusterIP{}
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	cmd := NewShellProfileCmd(factory)
@@ -175,7 +175,7 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
@@ -193,7 +193,7 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetCallerIdentity(&callerIdentity)
 			factory.SetClusterIPs(&clusterIPs)
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 

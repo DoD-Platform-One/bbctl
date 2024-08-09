@@ -21,8 +21,11 @@ var (
 )
 
 // NewUpdateCmd - Returns a minimal parent command for the `bbctl update` commands
-func NewUpdateCmd(factory bbUtil.Factory) *cobra.Command {
-	streams := factory.GetIOStream()
+func NewUpdateCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create IO streams: %v", err)
+	}
 	cmd := &cobra.Command{
 		Use:     updateRootUse,
 		Short:   updateRootShort,
@@ -41,5 +44,5 @@ func NewUpdateCmd(factory bbUtil.Factory) *cobra.Command {
 
 	cmd.AddCommand(NewUpdateCheckCmd(factory))
 
-	return cmd
+	return cmd, nil
 }

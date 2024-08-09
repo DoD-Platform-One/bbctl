@@ -17,18 +17,20 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/cmd"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	bbUtilPool "repo1.dso.mil/big-bang/product/packages/bbctl/util/pool"
 )
 
 // main - main exectable function for bbctl
 func main() {
 	flags := pFlag.NewFlagSet("bbctl", pFlag.ExitOnError)
-	factory := bbUtil.NewFactory()
-	streams := *factory.GetIOStream()
-	injectableMain(factory, flags, streams)
+	pooledFactory := bbUtilPool.NewPooledFactory()
+	factory := bbUtil.NewFactory(pooledFactory)
+	pooledFactory.SetUnderlyingFactory(factory)
+	injectableMain(pooledFactory, flags)
 }
 
 // injectableMain - helper function for main
-func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams genericIOOptions.IOStreams) {
+func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	flags.Bool("bbctl-log-add-source",
 		false,
 		"Add source to log output")
@@ -52,13 +54,22 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 		"Location on the filesystem where the Big Bang product repo is checked out")
 
 	// setup the init logger
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		fmt.Printf("Error getting IO streams: %v", err.Error())
+		os.Exit(1)
+	}
 	initSlogHandlerOptions := slog.HandlerOptions{
 		AddSource: true,
 		Level:     slog.LevelWarn,
 	}
 	// logs to stderr
 	initLogger := slog.New(slog.NewJSONHandler(streams.ErrOut, &initSlogHandlerOptions))
-	viperInstance := factory.GetViper()
+	viperInstance, err := factory.GetViper()
+	if err != nil {
+		initLogger.Error(fmt.Sprintf("Error getting viper: %v", err.Error()))
+		os.Exit(1)
+	}
 
 	cobra.OnInitialize(func() {
 		// automatically read in environment variables that match supported flags
@@ -148,14 +159,14 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 	kubeResourceBuilderFlags.AddFlags(flags)
 
 	// Bind the flags to viper
-	err := viperInstance.BindPFlags(flags)
+	err = viperInstance.BindPFlags(flags)
 	if err != nil {
 		initLogger.Error(fmt.Sprintf("error binding flags to viper: %v", err.Error()))
 		os.Exit(1)
 	}
 
 	// echo the flags
-	factory.GetLoggingClient().Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
+	initLogger.Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
 
 	cobra.CheckErr(bbctlCmd.Execute())
 }
@@ -163,7 +174,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet, streams generi
 // setupSlog - setup the slog logger
 func setupSlog(
 	initLogger *slog.Logger,
-	streams genericIOOptions.IOStreams,
+	streams *genericIOOptions.IOStreams,
 	addSource bool,
 	logFileString string,
 	logFormatString string,

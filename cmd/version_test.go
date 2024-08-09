@@ -18,7 +18,8 @@ func TestGetVersionUsage(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
@@ -53,9 +54,10 @@ func TestGetVersion(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
 	// Act
@@ -96,10 +98,11 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
-	factory.GetViper().Set("big-bang-repo", "test")
-	factory.GetViper().Set("client", true)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("client", true)
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
 	// Act
@@ -120,7 +123,8 @@ func TestGetVersionInvalidClientFlag(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
@@ -138,7 +142,8 @@ func TestGetVersionWithError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
@@ -154,7 +159,8 @@ func TestGetVersionWithBadParams(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
@@ -170,7 +176,8 @@ func TestGetVersionWithConfigError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	factory.SetFail.GetConfigClient = true
@@ -188,7 +195,8 @@ func TestGetVersionWithHelmError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	factory.SetFail.GetHelmClient = true
@@ -203,9 +211,9 @@ func TestGetVersionWithHelmError(t *testing.T) {
 func TestVersionFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd, _ := NewVersionCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{

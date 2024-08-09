@@ -52,7 +52,10 @@ func NewReleasesCmd(factory bbUtil.Factory) *cobra.Command {
 //
 // Returns an error if the release information could not be found
 func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, constantClient static.ConstantsClient) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return fmt.Errorf("error getting IO streams: %s", err.Error())
+	}
 	constants, err := constantClient.GetConstants()
 	if err != nil {
 		return err

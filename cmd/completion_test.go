@@ -37,12 +37,13 @@ func TestAllCompletions(t *testing.T) {
 		factory := bbTestUtil.GetFakeFactory()
 		factory.ResetIOStream()
 
-		streams := factory.GetIOStream()
+		streams, _ := factory.GetIOStream()
 		buf := streams.Out.(*bytes.Buffer)
 
 		t.Run(test.desc, func(t *testing.T) {
-			cmd := NewCompletionCmd(factory)
-			err := cmd.RunE(cmd, []string{test.shell})
+			cmd, err := NewCompletionCmd(factory)
+			assert.Nil(t, err)
+			err = cmd.RunE(cmd, []string{test.shell})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -58,11 +59,12 @@ func TestInvalidShellCompletion(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
-	cmd := NewCompletionCmd(factory)
-	err := cmd.RunE(cmd, []string{"foo"})
+	cmd, err := NewCompletionCmd(factory)
+	assert.Nil(t, err)
+	err = cmd.RunE(cmd, []string{"foo"})
 
 	assert.Empty(t, buf.String())
 	assert.Equal(t, err.Error(), "unknown shell: foo")

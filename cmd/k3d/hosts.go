@@ -54,10 +54,16 @@ func NewHostsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 // hostsListCluster - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
 func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	var virtualServices []string
 
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, err := factory.GetLoggingClient()
+	if err != nil {
+		return fmt.Errorf("unable to get logging client: %w", err)
+	}
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
 		return fmt.Errorf("unable to get config client: %w", err)

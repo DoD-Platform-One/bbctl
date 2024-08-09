@@ -106,7 +106,10 @@ func insertHelmOptForRelativeChart(config *schemas.GlobalConfiguration, helmOpts
 }
 
 func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) error {
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, err := factory.GetLoggingClient()
+	if err != nil {
+		return err
+	}
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
 		return err
@@ -115,7 +118,10 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	if configErr != nil {
 		return fmt.Errorf("error getting config: %w", configErr)
 	}
-	credentialHelper := factory.GetCredentialHelper()
+	credentialHelper, err := factory.GetCredentialHelper()
+	if err != nil {
+		return fmt.Errorf("unable to get credential helper: %w", err)
+	}
 	username, err := credentialHelper("username", "registry1.dso.mil")
 	if err != nil {
 		return fmt.Errorf("unable to get username: %w", err)
@@ -155,8 +161,14 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 		fmt.Sprintf("registryCredentials.password=%v", password),
 	)
 
-	streams := factory.GetIOStream()
-	cmd := factory.GetCommandWrapper("helm", helmOpts...)
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return fmt.Errorf("Unable to create IO streams: %w", err)
+	}
+	cmd, err := factory.GetCommandWrapper("helm", helmOpts...)
+	if err != nil {
+		return fmt.Errorf("Unable to get command wrapper: %w", err)
+	}
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
 	err = cmd.Run()

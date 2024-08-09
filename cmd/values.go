@@ -12,7 +12,6 @@ import (
 	"helm.sh/helm/v3/cmd/helm/require"
 	"helm.sh/helm/v3/pkg/cli/output"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	cmdUtil "k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -87,9 +86,13 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 			if err != nil {
-				cmdUtil.CheckErr(err)
+				return err
 			}
-			return v.getHelmValues(factory.GetIOStream(), args[0])
+			streams, err := factory.GetIOStream()
+			if err != nil {
+				return fmt.Errorf("error getting IO streams: %s", err.Error())
+			}
+			return v.getHelmValues(streams, args[0])
 		},
 	}
 

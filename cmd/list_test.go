@@ -56,7 +56,7 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd := NewReleasesCmd(factory)

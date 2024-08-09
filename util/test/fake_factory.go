@@ -11,6 +11,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
@@ -192,10 +193,11 @@ type FakeFactory struct {
 }
 
 // GetCredentialHelper - get credential helper
-func (f *FakeFactory) GetCredentialHelper() func(string, string) (string, error) {
-	return func(arg1 string, arg2 string) (string, error) {
+func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
+	credentialHelper := func(arg1 string, arg2 string) (string, error) {
 		return "", nil
 	}
+	return credentialHelper, nil
 }
 
 // GetAWSClient constructs a fake AWS client
@@ -235,12 +237,12 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 }
 
 // GetOutputClient
-func (f *FakeFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) bbOutput.Client {
+func (f *FakeFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) (bbOutput.Client, error) {
 	outputFlag, _ := cmd.Flags().GetString("format")
 	outputCLientGetter := bbOutput.ClientGetter{}
 	outputClient := outputCLientGetter.GetClient(outputFlag, streams)
 
-	return outputClient
+	return outputClient, nil
 }
 
 // GetK8sClientset - get k8s clientset
@@ -273,7 +275,11 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 		}
 		if f.SetFail.GetDescriptor {
 			client.FailDescriptor = true
-			if f.GetViper().Get("gatekeeper") == true {
+			v, err := f.GetViper()
+			if err != nil {
+				return nil, err
+			}
+			if v.Get("gatekeeper") == true {
 				client.Gatekeeper = true
 			}
 			client.DescriptorType = f.SetFail.DescriptorType
@@ -294,12 +300,12 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 }
 
 // GetLoggingClient - get logging client
-func (f *FakeFactory) GetLoggingClient() bbLog.Client {
+func (f *FakeFactory) GetLoggingClient() (bbLog.Client, error) {
 	return f.GetLoggingClientWithLogger(nil)
 }
 
 // GetLoggingClientWithLogger - get logging client providing logger
-func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Client {
+func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error) {
 	var localFunc fakeLog.LoggingFunction
 	if f.loggingFunc == nil {
 		localFunc = func(args ...string) {
@@ -310,7 +316,7 @@ func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) bbLog.Clie
 	}
 
 	client := fakeLog.NewFakeClient(localFunc)
-	return client
+	return client, nil
 }
 
 // GetRestConfig - get rest config
@@ -366,8 +372,8 @@ func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options rem
 }
 
 // GetCommandWrapper - get command wrapper
-func (f *FakeFactory) GetCommandWrapper(name string, args ...string) *bbUtilApiWrappers.Command {
-	return fakeApiWrappers.NewFakeCommand(name, args...)
+func (f *FakeFactory) GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error) {
+	return fakeApiWrappers.NewFakeCommand(name, args...), nil
 }
 
 // GetIstioClientSet - get istio clientset
@@ -395,14 +401,27 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 		return nil, fmt.Errorf("failed to get config client")
 	}
 	clientGetter := bbConfig.ClientGetter{}
-	loggingClient := f.GetLoggingClient()
-	client, err := clientGetter.GetClient(command, &loggingClient, f.GetViper())
+	loggingClient, err := f.GetLoggingClient()
+	if err != nil {
+		return nil, err
+	}
+	v, err := f.GetViper()
+	if err != nil {
+		return nil, err
+	}
+	client, err := clientGetter.GetClient(command, &loggingClient, v)
 	return client, err
 }
 
 // GetViper - get viper
-func (f *FakeFactory) GetViper() *viper.Viper {
-	return f.viperInstance
+func (f *FakeFactory) GetViper() (*viper.Viper, error) {
+	return f.viperInstance, nil
+}
+
+// SetViper sets the viper instance
+func (f *FakeFactory) SetViper(v *viper.Viper) error {
+	f.viperInstance = v
+	return nil
 }
 
 // Temporary Singleton for IO Streams until implementation of bbctl #214
@@ -416,7 +435,7 @@ func (f *FakeFactory) ResetIOStream() {
 }
 
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
-func (f *FakeFactory) GetIOStream() *genericIOOptions.IOStreams {
+func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 	oneStream.Do(func() {
 		streams = &genericIOOptions.IOStreams{
 			In:     &bytes.Buffer{},
@@ -424,7 +443,7 @@ func (f *FakeFactory) GetIOStream() *genericIOOptions.IOStreams {
 			ErrOut: &bytes.Buffer{},
 		}
 	})
-	return streams
+	return streams, nil
 }
 
 func (f *FakeFactory) SetIOStream(stream genericIOOptions.IOStreams) {

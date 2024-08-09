@@ -80,7 +80,8 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 
 	// Act
 	factory.SetFail.GetConfigClient = true
@@ -97,9 +98,9 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 func TestViolationsFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd, _ := NewViolationsCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
@@ -123,7 +124,8 @@ func TestViolationsCmdHelperError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 	cmd, _ := NewViolationsCmd(factory)
 	factory.SetFail.GetK8sDynamicClient = true
 
@@ -265,9 +267,10 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
-			factory.GetViper().Set("big-bang-repo", "test")
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
 			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
@@ -351,8 +354,9 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
@@ -440,8 +444,9 @@ func TestKyvernoAuditViolations(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
@@ -529,8 +534,9 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
@@ -594,8 +600,9 @@ func TestGetViolations(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -741,7 +748,7 @@ func TestKyvernoExists(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -822,7 +829,7 @@ func TestListKyvernoViolations(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -891,7 +898,7 @@ func TestGatekeeperExists(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -962,7 +969,7 @@ func TestListGkDenyViolations(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -1047,7 +1054,7 @@ func TestListGkAuditViolations(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
@@ -1270,7 +1277,7 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			out := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnK8sDynamicClient

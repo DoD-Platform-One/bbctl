@@ -1,13 +1,18 @@
 package k8s
 
 import (
+	"bytes"
+	"log/slog"
 	"os"
 	"path"
 	"testing"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
-	bbTestUtils "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbUtilConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 )
 
 func TestBuildKubeConfig(t *testing.T) {
@@ -69,11 +74,15 @@ func TestBuildKubeConfig(t *testing.T) {
 				assert.NoError(t, os.Setenv("HOME", tempDir))
 				assert.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
 			}
-			factory := bbTestUtils.GetFakeFactory()
-			v := factory.GetViper()
+			cmd := &cobra.Command{}
+			v := viper.New()
 			v.Set("big-bang-repo", "test")
-			configClient, err := factory.GetConfigClient(nil)
-			assert.Nil(t, err)
+			stream := &bytes.Buffer{}
+			logger := slog.New(slog.NewJSONHandler(stream, &slog.HandlerOptions{}))
+			loggingClientGetter := bbUtilLog.ClientGetter{}
+			loggingClient := loggingClientGetter.GetClient(logger)
+			configClientGetter := bbUtilConfig.ClientGetter{}
+			configClient, _ := configClientGetter.GetClient(cmd, &loggingClient, v)
 
 			for _, kubeconfig := range tt.kubeconfigs {
 				if !tt.homedir {
@@ -147,8 +156,7 @@ func TestBuildDynamicClient(t *testing.T) {
 				assert.NoError(t, os.Setenv("HOME", tempDir))
 				assert.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
 			}
-			factory := bbTestUtils.GetFakeFactory()
-			v := factory.GetViper()
+			v := viper.New()
 			v.Set("big-bang-repo", "test")
 			for _, kubeconfig := range tt.kubeconfigs {
 				if !tt.homedir {
@@ -159,9 +167,14 @@ func TestBuildDynamicClient(t *testing.T) {
 					assert.Nil(t, err)
 					assert.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0644))
 				}
-				configClient, err := factory.GetConfigClient(nil)
-				assert.Nil(t, err)
-				config, err := configClient.GetConfig()
+				cmd := &cobra.Command{}
+				stream := &bytes.Buffer{}
+				logger := slog.New(slog.NewJSONHandler(stream, &slog.HandlerOptions{}))
+				loggingClientGetter := bbUtilLog.ClientGetter{}
+				loggingClient := loggingClientGetter.GetClient(logger)
+				configClientGetter := bbUtilConfig.ClientGetter{}
+				configClient, _ := configClientGetter.GetClient(cmd, &loggingClient, v)
+				config, _ := configClient.GetConfig()
 
 				// Act
 				client, err := BuildDynamicClient(config)

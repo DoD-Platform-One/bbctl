@@ -100,7 +100,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams := factory.GetIOStream()
+			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -151,7 +151,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			}
 			factory.SetObjects([]runtime.Object{&svcList})
 			factory.SetVirtualServices(&vsList)
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 			cmd, cmdErr := NewHostsCmd(factory)
@@ -208,7 +208,7 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	bigBangRepoLocation := "test"
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	factory.SetFail.GetConfigClient = true
@@ -227,9 +227,9 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 func TestHostsFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd, _ := NewHostsCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{

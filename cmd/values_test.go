@@ -49,7 +49,7 @@ func TestValues(t *testing.T) {
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd := NewValuesCmd(factory)
@@ -207,7 +207,8 @@ func TestGetHelmValuesFailGettingValues(t *testing.T) {
 	assert.NotNil(t, v)
 
 	// Will fail to get helm values as we've set releases to be a nil value
-	err = v.getHelmValues(factory.GetIOStream(), "test")
+	streams, _ := factory.GetIOStream()
+	err = v.getHelmValues(streams, "test")
 
 	assert.Equal(t, expectedError.Error(), err.Error())
 }

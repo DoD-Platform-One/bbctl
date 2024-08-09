@@ -35,7 +35,7 @@ func TestGetStatusUsage(t *testing.T) {
 func TestGetStatus(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd := NewStatusCmd(factory)

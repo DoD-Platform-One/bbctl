@@ -20,7 +20,7 @@ func TestK3d_SshUsage(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
 	cmd, sshCmdError := NewSSHCmd(factory)
@@ -36,7 +36,7 @@ func TestK3d_SshDryRun(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
@@ -69,7 +69,7 @@ func TestK3d_SshDryRun(t *testing.T) {
 	}
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -117,7 +117,7 @@ func TestK3d_SshBadArgs(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -137,7 +137,7 @@ func TestK3d_SshErrorGettingConfigClient(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetFail.GetConfigClient = true
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -153,7 +153,7 @@ func TestK3d_SshErrorGettingConfigClient(t *testing.T) {
 func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -162,7 +162,7 @@ func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 		return expectedError
 	}
 
-	logClient := factory.GetLoggingClient()
+	logClient, _ := factory.GetLoggingClient()
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
 	assert.Nil(t, err)
 	factory.SetConfigClient(configClient)
@@ -179,7 +179,7 @@ func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -191,7 +191,7 @@ func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 		return nil
 	}
 
-	logClient := factory.GetLoggingClient()
+	logClient, _ := factory.GetLoggingClient()
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
 	assert.Nil(t, err)
 	factory.SetConfigClient(configClient)
@@ -266,7 +266,7 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
@@ -284,7 +284,7 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetCallerIdentity(&callerIdentity)
 			factory.SetClusterIPs(&clusterIPs)
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -303,7 +303,7 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 func TestSSHFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
@@ -314,7 +314,7 @@ func TestSSHFailToGetConfig(t *testing.T) {
 		}, fmt.Errorf("Dummy Error")
 	}
 
-	logClient := factory.GetLoggingClient()
+	logClient, _ := factory.GetLoggingClient()
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &logClient, nil, viperInstance)
 	factory.SetConfigClient(client)
 	cmd := NewShellProfileCmd(factory)

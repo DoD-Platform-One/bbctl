@@ -39,7 +39,11 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.CompletionOptions.DisableNoDescFlag = true
 	cmd.CompletionOptions.DisableDescriptions = false
 
-	cmd.AddCommand(NewCompletionCmd(factory))
+	completionCmd, completionCmdError := NewCompletionCmd(factory)
+	if completionCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Completion Command: %w", completionCmdError)
+	}
+	cmd.AddCommand(completionCmd)
 	cmd.AddCommand(NewConfigCmd(factory))
 	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
@@ -74,7 +78,11 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving Deploy Command: %w", deployCmdError)
 	}
 	cmd.AddCommand(deployCmd)
-	cmd.AddCommand(update.NewUpdateCmd(factory))
+	updateCmd, updateCmdError := update.NewUpdateCmd(factory)
+	if updateCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Update Command: %w", updateCmdError)
+	}
+	cmd.AddCommand(updateCmd)
 
 	return cmd, nil
 }

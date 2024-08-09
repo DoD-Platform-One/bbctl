@@ -43,7 +43,10 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 	if configErr != nil {
 		return fmt.Errorf("error getting config: %w", configErr)
 	}
-	credentialHelper := factory.GetCredentialHelper()
+	credentialHelper, err := factory.GetCredentialHelper()
+	if err != nil {
+		return fmt.Errorf("unable to get credential helper: %w", err)
+	}
 	username, err := credentialHelper("username", "registry1.dso.mil")
 	if err != nil {
 		return fmt.Errorf("unable to get username: %w", err)
@@ -63,8 +66,14 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 		"-p",
 		password,
 	)
-	streams := factory.GetIOStream()
-	cmd := factory.GetCommandWrapper(installFluxPath, fluxArgs...)
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return fmt.Errorf("unable to get IO streams: %w", err)
+	}
+	cmd, err := factory.GetCommandWrapper(installFluxPath, fluxArgs...)
+	if err != nil {
+		return fmt.Errorf("unable to get command wrapper: %w", err)
+	}
 	cmd.SetStdout(streams.Out)
 	cmd.SetStderr(streams.ErrOut)
 	err = cmd.Run()

@@ -159,7 +159,11 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
-			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
+			loggingClient, loggingErr := factory.GetLoggingClient()
+			if loggingErr != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
 			return nil, cobra.ShellCompDirectiveDefault
 		}
 		for _, c := range policies.Items {
@@ -199,7 +203,10 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs matching the given prefix
 func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -231,7 +238,10 @@ func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, na
 
 // Internal helper function to query the cluster for Kyverno cluster policy CRDs matching the given name
 func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -246,7 +256,11 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name 
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
-			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
+			loggingClient, loggingErr := factory.GetLoggingClient()
+			if loggingErr != nil {
+				return fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+			}
+			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
 			return err
 		}
 		for _, c := range policies.Items {
@@ -293,7 +307,10 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs
 func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -334,7 +351,10 @@ func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory) error
 
 // Internal helper function to query the cluster for Kyverno policy CRDs
 func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
 		return err
@@ -355,7 +375,11 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		policies, err := kyverno.FetchKyvernoPolicies(client, crdName)
 		if err != nil {
-			factory.GetLoggingClient().Warn("Error getting kyverno policies: %s", err.Error())
+			loggingClient, loggingErr := factory.GetLoggingClient()
+			if loggingErr != nil {
+				return fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+			}
+			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
 			return err
 		}
 		fmt.Fprintf(streams.Out, "\n%s\n\n", crdName)

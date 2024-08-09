@@ -42,9 +42,9 @@ func TestGetPolicyCmdConfigClientError(t *testing.T) {
 func TestPolicyFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd, _ := NewPoliciesCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
@@ -237,7 +237,8 @@ func TestMatchingPolicyConfigClientError(t *testing.T) {
 func TestNoMatchingPrefix(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.GetViper().Set("big-bang-repo", "test")
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
 	// Act
 	cmd := policiesCmd(factory, []string{})
 	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
@@ -249,7 +250,7 @@ func TestNoMatchingPrefix(t *testing.T) {
 func TestGetK8sDynamicClientErrorGatekeeper(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("gatekeeper", true)
 	factory.SetFail.GetK8sDynamicClient = true
@@ -274,7 +275,7 @@ func TestGetK8sDynamicClientErrorGatekeeper(t *testing.T) {
 func TestGetConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	cmd := policiesCmd(factory, []string{})
 	// Act
@@ -296,7 +297,7 @@ func TestGetConfigClientError(t *testing.T) {
 func TestGetK8sDynamicClientErrorKyverno(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kyverno", true)
 	factory.SetFail.GetK8sDynamicClient = true
@@ -321,7 +322,7 @@ func TestGetK8sDynamicClientErrorKyverno(t *testing.T) {
 func TestNoPolicySpecified(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	// Act
 	cmd := policiesCmd(factory, []string{})
@@ -342,7 +343,7 @@ func TestNoPolicySpecified(t *testing.T) {
 func TestFetchGatekeeperCrdsError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("gatekeeper", true)
 	factory.SetFail.GetPolicyClient = true
@@ -363,7 +364,7 @@ func TestFetchGatekeeperCrdsError(t *testing.T) {
 func TestFetchGatekeeperConstraintsError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("gatekeeper", true)
 	factory.SetFail.GetPolicyClient = true
@@ -386,7 +387,7 @@ func TestFetchGatekeeperConstraintsError(t *testing.T) {
 func TestFetchKyvernoCrdsError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kyverno", true)
 	factory.SetFail.GetPolicyClient = true
@@ -412,7 +413,7 @@ func TestFetchKyvernoCrdsError(t *testing.T) {
 func TestFetchKyvernoPoliciesError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kyverno", true)
 	factory.SetFail.GetPolicyClient = true
@@ -437,7 +438,7 @@ func TestFetchKyvernoPoliciesError(t *testing.T) {
 func TestFetchGatekeeperPolicyDescriptorError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("gatekeeper", true)
 	factory.SetFail.GetPolicyClient = true
@@ -458,7 +459,7 @@ func TestFetchGatekeeperPolicyDescriptorError(t *testing.T) {
 func TestFetchGatekeeperPolicyDescriptorStringErrors(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("gatekeeper", true)
 	factory.SetFail.GetPolicyClient = true
@@ -497,7 +498,7 @@ func TestFetchGatekeeperPolicyDescriptorStringErrors(t *testing.T) {
 func TestFetchKyvernoPolicyDescriptorError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kyverno", true)
 	factory.SetFail.GetPolicyClient = true
@@ -517,7 +518,7 @@ func TestFetchKyvernoPolicyDescriptorError(t *testing.T) {
 func TestFetchKyvernoPolicyDescriptorStringErrors(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	viperInstance := factory.GetViper()
+	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kyverno", true)
 	factory.SetFail.GetPolicyClient = true
@@ -656,8 +657,9 @@ func TestGatekeeperPolicies(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
@@ -734,8 +736,9 @@ func TestNoGatekeeperPolicies(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
@@ -867,8 +870,9 @@ func TestKyvernoPolicies(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
@@ -948,8 +952,9 @@ func TestNoKyvernoPolicies(t *testing.T) {
 			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			factory.GetViper().Set("big-bang-repo", "test")
-			streams := factory.GetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
@@ -1033,7 +1038,7 @@ func TestGatekeeperPoliciesCompletion(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("gatekeeper", true)
 			cmd, _ := NewPoliciesCmd(factory)
@@ -1154,7 +1159,7 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
-			viperInstance := factory.GetViper()
+			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kyverno", true)
 			cmd, _ := NewPoliciesCmd(factory)

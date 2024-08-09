@@ -44,7 +44,10 @@ func NewDestroyClusterCmd(factory bbUtil.Factory) *cobra.Command {
 
 // destroyCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to destroy the k3d dev cluster
 func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) error {
-	streams := factory.GetIOStream()
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return err
+	}
 	configClient, err := factory.GetConfigClient(cobraCmd)
 	if err != nil {
 		return err
@@ -61,7 +64,10 @@ func destroyCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []stri
 		"k3d-dev.sh",
 	)
 	args = append([]string{"-d"}, args...)
-	cmd := factory.GetCommandWrapper(command, args...)
+	cmd, err := factory.GetCommandWrapper(command, args...)
+	if err != nil {
+		return err
+	}
 	cmd.SetStderr(streams.ErrOut)
 	cmd.SetStdout(streams.Out)
 	cmd.SetStdin(streams.In)

@@ -16,10 +16,10 @@ import (
 func TestGetConfig(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	streams := factory.GetIOStream()
+	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
 
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
@@ -40,7 +40,7 @@ func TestConfigGetAll(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	cmd := NewConfigCmd(factory)
 
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	testValues := map[string]string{
 		"big-bang-repo": "/path/to/repo",
@@ -88,7 +88,7 @@ func TestConfigGetOne(t *testing.T) {
 
 	cmd := NewConfigCmd(factory)
 
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	testValues := map[string]any{
 		"big-bang-repo":    "/path/to/repo",
@@ -162,10 +162,10 @@ func TestFindRecursiveNoKeys(t *testing.T) {
 // the code correctly panics.
 func TestConfigMarshalError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 
 	cmd := NewConfigCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
@@ -197,7 +197,7 @@ func TestConfigTooManyKeys(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
@@ -213,7 +213,7 @@ func TestConfigGetInvalidKey(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
@@ -230,7 +230,7 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
@@ -248,9 +248,9 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 func TestConfigFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient := factory.GetLoggingClient()
+	loggingClient, _ := factory.GetLoggingClient()
 	cmd := NewConfigCmd(factory)
-	viper := factory.GetViper()
+	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
