@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
 	apiV1Beta1 "istio.io/api/networking/v1beta1"
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -14,6 +15,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -193,7 +195,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 					assert.Empty(t, errOut.String())
 				}
 				assert.Empty(t, in.String())
-			} else { // pass
+			} else {
 				assert.Nil(t, err)
 				assert.Empty(t, errOut.String())
 				assert.Empty(t, in.String())
@@ -201,6 +203,162 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestK3d_hostsListClusterErrors(t *testing.T) {
+	goodkubeconfig := "../../util/test/data/kube-config.yaml"
+	badkubeconfig := "../test/data/bad-kube-config.yaml"
+	var tests = []struct {
+		name string
+		// errorFunc is a function that will be called with the awsClient and factory
+		// at the start of a test case to allow setting flags to force errors
+		errorFunc func(factory *bbTestUtil.FakeFactory)
+		errmsg    string
+	}{
+		{
+			name: "ErrorGettingIOStreams",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetIOStreams = true
+			},
+			errmsg: "unable to get IOStreams: failed to get streams",
+		},
+		{
+			name: "ErrorGettingLoggingClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetLoggingClient = true
+			},
+			errmsg: "unable to get logging client: failed to get logging client",
+		},
+		{
+			name: "ErrorGettingConfigClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetConfigClient = true
+			},
+			errmsg: "unable to get config client: failed to get config client",
+		},
+		{
+			name: "ErrorBuildingK8sConfig",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				viperInstance, viperErr := factory.GetViper()
+				assert.Nil(t, viperErr)
+				viperInstance.Set("kubeconfig", badkubeconfig)
+			},
+			errmsg: fmt.Sprintf("unable to build k8s configuration: stat %s: no such file or directory", badkubeconfig),
+		},
+		{
+			name: "ErrorCreatingIstioClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetIstioClient = true
+			},
+			errmsg: "unable to create istio client: failed to get istio clientset",
+		},
+		{
+			name: "ErrorListingIstioClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.Istio.GetList = true
+			},
+			errmsg: "unable to list istio services: failed to list istio services",
+		},
+		{
+			name: "ErrorCreatingK8sClient",
+			errorFunc: func(factory *bbTestUtil.FakeFactory) {
+				factory.SetFail.GetK8sClientset = true
+			},
+			errmsg: "unable to create k8s client: failed to get k8s clientset",
+		},
+	}
+
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	streams, streamsErr := factory.GetIOStream()
+	assert.Nil(t, streamsErr)
+	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	account := callerIdentityAccount
+	arn := callerIdentityArn
+	callerIdentity := bbAwsUtil.CallerIdentity{
+		GetCallerIdentityOutput: sts.GetCallerIdentityOutput{
+			Account: &account,
+			Arn:     &arn,
+		},
+		Username: "developer",
+	}
+	clusterIPs := []bbAwsUtil.ClusterIP{}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetCallerIdentity(&callerIdentity)
+			factory.SetClusterIPs(&clusterIPs)
+			viperInstance, viperErr := factory.GetViper()
+			assert.Nil(t, viperErr)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", goodkubeconfig)
+
+			// Trigger our errors
+			test.errorFunc(factory)
+
+			cmd, _ := NewHostsCmd(factory)
+			err := hostsListCluster(cmd, factory)
+
+			assert.NotNil(t, err)
+			assert.Equal(t, test.errmsg, err.Error())
+		})
+	}
+}
+
+func TestK3d_HostsListCluster_ListAllError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	bigBangRepoLocation := "test"
+	viperInstance, viperErr := factory.GetViper()
+	assert.Nil(t, viperErr)
+	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+
+	// Act
+	cmd, err := NewHostsCmd(factory)
+	assert.NotNil(t, cmd)
+	assert.Nil(t, err)
+
+	listAllErr := HostsListCluster(cmd, factory, true)
+
+	// Assert
+	assert.Error(t, listAllErr)
+	if !assert.Contains(t, listAllErr.Error(), "unable to list all services:") {
+		t.Errorf("unexpected output: %s", listAllErr.Error())
+	}
+}
+
+func TestK3d_NewHostsCmd_BindFlagsError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	viperInstance, viperErr := factory.GetViper()
+	assert.Nil(t, viperErr)
+	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+
+	expectedError := fmt.Errorf("failed to set and bind flag")
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+		if name == "private-ip" {
+			return expectedError
+		}
+		return nil
+	}
+
+	logClient, logClientErr := factory.GetLoggingClient()
+	assert.Nil(t, logClientErr)
+	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
+	assert.Nil(t, err)
+	factory.SetConfigClient(configClient)
+
+	// Act
+	cmd, err := NewHostsCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	assert.NotNil(t, err)
+	assert.Equal(t, fmt.Sprintf("unable to bind flags: %s", expectedError.Error()), err.Error())
 }
 
 func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
@@ -219,7 +377,7 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }

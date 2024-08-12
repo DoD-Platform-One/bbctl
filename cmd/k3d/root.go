@@ -26,7 +26,7 @@ var (
 func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get IO streams: %w", err)
+		return nil, fmt.Errorf("unable to get IOStreams: %w", err)
 	}
 	cmd := &cobra.Command{
 		Use:     k3dUse,
@@ -44,12 +44,12 @@ func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(NewShellProfileCmd(factory))
 	sshCmd, sshCmdError := NewSSHCmd(factory)
 	if sshCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving ssh Command: %w", sshCmdError)
+		return nil, fmt.Errorf("error retrieving ssh command: %w", sshCmdError)
 	}
 	cmd.AddCommand(sshCmd)
-	hostsCmd, sshHostsError := NewHostsCmd(factory)
-	if sshHostsError != nil {
-		return nil, fmt.Errorf("Error retrieving hosts Command: %w", sshHostsError)
+	hostsCmd, hostsCmdError := NewHostsCmd(factory)
+	if hostsCmdError != nil {
+		return nil, fmt.Errorf("error retrieving hosts command: %w", hostsCmdError)
 	}
 	cmd.AddCommand(hostsCmd)
 
