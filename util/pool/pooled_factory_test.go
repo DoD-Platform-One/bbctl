@@ -681,7 +681,7 @@ func TestPooledFactory_GetIstioClientSet(t *testing.T) {
 			}
 			var istioClientSetPool istioClientsetPool
 			if !tc.errored {
-				client := bbUtilTestApiWrappers.NewFakeIstioClientSet(nil)
+				client := bbUtilTestApiWrappers.NewFakeIstioClientSet(nil, bbUtilTestApiWrappers.SetFail{GetList: false})
 				istioClientSetPool = []*istioClientsetInstance{
 					{
 						restConfig: cfg,

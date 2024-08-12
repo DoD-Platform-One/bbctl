@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -41,7 +42,7 @@ func NewHostsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get config client: %w", err)
+		return nil, fmt.Errorf("unable to get config client: %w", err)
 	}
 
 	err = configClient.SetAndBindFlag("private-ip", false, "Use the private IP instead of the public IP")
@@ -52,11 +53,25 @@ func NewHostsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-// hostsListCluster - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
+// hostsListCluster - Helper function to call HostListCluster with default values
 func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
+	return HostsListCluster(cmd, factory, false)
+}
+
+// k8sListAllServices - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
+func k8sListAllServices(k8sClient kubernetes.Interface, listAllErrors bool) (*coreV1.ServiceList, error) {
+	if listAllErrors {
+		return nil, fmt.Errorf("failed to list all services")
+	}
+	return k8sClient.CoreV1().Services("").List(context.TODO(), metaV1.ListOptions{})
+
+}
+
+// HostsListCluster - Returns the error (nil if no error) when generating a hosts list for your k3d cluster
+func HostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, listAllErrors bool) error {
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to get IOStreams: %w", err)
 	}
 	var virtualServices []string
 
@@ -80,20 +95,17 @@ func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
 	if err != nil {
 		return fmt.Errorf("unable to create istio client: %w", err)
 	}
-
 	istioServices, err := istioClientSet.NetworkingV1beta1().VirtualServices("").List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to list istio services: %w", err)
 	}
-
 	k8sClient, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return fmt.Errorf("unable to create k8s client: %w", err)
 	}
-
-	allServices, err := k8sClient.CoreV1().Services("").List(context.TODO(), metaV1.ListOptions{})
+	allServices, err := k8sListAllServices(k8sClient, listAllErrors)
 	if err != nil {
-		return fmt.Errorf("unable to list services: %w", err)
+		return fmt.Errorf("unable to list all services: %w", err)
 	}
 
 	// One line per service
@@ -143,6 +155,5 @@ func hostsListCluster(cmd *cobra.Command, factory bbUtil.Factory) error {
 			}
 		}
 	}
-
 	return nil
 }

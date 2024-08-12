@@ -2,6 +2,7 @@ package apiwrappers
 
 import (
 	"context"
+	"fmt"
 
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	networkingV1Beta1 "istio.io/client-go/pkg/applyconfiguration/networking/v1beta1"
@@ -15,6 +16,13 @@ import (
 // FakeIstioClientSet
 type FakeIstioClientSet struct {
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
+
+	setFail SetFail
+}
+
+// Flags to control the fake client behavior and force functions to fail
+type SetFail struct {
+	GetList bool
 }
 
 // FakeNetworkingV1beta1
@@ -29,18 +37,23 @@ type FakeNetworkingV1beta1 struct {
 	WorkloadGroupsGetter   typedV1Beta1.WorkloadGroupsGetter
 
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
+	setFail             SetFail
 }
 
 // FakeVirtualService
 type FakeVirtualService struct {
 	typedV1Beta1.VirtualServiceExpansion
-
 	VirtualServicesList *apisV1Beta1.VirtualServiceList
+
+	setFail SetFail
 }
 
 // NewFakeIstioClientSet intializes and returns a new FakeIstioClientSet
-func NewFakeIstioClientSet(vsList *apisV1Beta1.VirtualServiceList) *FakeIstioClientSet {
-	return &FakeIstioClientSet{VirtualServicesList: vsList}
+func NewFakeIstioClientSet(vsList *apisV1Beta1.VirtualServiceList, sf SetFail) *FakeIstioClientSet {
+	return &FakeIstioClientSet{
+		VirtualServicesList: vsList,
+		setFail:             sf,
+	}
 }
 
 // Fake Clientset functions
@@ -49,6 +62,7 @@ func NewFakeIstioClientSet(vsList *apisV1Beta1.VirtualServiceList) *FakeIstioCli
 func (f *FakeIstioClientSet) NetworkingV1beta1() typedV1Beta1.NetworkingV1beta1Interface {
 	return &FakeNetworkingV1beta1{
 		VirtualServicesList: f.VirtualServicesList,
+		setFail:             f.setFail,
 	}
 }
 
@@ -88,6 +102,7 @@ func (f *FakeNetworkingV1beta1) Sidecars(namespace string) typedV1Beta1.SidecarI
 func (f *FakeNetworkingV1beta1) VirtualServices(namespace string) typedV1Beta1.VirtualServiceInterface {
 	return &FakeVirtualService{
 		VirtualServicesList: f.VirtualServicesList,
+		setFail:             f.setFail,
 	}
 }
 
@@ -135,6 +150,9 @@ func (f *FakeVirtualService) Get(ctx context.Context, name string, opts v1.GetOp
 
 // List returns a list of virtual service resources
 func (f *FakeVirtualService) List(ctx context.Context, opts v1.ListOptions) (*apisV1Beta1.VirtualServiceList, error) {
+	if f.setFail.GetList {
+		return nil, fmt.Errorf("failed to list istio services")
+	}
 	return f.VirtualServicesList, nil
 }
 

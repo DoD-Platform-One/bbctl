@@ -179,9 +179,14 @@ type FakeFactory struct {
 		GetDescriptor                bool
 		DescriptorType               string
 		GetAWSClient                 bool
+		GetIstioClient               bool
+		GetIOStreams                 bool
+		GetLoggingClient             bool
 
+		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
-		AWS fakeAws.SetFail
+		AWS   fakeAws.SetFail
+		Istio fakeApiWrappers.SetFail
 	}
 
 	helm struct {
@@ -301,6 +306,9 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 
 // GetLoggingClient - get logging client
 func (f *FakeFactory) GetLoggingClient() (bbLog.Client, error) {
+	if f.SetFail.GetLoggingClient {
+		return nil, fmt.Errorf("failed to get logging client")
+	}
 	return f.GetLoggingClientWithLogger(nil)
 }
 
@@ -378,7 +386,10 @@ func (f *FakeFactory) GetCommandWrapper(name string, args ...string) (*bbUtilApi
 
 // GetIstioClientSet - get istio clientset
 func (f *FakeFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
-	return fakeApiWrappers.NewFakeIstioClientSet(f.virtualServiceList), nil
+	if f.SetFail.GetIstioClient {
+		return nil, fmt.Errorf("failed to get istio clientset")
+	}
+	return fakeApiWrappers.NewFakeIstioClientSet(f.virtualServiceList, f.SetFail.Istio), nil
 }
 
 // SetConfigClient sets the configuration client returned by the fake factory.
@@ -394,7 +405,6 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 	// has been attached, return it
 	if f.configClient != nil {
 		return f.configClient, nil
-
 	}
 
 	if f.SetFail.GetConfigClient {
@@ -436,6 +446,9 @@ func (f *FakeFactory) ResetIOStream() {
 
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
 func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
+	if f.SetFail.GetIOStreams {
+		return nil, fmt.Errorf("failed to get streams")
+	}
 	oneStream.Do(func() {
 		streams = &genericIOOptions.IOStreams{
 			In:     &bytes.Buffer{},
