@@ -14,7 +14,6 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericclioptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
@@ -606,18 +605,17 @@ func TestGetOutputClient(t *testing.T) {
 		},
 	}
 
-	streams, _, _, _ := genericIOOptions.NewTestIOStreams()
-
 	// Iterate through test cases
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set the "output" format using Viper
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("output", tc.outputFormat)
 
 			// Act
-			client, err := factory.GetOutputClient(fakeCommand, streams)
+			client, err := factory.GetOutputClient(fakeCommand)
 
 			// Assert
 			assert.Nil(t, err)

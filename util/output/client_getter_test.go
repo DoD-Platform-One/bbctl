@@ -15,7 +15,7 @@ func TestGetClient(t *testing.T) {
 		marshaler Outputable
 		writer    io.Writer
 		data      interface{}
-		format    string
+		format    OutputFormat
 		expected  string
 		wantErr   bool
 	}{

@@ -27,7 +27,6 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,7 +46,7 @@ type Factory interface {
 	GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error)
 	GetRuntimeClient(*runtime.Scheme) (runtimeClient.Client, error)
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
-	GetOutputClient(cmd *cobra.Command, streams genericIOOptions.IOStreams) (bbOutput.Client, error)
+	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
 	GetCredentialHelper() (CredentialHelper, error)
@@ -299,10 +298,21 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 // and obtains the appropriate output client using the specified format and streams. Default format is "text"
 //
 // Errors when issues occur using the clients Output method.
-func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) (bbOutput.Client, error) {
-	outputFlag, _ := cmd.Flags().GetString("format")
+func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
+	streams, err := f.referenceFactory.GetIOStream()
+	if err != nil {
+		return nil, err
+	}
+	configClient, err := f.referenceFactory.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+	config, err := configClient.GetConfig()
+	if err != nil {
+		return nil, err
+	}
 	outputCLientGetter := bbOutput.ClientGetter{}
-	outputClient := outputCLientGetter.GetClient(outputFlag, streams)
+	outputClient := outputCLientGetter.GetClient(config.OutputConfiguration.Format, *streams)
 
 	return outputClient, nil
 }

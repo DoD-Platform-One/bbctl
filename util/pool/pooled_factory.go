@@ -42,7 +42,7 @@ type PooledFactory struct {
 	loggerClients     loggerClientPool
 	runtimeClients    runtimeClientPool
 	k8sDynamicClient  dynamic.Interface
-	outputClients     outputClientPool
+	outputClient      *bbOutput.Client
 	restConfig        *rest.Config
 	credentialHelper  bbUtil.CredentialHelper
 	istioClientSets   istioClientsetPool
@@ -57,7 +57,6 @@ func NewPooledFactory() *PooledFactory {
 		helmClients:     make([]*helmClientInstance, 0),
 		loggerClients:   make([]*loggerClientInstance, 0),
 		runtimeClients:  make([]*runtimeClientInstance, 0),
-		outputClients:   make([]*outputClientInstance, 0),
 		istioClientSets: make([]*istioClientsetInstance, 0),
 	}
 }
@@ -201,17 +200,17 @@ func (pf *PooledFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 
 // GetOutputClient returns the output client
 //
-// Pooled by streams, we assume cmd never changes
-func (pf *PooledFactory) GetOutputClient(cmd *cobra.Command, streams genericIOOptions.IOStreams) (bbOutput.Client, error) {
-	if contains, client := pf.outputClients.contains(streams); contains {
-		return client, nil
+// Pooled by client (singleton), we assume cmd never changes
+func (pf *PooledFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
+	if pf.outputClient != nil {
+		return *pf.outputClient, nil
 	}
 	if pf.underlyingFactory == nil {
 		return nil, &ErrFactoryNotInitialized{}
 	}
-	client, err := pf.underlyingFactory.GetOutputClient(cmd, streams)
+	client, err := pf.underlyingFactory.GetOutputClient(cmd)
 	if err == nil {
-		pf.outputClients.add(client, streams)
+		pf.outputClient = &client
 	}
 	return client, err
 }
