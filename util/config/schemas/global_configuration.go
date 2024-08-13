@@ -27,6 +27,8 @@ type GlobalConfiguration struct {
 	LogLevel string `mapstructure:"bbctl-log-level" yaml:"bbctl-log-level"`
 	// Log output: stdout, stderr
 	LogOutput string `mapstructure:"bbctl-log-output" yaml:"bbctl-log-output"`
+	// Output configuration: object
+	OutputConfiguration OutputConfiguration `mapstructure:"output-config" yaml:"output-config"`
 	// Policy configuration: object
 	PolicyConfiguration PolicyConfiguration `mapstructure:"policy" yaml:"policy"`
 	// Preflight check configuration: object

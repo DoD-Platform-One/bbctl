@@ -37,9 +37,9 @@ type outputClient struct {
 //
 // format: The desired output format (JSON, YAML, TEXT)
 // streams: The generic I/O streams for input/output operations.
-func NewOutputClient(format string, streams genericIOOptions.IOStreams) Client {
+func NewOutputClient(format OutputFormat, streams genericIOOptions.IOStreams) Client {
 	return &outputClient{
-		Format: OutputFormat(format),
+		Format: format,
 		Writer: streams.Out,
 	}
 }

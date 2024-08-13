@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"k8s.io/cli-runtime/pkg/genericiooptions"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
@@ -242,10 +241,21 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 }
 
 // GetOutputClient
-func (f *FakeFactory) GetOutputClient(cmd *cobra.Command, streams genericiooptions.IOStreams) (bbOutput.Client, error) {
-	outputFlag, _ := cmd.Flags().GetString("format")
+func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
+	streams, err := f.GetIOStream()
+	if err != nil {
+		return nil, err
+	}
+	configClient, err := f.GetConfigClient(cmd)
+	if err != nil {
+		return nil, err
+	}
+	config, err := configClient.GetConfig()
+	if err != nil {
+		return nil, err
+	}
 	outputCLientGetter := bbOutput.ClientGetter{}
-	outputClient := outputCLientGetter.GetClient(outputFlag, streams)
+	outputClient := outputCLientGetter.GetClient(config.OutputConfiguration.Format, *streams)
 
 	return outputClient, nil
 }

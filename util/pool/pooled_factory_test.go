@@ -473,25 +473,18 @@ func TestPooledFactory_GetOutputClient(t *testing.T) {
 				Out:    &bytes.Buffer{},
 				ErrOut: &bytes.Buffer{},
 			}
-			var outputClientPool outputClientPool
+			clientGetter := bbOutput.ClientGetter{}
+			outputClient := clientGetter.GetClient("", streams)
 			if !tc.errored {
-				clientGetter := bbOutput.ClientGetter{}
-				outputClient := clientGetter.GetClient("", streams)
-				outputClientPool = []*outputClientInstance{
-					{
-						client:  outputClient,
-						streams: streams,
-					},
-				}
-				factory2.outputClients = outputClientPool
+				factory2.outputClient = &outputClient
 			}
 			if tc.bubbleError || !tc.errored {
 				factory1.SetUnderlyingFactory(factory2)
 			}
 			// act
 			// act
-			result, err := factory1.GetOutputClient(cmd, streams)
-			cachedResult, cachedErr := factory1.GetOutputClient(cmd, streams)
+			result, err := factory1.GetOutputClient(cmd)
+			cachedResult, cachedErr := factory1.GetOutputClient(cmd)
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
@@ -500,15 +493,15 @@ func TestPooledFactory_GetOutputClient(t *testing.T) {
 				assert.Nil(t, cachedResult)
 				assert.NotNil(t, cachedErr)
 				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
-				assert.Empty(t, factory1.outputClients)
+				assert.Empty(t, factory1.outputClient)
 			} else {
 				assert.NotNil(t, result)
 				assert.Nil(t, err)
 				assert.Nil(t, cachedErr)
-				assert.Equal(t, factory1.outputClients, outputClientPool)
-				assert.Equal(t, factory1.outputClients, factory2.outputClients)
-				assert.Equal(t, factory1.outputClients[0].client, result)
-				assert.Equal(t, factory1.outputClients[0].client, cachedResult)
+				assert.Equal(t, factory1.outputClient, &outputClient)
+				assert.Equal(t, factory1.outputClient, factory2.outputClient)
+				assert.Equal(t, factory1.outputClient, &result)
+				assert.Equal(t, factory1.outputClient, &cachedResult)
 			}
 		})
 	}
