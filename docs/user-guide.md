@@ -22,19 +22,21 @@ The `bbctl` command line interface (CLI) tool is designed to simplify developmen
         # create symbolic link
         sudo ln -s /usr/local/bin/bbctl-linux-amd64 /usr/local/bin/bbctl
         # test the version
-        bbctl version
+        bbctl version --client
         ```
 
     1. Mac
 
         ```bash
         # move the downloaded binary
-        sudo mv ~/Downloads/bbctl-darwin-amd64 /usr/local/bin/
+        sudo mv ~/Downloads/bbctl-.x.x.x-darwin-amd64 /usr/local/bin/
         # create symbolic link
-        sudo ln -s /usr/local/bin/bbctl-darwin-amd64 /usr/local/bin/bbctl
+        sudo ln -s /usr/local/bin/bbctl-.x.x.x-darwin-amd64 /usr/local/bin/bbctl
         # test the version
-        bbctl version
+        bbctl version --client
         ```
+
+*Note: On Mac, you may have to allow the application. See the section for [allowing the binary on Mac](#allowing-the-binary-on-mac) below*
 
 ## Usage
 
@@ -45,7 +47,7 @@ The bbctl tool is self documenting so only a few simple examples are included he
 bbctl -h
 
 # get the bbctl client version
-bbctl version
+bbctl version --client
 
 # preflight check: Checks status of k8s cluster before deploying Big Bang
 bbctl preflight-check --registryserver https://registry1.dso.mil --registryusername your.name --registrypassword yourPassword
@@ -148,3 +150,17 @@ credentials:
     username: "johndoe"
     password: "a very secure password"
 ```
+
+## Allowing the Binary on Mac
+
+The MacOS Security default settings usually do not allow unsigned applications to run. You will get a popup (shown below).
+
+![Initial Error Popup](Mac-error.png "Initial Error Popup")
+
+Click `Cancel`, then under `System Settings -> Privacy & Security -> Security` you will see a small message (shown below).
+
+![Settings](Mac-settings.png "Settings")
+
+Click `Allow Anyway`, then attempt to run the software again. You'll get one last popup, but it will have the option to `Open`, which will allow the software to run.
+
+![Final Error Popup](Mac-allow.png "Final Error Popup")
