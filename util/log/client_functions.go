@@ -30,12 +30,14 @@ func errorContext(context context.Context, clientLogger Client, format string, a
 	panic(msg)
 }
 
-func handleError(clientLogger Client, format string, err error, args ...interface{}) {
+// handleError takes an error, logs it using the client logger in the format of the given format string
+// and then cleanly exits with an os.Exit(1) error code
+func handleError(clientLogger Client, format string, err error, exitFunc ExitFunc, args ...interface{}) {
 	if err != nil {
 		newArgs := append(args, err)
 		msg := fmt.Sprintf(format, newArgs...)
 		clientLogger.Logger().Error(msg)
-		panic(msg)
+		exitFunc(1)
 	}
 }
 

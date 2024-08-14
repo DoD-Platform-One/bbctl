@@ -38,8 +38,8 @@ type Client interface {
 	Error(format string, args ...interface{})
 	// ErrorContext - log an error with context and panic
 	ErrorContext(context context.Context, format string, args ...interface{})
-	// HandleError - check for an error, then log and panic if there is one, else return. err gets appended to args before formatting
-	HandleError(format string, err error, args ...interface{})
+	// HandleError - check for an error, log and cleanly exit if there is one, else return. err gets appended to args before formatting
+	HandleError(format string, err error, exitFunc ExitFunc, args ...interface{})
 	// Handler - return a slog.Handler in use by the client
 	Handler() slog.Handler
 	// Info - log an info message
@@ -77,8 +77,11 @@ type ErrorFunc func(Client, string, ...interface{})
 // ErrorContextFunc type
 type ErrorContextFunc func(context.Context, Client, string, ...interface{})
 
+// exitFunc is a function that exits the program with the given exit code
+type ExitFunc func(int)
+
 // HandleErrorFunc type
-type HandleErrorFunc func(Client, string, error, ...interface{})
+type HandleErrorFunc func(Client, string, error, ExitFunc, ...interface{})
 
 // HandlerFunc type
 type HandlerFunc func(Client) slog.Handler
@@ -250,9 +253,9 @@ func (c *loggingClient) ErrorContext(context context.Context, format string, arg
 	c.errorContextFunc(context, c, format, args...)
 }
 
-// HandleError - handle an error
-func (c *loggingClient) HandleError(format string, err error, args ...interface{}) {
-	c.handleErrorFunc(c, format, err, args...)
+// HandleError - handle an error, execute the exitFunc with the given exit code if present
+func (c *loggingClient) HandleError(format string, err error, exitFunc ExitFunc, args ...interface{}) {
+	c.handleErrorFunc(c, format, err, exitFunc, args...)
 }
 
 // Handler - return a slog.Handler in use by the client

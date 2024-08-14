@@ -158,17 +158,18 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	kubeResourceBuilderFlags := genericCliOptions.NewResourceBuilderFlags()
 	kubeResourceBuilderFlags.AddFlags(flags)
 
-	// Bind the flags to viper
-	err = viperInstance.BindPFlags(flags)
+	logger, err := factory.GetLoggingClient()
 	if err != nil {
-		initLogger.Error(fmt.Sprintf("error binding flags to viper: %v", err.Error()))
+		initLogger.Error(fmt.Sprintf("Error getting logging client: %v", err.Error()))
 		os.Exit(1)
 	}
 
-	// echo the flags
-	initLogger.Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
+	// Bind the flags to viper
+	logger.HandleError("error binding flags to viper: %v", viperInstance.BindPFlags(flags), os.Exit)
 
-	cobra.CheckErr(bbctlCmd.Execute())
+	// echo the flags
+	logger.Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
+	logger.HandleError("error encountered during execution: %v", bbctlCmd.Execute(), os.Exit)
 }
 
 // setupSlog - setup the slog logger
