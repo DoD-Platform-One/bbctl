@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -190,8 +191,11 @@ func TestHandleErrorPass(t *testing.T) {
 	err := fmt.Errorf("test")
 	expectedErrString := "test%!(EXTRA *errors.errorString=test)"
 	// Act
+	exitFunc := func(code int) {
+		panic(expectedErrString)
+	}
 	assert.PanicsWithValue(t, expectedErrString, func() {
-		handleError(*client, "test", err)
+		handleError(*client, "test", err, exitFunc)
 	})
 	// Assert
 	jsonResult := stringBuilder.String()
@@ -211,7 +215,7 @@ func TestHandleErrorNil(t *testing.T) {
 	leveler := slog.Leveler(slog.LevelError.Level())
 	client := createTestClient(t, &stringBuilder, leveler)
 	// Act
-	handleError(*client, "test", nil)
+	handleError(*client, "test", nil, os.Exit)
 	// Assert
 	assert.Empty(t, stringBuilder.String())
 }

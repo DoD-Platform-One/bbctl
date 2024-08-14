@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -184,9 +186,12 @@ func TestClientHandleErrorPass(t *testing.T) {
 	leveler := slog.Leveler(slog.LevelError.Level())
 	client := *createTestClient(t, &stringBuilder, leveler)
 	err := errors.New("test error")
+	exitFunc := func(code int) {
+		panic(fmt.Sprintf("test: %v", err))
+	}
 	// Act
 	assert.PanicsWithValue(t, "test: test error", func() {
-		client.HandleError("test: %v", err)
+		client.HandleError("test: %v", err, exitFunc)
 	})
 	// Assert
 	jsonResult := stringBuilder.String()
@@ -206,7 +211,7 @@ func TestClientHandleErrorNil(t *testing.T) {
 	leveler := slog.Leveler(slog.LevelError.Level())
 	client := *createTestClient(t, &stringBuilder, leveler)
 	// Act
-	client.HandleError("test: %v", nil)
+	client.HandleError("test: %v", nil, os.Exit)
 	// Assert
 	jsonResult := stringBuilder.String()
 	assert.Empty(t, jsonResult)

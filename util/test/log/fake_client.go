@@ -91,7 +91,7 @@ func (c *fakeClient) ErrorContext(context context.Context, format string, args .
 // HandleError formats the message using the provided format then calls the configured log function and panics
 //
 // Format string must not be empty
-func (c *fakeClient) HandleError(format string, err error, args ...interface{}) {
+func (c *fakeClient) HandleError(format string, err error, exitFunc bbUtilLog.ExitFunc, args ...interface{}) {
 	if format == "" {
 		msg := "format string cannot be empty for HandleError"
 		c.logFunction(msg)
@@ -101,7 +101,7 @@ func (c *fakeClient) HandleError(format string, err error, args ...interface{}) 
 		newArgs := append(args, err)
 		msg := fmt.Sprintf("HANDLE_ERROR: "+format, newArgs...)
 		c.logFunction(msg)
-		panic(msg)
+		exitFunc(1)
 	}
 }
 
