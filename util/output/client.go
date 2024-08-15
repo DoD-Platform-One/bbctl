@@ -103,7 +103,7 @@ func (o *outputClient) writeText(data Outputable) error {
 		return errors.Wrap(err, "unable to write human-readable output")
 	}
 
-	_, err = fmt.Fprintln(o.Writer, output)
+	_, err = fmt.Fprintln(o.Writer, string(output))
 	if err != nil {
 		return errors.Wrap(err, "unable to write human-readable output")
 	}

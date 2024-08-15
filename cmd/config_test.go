@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -22,6 +24,7 @@ func TestGetConfig(t *testing.T) {
 	viper, _ := factory.GetViper()
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 
 	cmd := NewConfigCmd(factory)
 	err := cmd.RunE(cmd, []string{})
@@ -38,44 +41,49 @@ func TestGetConfig(t *testing.T) {
 
 func TestConfigGetAll(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	cmd := NewConfigCmd(factory)
 
 	viper, _ := factory.GetViper()
 
-	testValues := map[string]string{
+	testValues := map[string]any{
 		"big-bang-repo": "/path/to/repo",
 		"log-level":     "testLogLevel",
 		"log-output":    "testLogOutput",
+		// The type [any]any is required here since the yaml unmarshaller erases the string type for nested keys
+		"output-config": map[any]any{
+			"format": "yaml",
+		},
 	}
 
 	for key, value := range testValues {
 		viper.Set(key, value)
 	}
 
-	result, err := getBBConfig(cmd, factory, []string{})
+	err := getBBConfig(cmd, factory, []string{})
 	if err != nil {
 		t.Error(err)
 	}
 
+	streams, streamsErr := factory.GetIOStream()
+	assert.Nil(t, streamsErr)
+
+	out := streams.Out.(*bytes.Buffer)
+
 	// Parse output into another map[string]string as order
 	// of outputcannot be guaranteed
-	outputLines := strings.Split(result, "\n")
+	outputMap := make(map[string]any)
 
-	outputValues := map[string]string{}
-
-	for _, line := range outputLines {
-		parts := strings.SplitN(line, ":", 2)
-		key, value := parts[0], parts[1]
-
-		outputValues[key] = strings.TrimSpace(value)
-	}
+	yamlErr := yaml.Unmarshal(out.Bytes(), outputMap)
+	assert.Nil(t, yamlErr)
 
 	for key, value := range testValues {
-		got, ok := outputValues[key]
+		got, ok := outputMap[key]
 		if !ok {
 			continue
 		}
-		if got != value {
+
+		if !assert.Equal(t, value, got) {
 			t.Errorf("Value mismatch. Expected: %s, got: %s", value, got)
 		}
 	}
@@ -85,7 +93,6 @@ func TestConfigGetAll(t *testing.T) {
 // The expectation is that
 func TestConfigGetOne(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-
 	cmd := NewConfigCmd(factory)
 
 	viper, _ := factory.GetViper()
@@ -99,6 +106,9 @@ func TestConfigGetOne(t *testing.T) {
 		},
 		"k3d-ssh": map[string]string{
 			"ssh-username": "testUser",
+		},
+		"output-config": map[string]string{
+			"format": "yaml",
 		},
 	}
 
@@ -114,30 +124,35 @@ func TestConfigGetOne(t *testing.T) {
 	}{
 		{
 			key:         "bbctl-log-level",
-			expected:    "testLogLevel",
+			expected:    "bbctl-log-level: testLogLevel",
 			description: "top-level string value",
 		},
 		{
 			key:         "policy.gatekeeper",
-			expected:    "false",
+			expected:    "policy.gatekeeper: \"false\"",
 			description: "nested boolean value (stringified)",
 		},
 		{
 			key:         "k3d-ssh.ssh-username",
-			expected:    "testUser",
+			expected:    "k3d-ssh.ssh-username: testUser",
 			description: "nested string value",
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.key, func(t *testing.T) {
-			got, err := getBBConfig(cmd, factory, []string{tc.key})
+			factory.ResetIOStream()
+			streams, _ := factory.GetIOStream()
+			out := streams.Out.(*bytes.Buffer)
+
+			err := getBBConfig(cmd, factory, []string{tc.key})
 			if err != nil {
 				t.Error(err)
 			}
 
-			if got != tc.expected {
-				t.Errorf("Value mismatch. Expected: %s, got: %s", tc.expected, got)
+			output := strings.Trim(out.String(), "\n\t ")
+			if output != tc.expected {
+				t.Errorf("Value mismatch. Expected: %s, got: %s", tc.expected, output)
 			}
 		})
 	}
@@ -158,10 +173,11 @@ func TestFindRecursiveNoKeys(t *testing.T) {
 	}
 }
 
-// TestConfigMarshalError tests that when an invalid, unmarshalable configuration is craeted
+// TestConfigMarshalError tests that when an invalid, unmarshalable configuration is created
 // the code correctly panics.
 func TestConfigMarshalError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
 	loggingClient, _ := factory.GetLoggingClient()
 
 	cmd := NewConfigCmd(factory)
@@ -170,7 +186,8 @@ func TestConfigMarshalError(t *testing.T) {
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
-			BigBangRepo: expected,
+			BigBangRepo:         expected,
+			OutputConfiguration: schemas.OutputConfiguration{Format: output.YAML},
 			ExampleConfiguration: schemas.ExampleConfiguration{
 				ShouldFailToMarshal: func() *any { x := any(make(chan int)); return &x }(),
 			},
@@ -184,16 +201,49 @@ func TestConfigMarshalError(t *testing.T) {
 	}
 	factory.SetConfigClient(client)
 
-	// Required value or the execution will fail
+	// Set required values or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 
 	assert.Panics(t, func() {
-		_, _ = getBBConfig(cmd, factory, []string{})
-	}, "did not panic marshaling unmarshalable type")
-
+		err = getBBConfig(cmd, factory, []string{})
+		assert.Nil(t, err)
+	}, "did not panic marshaling unmarshalable type %w", err)
 }
 
 func TestConfigTooManyKeys(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	cmd := NewConfigCmd(factory)
+	viper, _ := factory.GetViper()
+
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+
+	err := getBBConfig(cmd, factory, []string{"too", "many", "args"})
+	expectedError := "too many arguments passed to bbctl config"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestConfigOutputClientError(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetIOStreams = true
+
+	cmd := NewConfigCmd(factory)
+	viper, _ := factory.GetViper()
+
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+
+	err := getBBConfig(cmd, factory, []string{})
+	expectedError := "error getting output client: failed to get streams"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestGlobalConfigFormatError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
@@ -202,8 +252,24 @@ func TestConfigTooManyKeys(t *testing.T) {
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
-	_, err := getBBConfig(cmd, factory, []string{"too", "many", "args"})
-	expectedError := "too many arguments passed to bbctl config"
+	err := getBBConfig(cmd, factory, []string{})
+	expectedError := "error marshaling global config: unsupported format: "
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestSingleConfigFormatError(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+
+	cmd := NewConfigCmd(factory)
+	viper, _ := factory.GetViper()
+
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+
+	err := getBBConfig(cmd, factory, []string{"bbctl-log-level"})
+	expectedError := "error creating output for specific config: unsupported format: "
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
@@ -218,9 +284,9 @@ func TestConfigGetInvalidKey(t *testing.T) {
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
-	_, err := getBBConfig(cmd, factory, []string{"invalid.key"})
+	err := getBBConfig(cmd, factory, []string{"invalid.key"})
 	// The code splits keys at the dot, so it should look for a parent object "invalid" her
-	expectedError := "No such field: invalid"
+	expectedError := "error marshaling specific config: No such field: invalid"
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
@@ -239,7 +305,7 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 	err := cmd.RunE(cmd, []string{"invalid.key"})
 
 	// The code splits keys at the dot, so it should look for a parent object "invalid" her
-	expectedError := "Unable to fetch current bbctl configuration: error getting config client: failed to get config client"
+	expectedError := "error getting config client: failed to get config client"
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
@@ -264,12 +330,12 @@ func TestConfigFailToGetConfig(t *testing.T) {
 	factory.SetConfigClient(client)
 
 	// Act
-	result, err := getBBConfig(cmd, factory, []string{})
+	outputErr := getBBConfig(cmd, factory, []string{})
 
 	// Assert
-	assert.Equal(t, result, "")
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "error getting config:") {
-		t.Errorf("unexpected output: %s", err.Error())
+	//assert.Equal(t, result, "")
+	assert.Error(t, outputErr)
+	if !assert.Contains(t, outputErr.Error(), "error getting config:") {
+		t.Errorf("unexpected output: %s", outputErr.Error())
 	}
 }

@@ -1,9 +1,12 @@
 package schemas
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 type GlobalConfiguration struct {
@@ -76,4 +79,20 @@ func (g *GlobalConfiguration) getSubConfigurations() []BaseConfiguration {
 		&g.VersionConfiguration,
 		&g.ViolationsConfiguration,
 	}
+}
+
+func (g *GlobalConfiguration) MarshalYaml() ([]byte, error) {
+	return yaml.Marshal(g)
+}
+
+func (g *GlobalConfiguration) MarshalJson() ([]byte, error) {
+	return json.Marshal(g)
+}
+
+func (g *GlobalConfiguration) MarshalHumanReadable() ([]byte, error) {
+	return []byte(g.String()), nil
+}
+
+func (g *GlobalConfiguration) String() string {
+	return fmt.Sprintf("%#v", g)
 }

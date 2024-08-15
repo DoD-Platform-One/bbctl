@@ -129,7 +129,7 @@ func TestOutputClient(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, streams.Out.(*bytes.Buffer).String())
+			assert.Equal(t, tt.expected, string(streams.Out.(*bytes.Buffer).String()))
 
 		})
 	}
@@ -148,8 +148,8 @@ func (to *errorOutput) MarshalJson() ([]byte, error) {
 
 }
 
-func (to *errorOutput) MarshalHumanReadable() (string, error) {
-	return "", errors.New("unable to marshal data")
+func (to *errorOutput) MarshalHumanReadable() ([]byte, error) {
+	return nil, errors.New("unable to marshal data")
 
 }
 
@@ -165,8 +165,8 @@ func (to *testOutput) MarshalJson() ([]byte, error) {
 	return json.Marshal(to.Vals)
 }
 
-func (to *testOutput) MarshalHumanReadable() (string, error) {
-	return to.String(), nil
+func (to *testOutput) MarshalHumanReadable() ([]byte, error) {
+	return []byte(to.String()), nil
 }
 
 func (to *testOutput) String() string {

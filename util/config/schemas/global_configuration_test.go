@@ -1,10 +1,13 @@
 package schemas
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
@@ -116,4 +119,91 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 	assert.Equal(t, &arg.UtilK8sConfiguration, result[7])
 	assert.Equal(t, &arg.VersionConfiguration, result[8])
 	assert.Equal(t, &arg.ViolationsConfiguration, result[9])
+}
+
+func TestGetYamlMarshalling(t *testing.T) {
+	// Arrange
+	bbConfig := DeployBigBangConfiguration{
+		K3d:   false,
+		Addon: []string{},
+	}
+
+	arg := &GlobalConfiguration{
+		DeployBigBangConfiguration:        bbConfig,
+		ExampleConfiguration:              ExampleConfiguration{},
+		GitLabConfiguration:               GitLabConfiguration{},
+		K3dSshConfiguration:               K3dSshConfiguration{},
+		PolicyConfiguration:               PolicyConfiguration{},
+		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
+		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
+		UtilK8sConfiguration:              UtilK8sConfiguration{},
+		VersionConfiguration:              VersionConfiguration{},
+		ViolationsConfiguration:           ViolationsConfiguration{},
+	}
+	// Act
+	result, _ := arg.MarshalYaml()
+	var unmarshalled GlobalConfiguration
+	err := yaml.Unmarshal(result, &unmarshalled)
+
+	// Assert
+	assert.Nil(t, err)
+	assert.Equal(t, arg.BigBangRepo, unmarshalled.BigBangRepo)
+	assert.Equal(t, bbConfig, unmarshalled.DeployBigBangConfiguration)
+}
+
+func TestGetJsonMarshalling(t *testing.T) {
+	// Arrange
+	bbConfig := DeployBigBangConfiguration{
+		K3d:   false,
+		Addon: []string{},
+	}
+
+	arg := &GlobalConfiguration{
+		DeployBigBangConfiguration:        bbConfig,
+		ExampleConfiguration:              ExampleConfiguration{},
+		GitLabConfiguration:               GitLabConfiguration{},
+		K3dSshConfiguration:               K3dSshConfiguration{},
+		PolicyConfiguration:               PolicyConfiguration{},
+		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
+		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
+		UtilK8sConfiguration:              UtilK8sConfiguration{},
+		VersionConfiguration:              VersionConfiguration{},
+		ViolationsConfiguration:           ViolationsConfiguration{},
+	}
+	// Act
+	result, _ := arg.MarshalJson()
+	var unmarshalled GlobalConfiguration
+	err := json.Unmarshal(result, &unmarshalled)
+
+	// Assert
+	assert.Nil(t, err)
+	assert.Equal(t, arg.BigBangRepo, unmarshalled.BigBangRepo)
+	assert.Equal(t, bbConfig, unmarshalled.DeployBigBangConfiguration)
+}
+
+func TestGetTextMarshalling(t *testing.T) {
+	// Arrange
+	bbConfig := DeployBigBangConfiguration{
+		K3d:   false,
+		Addon: []string{},
+	}
+
+	arg := &GlobalConfiguration{
+		DeployBigBangConfiguration:        bbConfig,
+		ExampleConfiguration:              ExampleConfiguration{},
+		GitLabConfiguration:               GitLabConfiguration{},
+		K3dSshConfiguration:               K3dSshConfiguration{},
+		PolicyConfiguration:               PolicyConfiguration{},
+		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
+		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
+		UtilK8sConfiguration:              UtilK8sConfiguration{},
+		VersionConfiguration:              VersionConfiguration{},
+		ViolationsConfiguration:           ViolationsConfiguration{},
+	}
+	// Act
+	result, err := arg.MarshalHumanReadable()
+
+	// Assert
+	assert.Nil(t, err)
+	assert.Equal(t, fmt.Sprintf("%#v", arg), string(result))
 }

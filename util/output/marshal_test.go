@@ -140,7 +140,7 @@ func TestBasicOutput_MarshalHumanReadable(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, humanReadable)
+				assert.Equal(t, tt.expected, string(humanReadable))
 			}
 		})
 	}

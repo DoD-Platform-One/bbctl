@@ -14,7 +14,7 @@ type Outputable interface {
 	// MarshalJson marshals the object into a json format
 	MarshalJson() ([]byte, error)
 	// MarshalHumanReadable marshals the object into a human readable format
-	MarshalHumanReadable() (string, error)
+	MarshalHumanReadable() ([]byte, error)
 	//
 }
 
@@ -36,8 +36,8 @@ func (b *BasicOutput) MarshalJson() ([]byte, error) {
 }
 
 // MarshalHumanReadable marshals the BasicOutput object into a human readable format by calling the String method
-func (b *BasicOutput) MarshalHumanReadable() (string, error) {
-	return b.String(), nil
+func (b *BasicOutput) MarshalHumanReadable() ([]byte, error) {
+	return []byte(b.String()), nil
 }
 
 // String returns the name of the BasicOutput object in a human readable format
