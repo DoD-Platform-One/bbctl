@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
 var (
@@ -39,12 +39,7 @@ func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
 		Long:                  configLong,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			output, err := getBBConfig(cmd, factory, args)
-			if err != nil {
-				return fmt.Errorf("Unable to fetch current bbctl configuration: %v", err)
-			}
-			fmt.Println(output)
-			return nil
+			return getBBConfig(cmd, factory, args)
 		},
 	}
 	return cmd
@@ -95,16 +90,21 @@ func findRecursive(v reflect.Value, keys []string) (string, error) {
 	return "", fmt.Errorf("No such field: %s", fieldName)
 }
 
-func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) (string, error) {
+func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) error {
 	// Fetch the global config struct
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return "", fmt.Errorf("error getting config client: %w", err)
+		return fmt.Errorf("error getting config client: %w", err)
 	}
 
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return "", fmt.Errorf("error getting config: %w", configErr)
+		return fmt.Errorf("error getting config: %w", configErr)
+	}
+
+	outputClient, outClientErr := factory.GetOutputClient(cmd)
+	if outClientErr != nil {
+		return fmt.Errorf("error getting output client: %w", outClientErr)
 	}
 
 	switch len(args) {
@@ -112,21 +112,31 @@ func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) (str
 	case 0:
 		// If all keys are requested, we can just dump the config YAML wholesale
 		// as this is probably what the user wants anyway
-		// TODO - it would be easy here to implement an `-o` flag for JSON, YAML, etc...
-		configBytes, err := yaml.Marshal(config)
-		if err != nil {
-			// This can't be tested because the yaml.Marshal function is a pain to mock and getting it to return an error naturally is difficult
-			return "", fmt.Errorf("error marshaling global config: %w", err)
+		outputErr := outputClient.Output(config)
+		if outputErr != nil {
+			return fmt.Errorf("error marshaling global config: %w", outputErr)
 		}
-		return strings.TrimSpace(string(configBytes)), nil
+		return nil
 
 	// For an individual key, we need to use reflection (🥴) to try and locate
 	// the value in our struct
 	case 1:
 		key := args[0]
-		return findConfig(config, key)
+		value, singleConfigErr := findConfig(config, key)
+		if singleConfigErr != nil {
+			return fmt.Errorf("error marshaling specific config: %w", singleConfigErr)
+		}
+		configValMap := map[string]interface{}{key: value}
+		outputErr := outputClient.Output(
+			&output.BasicOutput{
+				Vals: configValMap,
+			})
+		if outputErr != nil {
+			return fmt.Errorf("error creating output for specific config: %w", outputErr)
+		}
+		return nil
 
 	default:
-		return "", errors.New("too many arguments passed to bbctl config")
+		return errors.New("too many arguments passed to bbctl config")
 	}
 }
