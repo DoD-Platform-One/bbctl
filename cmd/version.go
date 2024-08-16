@@ -5,6 +5,7 @@ import (
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -44,7 +45,7 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+		return nil, fmt.Errorf("unable to get config client: %w", clientError)
 	}
 
 	flagError := configClient.SetAndBindFlag(
@@ -53,7 +54,7 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Print the bbctl client version only",
 	)
 	if flagError != nil {
-		return nil, fmt.Errorf("Error setting and binding flags: %w", flagError)
+		return nil, fmt.Errorf("error setting and binding flags: %w", flagError)
 	}
 
 	return cmd, nil
@@ -61,15 +62,10 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 // bbVersion queries the cluster using helm module to get information on Big Bang release
 func bbVersion(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
 	constants, err := static.GetDefaultConstants()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(streams.Out, "bbctl client version %s\n", constants.BigBangCliVersion)
 
 	// Config client error handling is done in the public NewVersionCmd function above
 	configClient, _ := factory.GetConfigClient(cmd)
@@ -78,7 +74,23 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory) error {
 		return fmt.Errorf("error getting config: %w", configErr)
 	}
 
+	outputClient, outClientErr := factory.GetOutputClient(cmd)
+	if outClientErr != nil {
+		return fmt.Errorf("error getting output client: %w", outClientErr)
+	}
+
 	if config.VersionConfiguration.Client {
+		bbctlKey := "bbctl client version"
+		outputMap := map[string]interface{}{
+			bbctlKey: constants.BigBangCliVersion,
+		}
+		outputErr := outputClient.Output(
+			&output.BasicOutput{
+				Vals: outputMap,
+			})
+		if outputErr != nil {
+			return fmt.Errorf("error marshaling %s: %w", bbctlKey, outputErr)
+		}
 		return nil
 	}
 
@@ -93,7 +105,19 @@ func bbVersion(cmd *cobra.Command, factory bbUtil.Factory) error {
 			constants.BigBangHelmReleaseName, constants.BigBangNamespace, err.Error())
 	}
 
-	fmt.Fprintf(streams.Out, "%s release version %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version)
+	bbctlKey := "bbctl client version"
+	bbKey := fmt.Sprintf("%s release version", release.Chart.Metadata.Name)
+	outputMap := map[string]interface{}{
+		bbctlKey: constants.BigBangCliVersion,
+		bbKey:    release.Chart.Metadata.Version,
+	}
+	outputErr := outputClient.Output(
+		&output.BasicOutput{
+			Vals: outputMap,
+		})
+	if outputErr != nil {
+		return fmt.Errorf("error marshaling %s and %s: %w", bbctlKey, bbKey, outputErr)
+	}
 
 	return nil
 }

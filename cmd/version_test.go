@@ -56,6 +56,7 @@ func TestGetVersion(t *testing.T) {
 	factory.SetHelmReleases(releaseFixture)
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "yaml")
 
 	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
@@ -66,10 +67,10 @@ func TestGetVersion(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, res)
-	if !assert.Contains(t, buf.String(), "release version 1.0.2") {
+	if !assert.Contains(t, buf.String(), "release version: 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
-	if !assert.Contains(t, buf.String(), "bbctl client version") {
+	if !assert.Contains(t, buf.String(), "bbctl client version:") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
 }
@@ -101,6 +102,7 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	v.Set("client", true)
+	v.Set("output-config.format", "yaml")
 
 	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
@@ -111,10 +113,10 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 
 	// Assert
 	assert.NoError(t, err)
-	if !assert.NotContains(t, buf.String(), "release version 1.0.2") {
+	if !assert.NotContains(t, buf.String(), "release version: 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
-	if !assert.Contains(t, buf.String(), "bbctl client version") {
+	if !assert.Contains(t, buf.String(), "bbctl client version: ") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
 }
@@ -186,7 +188,7 @@ func TestGetVersionWithConfigError(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -230,5 +232,109 @@ func TestVersionFailToGetConfig(t *testing.T) {
 	assert.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err1.Error())
+	}
+}
+
+func TestVersionErrorBindingFlags(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+
+	expectedError := fmt.Errorf("failed to set and bind flag")
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+		if name == "client" {
+			return expectedError
+		}
+		return nil
+	}
+
+	logClient, _ := factory.GetLoggingClient()
+	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
+	assert.Nil(t, err)
+	factory.SetConfigClient(configClient)
+
+	// Act
+	cmd, err := NewVersionCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	assert.NotNil(t, err)
+	assert.Equal(t, fmt.Sprintf("error setting and binding flags: %s", expectedError.Error()), err.Error())
+}
+
+func TestVersionOutputClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetIOStreams = true
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+
+	// Act
+	cmd, _ := NewVersionCmd(factory)
+	err := bbVersion(cmd, factory)
+
+	// Assert
+	expectedError := "error getting output client: failed to get streams"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestClientVersionMarshalError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("client", true)
+	v.Set("output-config.format", "")
+
+	// Act
+	cmd, _ := NewVersionCmd(factory)
+	err := bbVersion(cmd, factory)
+
+	// Assert
+	expectedError := "error marshaling bbctl client version: unsupported format: "
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestClientandBBVersionMarshalError(t *testing.T) {
+	// Arrange
+	chartInfo := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "bigbang",
+			Version: "1.0.2",
+		},
+	}
+
+	releaseFixture := []*release.Release{
+		{
+			Name:      "bigbang",
+			Version:   1,
+			Namespace: "bigbang",
+			Info: &release.Info{
+				Status: release.StatusDeployed,
+			},
+			Chart: chartInfo,
+		},
+	}
+
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	factory.SetHelmReleases(releaseFixture)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "")
+
+	// Act
+	cmd, _ := NewVersionCmd(factory)
+	err := bbVersion(cmd, factory)
+
+	// Assert
+	expectedError := "error marshaling bbctl client version and bigbang release version: unsupported format: "
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
 }
