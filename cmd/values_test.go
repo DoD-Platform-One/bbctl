@@ -46,6 +46,11 @@ func TestValues(t *testing.T) {
 	}
 
 	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
 
@@ -53,7 +58,8 @@ func TestValues(t *testing.T) {
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd := NewValuesCmd(factory)
-	cmd.RunE(cmd, []string{"foo"})
+	err := cmd.RunE(cmd, []string{"foo"})
+	assert.NoError(t, err)
 
 	if !strings.Contains(buf.String(), "enabled: 2") {
 		t.Errorf("unexpected output: %s", buf.String())
@@ -111,6 +117,10 @@ func TestGetValuesCompletion(t *testing.T) {
 
 	factory := bbUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 
 	cmd := NewValuesCmd(factory)
 
@@ -131,6 +141,10 @@ func TestGetValuesCompletion(t *testing.T) {
 
 func TestGetValuesCompletionTooManyArgs(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 
 	cmd := NewValuesCmd(factory)
 	suggestions, directive := cmd.ValidArgsFunction(cmd, []string{"too", "many", "args"}, "test")
@@ -142,6 +156,10 @@ func TestGetValuesCompletionTooManyArgs(t *testing.T) {
 // constructor returns the helper successfully
 func TestNewValuesCmdHelperSucces(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
@@ -159,6 +177,10 @@ func TestNewValuesCmdHelperSucces(t *testing.T) {
 func TestNewValuesCmdHelperFailHelmClient(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
 	factory.SetFail.GetHelmClient = true
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
@@ -174,6 +196,10 @@ func TestNewValuesCmdHelperFailHelmClient(t *testing.T) {
 // we correctly return an error and stop execution
 func TestNewValuesCmdHelperFailConstantsClient(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
 	expectedError := fmt.Errorf("failed to get constants")
@@ -198,6 +224,10 @@ func TestNewValuesCmdHelperFailConstantsClient(t *testing.T) {
 func TestGetHelmValuesFailGettingValues(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
 	factory.ResetIOStream()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
 	expectedError := fmt.Errorf("error getting helm release values in namespace bigbang: release test not found")
@@ -220,6 +250,10 @@ func TestMatchingReleaseNamesFailGettingList(t *testing.T) {
 	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
 		return nil, fmt.Errorf("error getting list")
 	})
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
@@ -229,5 +263,41 @@ func TestMatchingReleaseNamesFailGettingList(t *testing.T) {
 	matches, directive := v.matchingReleaseNames("test")
 	assert.Empty(t, matches)
 	assert.Equal(t, cobra.ShellCompDirectiveDefault, directive)
+}
 
+func TestValuesOutputClientError(t *testing.T) {
+	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+	factory.SetFail.GetConfigClient = true
+	cmd := NewValuesCmd(factory)
+	assert.NotNil(t, cmd)
+
+	suggestions, directive := cmd.ValidArgsFunction(cmd, []string{}, "")
+	err := cmd.RunE(cmd, []string{})
+	assert.Nil(t, suggestions)
+	assert.Equal(t, cobra.ShellCompDirectiveError, directive)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error getting output client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestValuesGetIOStreamsError(t *testing.T) {
+	factory := bbUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+	factory.SetFail.GetIOStreams = true
+	cmd := NewValuesCmd(factory)
+	assert.NotNil(t, cmd)
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get streams") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
 }
