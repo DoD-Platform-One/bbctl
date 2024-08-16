@@ -52,7 +52,7 @@ func (c *FakeClient) GetList() ([]*release.Release, error) {
 // GetValues returns the values.yaml values used to deploy the helm release matching the given name
 //
 // Returns an error if no release matches the given name
-func (c *FakeClient) GetValues(name string) (interface{}, error) {
+func (c *FakeClient) GetValues(name string) (map[string]interface{}, error) {
 	if c.getValues != nil {
 		return c.getValues(name)
 	}

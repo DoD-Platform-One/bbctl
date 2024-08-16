@@ -8,7 +8,7 @@ import (
 type Client interface {
 	GetRelease(name string) (*release.Release, error)
 	GetList() ([]*release.Release, error)
-	GetValues(name string) (interface{}, error)
+	GetValues(name string) (map[string]interface{}, error)
 }
 
 // GetReleaseFunc type
@@ -43,6 +43,6 @@ func (c *helmClient) GetList() ([]*release.Release, error) {
 }
 
 // GetValues - getValues returns release values
-func (c *helmClient) GetValues(name string) (interface{}, error) {
+func (c *helmClient) GetValues(name string) (map[string]interface{}, error) {
 	return c.getValues(name)
 }

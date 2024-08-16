@@ -7,10 +7,10 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	oc "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/cmd/helm/require"
-	"helm.sh/helm/v3/pkg/cli/output"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -37,6 +37,7 @@ type valuesCmdHelper struct {
 	// Clients
 	constantsClient static.ConstantsClient
 	helmClient      helm.Client
+	outputClient    oc.Client
 
 	// Values
 	constants static.Constants
@@ -54,9 +55,15 @@ func newValuesCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCli
 		return nil, err
 	}
 
+	outputClient, outClientErr := factory.GetOutputClient(cmd)
+	if outClientErr != nil {
+		return nil, fmt.Errorf("error getting output client: %w", outClientErr)
+	}
+
 	return &valuesCmdHelper{
 		constantsClient: constantsClient,
 		helmClient:      helmClient,
+		outputClient:    outputClient,
 		constants:       constants,
 	}, nil
 }
@@ -84,13 +91,13 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 			return v.matchingReleaseNames(hint)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
-			if err != nil {
-				return err
-			}
 			streams, err := factory.GetIOStream()
 			if err != nil {
 				return fmt.Errorf("error getting IO streams: %s", err.Error())
+			}
+			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
+			if err != nil {
+				return err
 			}
 			return v.getHelmValues(streams, args[0])
 		},
@@ -103,13 +110,11 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 func (v *valuesCmdHelper) getHelmValues(streams *genericIOOptions.IOStreams, name string) error {
 	// use helm get values to get release values
 	releases, err := v.helmClient.GetValues(name)
-	fmt.Println(releases)
 	if err != nil {
 		return fmt.Errorf("error getting helm release values in namespace %s: %s",
 			v.constants.BigBangNamespace, err.Error())
 	}
-
-	return output.EncodeYAML(streams.Out, releases)
+	return v.outputClient.Output(&oc.BasicOutput{Vals: releases})
 }
 
 // matchingReleaseNames searches the helm releases with given prefix for command completion
