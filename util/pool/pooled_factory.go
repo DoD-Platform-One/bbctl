@@ -46,7 +46,6 @@ type PooledFactory struct {
 	restConfig        *rest.Config
 	credentialHelper  bbUtil.CredentialHelper
 	istioClientSets   istioClientsetPool
-	configClient      *bbConfig.ConfigClient
 	viper             *viper.Viper
 	ioStream          *genericIOOptions.IOStreams
 }
@@ -290,20 +289,12 @@ func (pf *PooledFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.
 
 // GetConfigClient returns the config client
 //
-// Pooled by client (singleton), we assume cmd never changes
+// Not pooled (pass-through)
 func (pf *PooledFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
-	if pf.configClient != nil {
-		return pf.configClient, nil
-	}
 	if pf.underlyingFactory == nil {
 		return nil, &ErrFactoryNotInitialized{}
 	}
-	client, err := pf.underlyingFactory.GetConfigClient(command)
-	if err != nil {
-		return client, err
-	}
-	pf.configClient = client
-	return client, nil
+	return pf.underlyingFactory.GetConfigClient(command)
 }
 
 // GetViper returns the Viper
