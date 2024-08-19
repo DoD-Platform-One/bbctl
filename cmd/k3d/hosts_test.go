@@ -264,7 +264,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
 				factory.SetFail.GetK8sClientset = true
 			},
-			errmsg: "unable to create k8s client: failed to get k8s clientset",
+			errmsg: "unable to create k8s client: testing error",
 		},
 	}
 

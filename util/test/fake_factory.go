@@ -263,7 +263,7 @@ func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, erro
 // GetK8sClientset - get k8s clientset
 func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
 	if f.SetFail.GetK8sClientset {
-		return nil, fmt.Errorf("failed to get k8s clientset")
+		return nil, fmt.Errorf("testing error")
 	}
 	cs := fake.NewSimpleClientset(f.objects...)
 	if f.resources != nil {
@@ -353,7 +353,7 @@ func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, e
 // GetCommandExecutor - execute command in a Pod
 func (f *FakeFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
 	if f.SetFail.GetCommandExecutor {
-		return nil, fmt.Errorf("failed to get command executor")
+		return nil, fmt.Errorf("testing error")
 	}
 	f.fakeCommandExecutor.Command = strings.Join(command, " ")
 	return f.fakeCommandExecutor, nil
@@ -362,7 +362,7 @@ func (f *FakeFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, co
 // GetFakeCommandExecutor - get fake command executor
 func (f *FakeFactory) GetFakeCommandExecutor() (*FakeCommandExecutor, error) {
 	if f.SetFail.GetCommandExecutor {
-		return nil, fmt.Errorf("failed to get command executor")
+		return nil, fmt.Errorf("testing error")
 	}
 	return f.fakeCommandExecutor, nil
 }

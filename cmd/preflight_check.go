@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbUtilK8s "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 
 	"github.com/spf13/cobra"
 	coreV1 "k8s.io/api/core/v1"
@@ -56,7 +56,7 @@ var (
 )
 
 // preflightCheckFunc is a type definition that allows each preflight check step to provide its own implementation
-type preflightCheckFunc func(*cobra.Command, bbUtil.Factory, *schemas.GlobalConfiguration) preflightCheckStatus
+type preflightCheckFunc func(*cobra.Command, bbUtil.Factory, *schemas.GlobalConfiguration) ([]string, preflightCheckStatus)
 
 // preflightCheckStatus is a type definition that represents the output value of a single preflight check step
 //
@@ -80,6 +80,7 @@ type preflightCheck struct {
 	status         preflightCheckStatus // function execution status
 	failureMessage string               // user friendly failure message
 	successMessage string               // user friendly success message
+	output         []string             // user friendly console output
 }
 
 // preflightChecks defines all the steps to run in the bbPreflightCheck function
@@ -194,7 +195,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+		return nil, fmt.Errorf("unable to get config client: %s", clientError)
 	}
 
 	registryServerError := configClient.SetAndBindFlag(
@@ -203,7 +204,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry server url",
 	)
 	if registryServerError != nil {
-		return nil, fmt.Errorf("Error setting registryserver flag: %w", registryServerError)
+		return nil, fmt.Errorf("error setting registryserver flag: %s", registryServerError)
 	}
 
 	registryUserError := configClient.SetAndBindFlag(
@@ -212,7 +213,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry username",
 	)
 	if registryUserError != nil {
-		return nil, fmt.Errorf("Error setting registryusername flag: %w", registryUserError)
+		return nil, fmt.Errorf("error setting registryusername flag: %s", registryUserError)
 	}
 
 	registryPasswordError := configClient.SetAndBindFlag(
@@ -221,7 +222,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry password",
 	)
 	if registryPasswordError != nil {
-		return nil, fmt.Errorf("Error setting registrypassword flag: %w", registryPasswordError)
+		return nil, fmt.Errorf("error setting registrypassword flag: %s", registryPasswordError)
 	}
 
 	return cmd, nil
@@ -233,67 +234,54 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, command *cobra.Command, preflightChecks []preflightCheck) error {
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
-		return fmt.Errorf("Unable to get config client: %w", err)
+		return fmt.Errorf("unable to get config client: %s", err.Error())
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %w", configErr)
+		return fmt.Errorf("error getting config: %s", configErr)
 	}
 	for i, check := range preflightChecks {
-		status := check.function(cmd, factory, config)
+		messages, status := check.function(cmd, factory, config)
 		preflightChecks[i].status = status
+		preflightChecks[i].output = messages
 	}
-	return printPreflightCheckSummary(factory, preflightChecks)
+	return printPreflightCheckSummary(cmd, factory, preflightChecks)
 }
 
 // Internal helper function to implement the metrics server check step
-func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return unknown
-	}
-	fmt.Fprintln(streams.Out, "Checking metrics server...")
+func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	outputMessages := []string{"Checking metrics server..."}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
 	}
 
 	apiGroups, err := client.Discovery().ServerGroups()
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get server groups: %s", err.Error())), unknown
 	}
 
 	metricsAPIAvailable := supportedMetricsAPIVersionAvailable(apiGroups)
 	if !metricsAPIAvailable {
-		fmt.Fprintln(streams.Out, "Check Failed - Metrics API not available.")
-		return failed
+		return append(outputMessages, "Check Failed - Metrics API not available"), failed
 	}
 
-	fmt.Fprintln(streams.Out, "Check Passed - Metrics API available.")
-	return passed
+	return append(outputMessages, "Check Passed - Metrics API available"), passed
 }
 
 // Internal helper function to implement the storage class check step
-func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return unknown
-	}
-	fmt.Fprintln(streams.Out, "Checking default storage class...")
+func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	outputMessages := []string{"Checking default storage class..."}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
 	}
 
 	storageClasses, err := client.StorageV1().StorageClasses().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get storage classes: %s", err.Error())), unknown
 	}
 
 	defaultStorageClassName := ""
@@ -304,33 +292,25 @@ func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config
 	}
 
 	if defaultStorageClassName == "" {
-		fmt.Fprintln(streams.Out, "Check Failed - Default storage class not found.")
-		return failed
+		return append(outputMessages, "Check Failed - Default storage class not found"), failed
 	}
 
-	fmt.Fprintf(streams.Out, "Check Passed - Default storage class %s found.\n", defaultStorageClassName)
-	return passed
+	return append(outputMessages, fmt.Sprintf("Check Passed - Default storage class %s found", defaultStorageClassName)), passed
 }
 
 // Internal helper function to implement the Flux installation check step
-func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return unknown
-	}
-	fmt.Fprintln(streams.Out, "Checking flux installation...")
+func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	outputMessages := []string{"Checking flux installation..."}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
 	}
 
 	fluxStatus := make(map[string]string)
 	pods, err := client.CoreV1().Pods(fluxNamespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Failed to get pods: %s", err.Error())), unknown
 	}
 
 	for _, pod := range pods.Items {
@@ -342,90 +322,92 @@ func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *sch
 		podStatus := fluxStatus[fluxPod]
 		if podStatus != "" {
 			if podStatus != string(coreV1.PodRunning) {
-				fmt.Fprintf(streams.Out, "Check Failed - flux %s pod not in running state.\n", fluxPod)
+				outputMessages = append(outputMessages, fmt.Sprintf("Check Failed - flux %s pod not in running state", fluxPod))
 				status = failed
 			} else {
-				fmt.Fprintf(streams.Out, "Check Passed - flux %s pod running.\n", fluxPod)
+				outputMessages = append(outputMessages, fmt.Sprintf("Check Passed - flux %s pod running", fluxPod))
 			}
 		} else {
-			fmt.Fprintf(streams.Out, "Check Failed - flux %s pod not found in %s namespace.\n", fluxPod, fluxNamespace)
+			outputMessages = append(outputMessages, fmt.Sprintf("Check Failed - flux %s pod not found in %s namespace", fluxPod, fluxNamespace))
 			status = failed
 		}
 	}
 
-	return status
+	return outputMessages, status
 }
 
 // Internal helper function to implement the system parameters check step
-func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return unknown
-	}
-	pod, err := createResourcesForCommandExecution(cmd, factory, config)
-	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
-	}
+func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	outputMessages := []string{"Checking system parameters..."}
 
-	fmt.Fprintln(streams.Out, "Checking system parameters...")
+	pod, messages, err := createResourcesForCommandExecution(cmd, factory, config)
+	outputMessages = append(outputMessages, messages...)
+	if err != nil {
+		return append(outputMessages, fmt.Sprintf("Failed to create resources for command execution: %s", err.Error())), unknown
+	}
 
 	status := passed
 	for _, param := range sysParams {
-		fmt.Fprintf(streams.Out, "Checking %s\n", param.name)
+		outputMessages = append(outputMessages, fmt.Sprintf("Checking %s", param.name))
 		var stdout, stderr bytes.Buffer
-		err := execCommand(cmd, factory, &stdout, &stderr, pod, param.command)
+
+		exec, err := factory.GetCommandExecutor(cmd, pod, "", param.command, &stdout, &stderr)
 		if err != nil {
-			fmt.Fprintf(streams.ErrOut, "%s", err)
+			return append(outputMessages, fmt.Sprintf("Failed to get command executor: %s", err.Error())), unknown
+		}
+		err = exec.StreamWithContext(context.TODO(), remoteCommand.StreamOptions{
+			Stdin:  nil,
+			Stdout: &stdout,
+			Stderr: &stderr,
+		})
+
+		if err != nil {
+			outputMessages = append(outputMessages, err.Error())
 			status = unknown
 			continue
 		}
 		for bbPackage, threshold := range param.threshold {
-			paramValue := strings.ReplaceAll(stdout.String(), "\n", "")
-			if !checkSystemParameter(factory, bbPackage, param.name, paramValue, param.description, threshold) {
+			paramValue := strings.ReplaceAll(stdout.String(), "", "")
+			paramMessages, paramResult := checkSystemParameter(bbPackage, param.name, paramValue, param.description, threshold)
+			outputMessages = append(outputMessages, paramMessages...)
+			if !paramResult {
 				status = failed
 			}
 		}
 	}
 
+	outputMessages = append(outputMessages, "Deleting namespace for command execution...")
 	err = deleteResourcesForCommandExecution(cmd, factory)
 	if err != nil {
-		fmt.Fprintf(streams.ErrOut, "%s", err.Error())
-		return unknown
+		return append(outputMessages, fmt.Sprintf("Error occurred when deleting system parameter check resources: %s", err.Error())), unknown
 	}
 
-	return status
+	return outputMessages, status
 }
 
 // Internal helper function to implement the individual system parameter checks
-func checkSystemParameter(factory bbUtil.Factory, bbPackage string, param string, value string, _ string, threshold int) bool {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return false
-	}
-	fmt.Fprintf(streams.Out, "%s = %s\n", param, value)
-
+func checkSystemParameter(bbPackage string, param string, value string, _ string, threshold int) ([]string, bool) {
+	value = strings.Trim(value, " \n\t")
+	outputMessages := []string{fmt.Sprintf("%s = %s", param, value)}
 	if value == "unlimited" {
-		fmt.Fprintf(streams.Out, "Check Passed - %s %s is suitable for %s to work.\n", param, value, bbPackage)
-		return true
+		return append(outputMessages, fmt.Sprintf("Check Passed - %s %s is suitable for %s to work.\n", param, value, bbPackage)), true
 	}
 
 	status := true
-
 	val, err := strconv.Atoi(value)
 	if err == nil {
 		if val < threshold {
-			fmt.Fprintf(streams.Out, "Check Failed - %s needs to be at least %d for %s to work.\n", param, threshold, bbPackage)
+			outputMessages = append(outputMessages, fmt.Sprintf("Check Failed - %s needs to be at least %d for %s to work. Current value %s\n", param, threshold, bbPackage, value))
 			status = false
 		} else {
-			fmt.Fprintf(streams.Out, "Check Passed - %s %d is suitable for %s to work.\n", param, val, bbPackage)
+			outputMessages = append(outputMessages, fmt.Sprintf("Check Passed - %s %s is suitable for %s to work.\n", param, value, bbPackage))
 		}
 	} else {
-		fmt.Fprintf(streams.Out, "Check Undetermined - %s needs to be at least %d for %s to work. Current value %s\n", param, threshold, bbPackage, value)
+		outputMessages = append(outputMessages, fmt.Sprintf("Check Undetermined - %s needs to be at least %d for %s to work. Current value %s\n", param, threshold, bbPackage, value))
 		status = false
 	}
 
-	return status
+	return outputMessages, status
 }
 
 // Internal helper function to verfiy the k8s metrics API version as part of the checkMetricsServer step
@@ -451,47 +433,53 @@ func supportedMetricsAPIVersionAvailable(discoveredAPIGroups *metaV1.APIGroupLis
 // Internal helper function to create the preflight check job resources in the k8s cluster
 //
 // Create a new namespace, a container registry credentials secret, and the preflight check job
-func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) (*coreV1.Pod, error) {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return nil, err
-	}
+func createResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) (*coreV1.Pod, []string, error) {
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return nil, err
+		return nil, []string{err.Error()}, err
 	}
 
-	err = createNamespaceForCommandExecution(client, streams.Out, config)
+	messages, err := createNamespaceForCommandExecution(client, config)
+	outputMessages := messages
 	if err != nil {
-		return nil, err
+		return nil, outputMessages, err
 	}
 
-	secret, err := createRegistrySecretForCommandExecution(client, streams.Out, config)
+	secret, messages, err := createRegistrySecretForCommandExecution(client, config)
+	outputMessages = append(outputMessages, messages...)
 	if err != nil {
-		return nil, err
+		return nil, outputMessages, err
 	}
 
-	return createJobForCommandExecution(client, streams.Out, secret, config)
+	pod, messages, err := createJobForCommandExecution(client, secret, config)
+	outputMessages = append(outputMessages, messages...)
+	if err != nil {
+		return nil, outputMessages, err
+	}
+
+	return pod, outputMessages, nil
 }
 
 // Internal helper function to create a new namespace in the k8s cluster for the preflight check job
 //
 // Will attempt to delete the namespace and recreate it if it already exists
-func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer, config *schemas.GlobalConfiguration) error {
-	fmt.Fprintln(w, "Creating namespace for command execution...")
+func createNamespaceForCommandExecution(client kubernetes.Interface, config *schemas.GlobalConfiguration) ([]string, error) {
+	outputMessages := []string{"Creating namespace for command execution..."}
 
 	_, err := bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 	if err != nil {
+		outputMessages = append(outputMessages, err.Error())
 		if api_errors.IsAlreadyExists(err) {
-			fmt.Fprintf(w, "Namespace %s already exists... It will be recreated\n", preflightPodNamespace)
+			outputMessages = append(outputMessages, fmt.Sprintf("Namespace %s already exists... It will be recreated", preflightPodNamespace))
 			err = bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 			if err != nil {
-				return err
+				return append(outputMessages, err.Error()), err
 			}
 			// Give the namespace deletion some time to finish before trying to recreate the namespace
 			for retry := 0; retry <= config.PreflightCheckConfiguration.RetryCount; retry++ {
 				_, err = bbUtilK8s.CreateNamespace(client, preflightPodNamespace)
 				if err != nil {
+					outputMessages = append(outputMessages, err.Error())
 					time.Sleep(time.Duration(config.PreflightCheckConfiguration.RetryDelay) * time.Second)
 				} else {
 					break
@@ -500,28 +488,35 @@ func createNamespaceForCommandExecution(client kubernetes.Interface, w io.Writer
 		}
 	}
 
-	return err
+	return outputMessages, err
 }
 
 // Internal helper function to create a new container registry credentials secret in the k8s cluster
-func createRegistrySecretForCommandExecution(client kubernetes.Interface, w io.Writer, config *schemas.GlobalConfiguration) (*coreV1.Secret, error) {
-	fmt.Fprintln(w, "Creating registry secret for command execution...")
+func createRegistrySecretForCommandExecution(client kubernetes.Interface, config *schemas.GlobalConfiguration) (*coreV1.Secret, []string, error) {
+	outputMessages := []string{"Creating registry secret for command execution..."}
 
 	server := config.PreflightCheckConfiguration.RegistryServer
 	username := config.PreflightCheckConfiguration.RegistryUsername
 	password := config.PreflightCheckConfiguration.RegistryPassword
 
 	if server == "" || username == "" || password == "" {
-		return nil, errors.New("\n***Invalid registry credentials provided. Ensure the registry server, username, and password values are all set!***")
+		message := "***Invalid registry credentials provided. Ensure the registry server, username, and password values are all set!***"
+		return nil, append(outputMessages, message), errors.New(message)
 	}
 
-	return bbUtilK8s.CreateRegistrySecret(client, preflightPodNamespace,
+	secret, err := bbUtilK8s.CreateRegistrySecret(client, preflightPodNamespace,
 		preflightPodImagePullSecret, server, username, password)
+
+	if err != nil {
+		return nil, append(outputMessages, fmt.Sprintf("Failed to create registry secret: %s", err.Error())), err
+	}
+
+	return secret, outputMessages, nil
 }
 
 // Internal helper function to create the preflight check job in the k8s cluster
-func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secret *coreV1.Secret, config *schemas.GlobalConfiguration) (*coreV1.Pod, error) {
-	fmt.Fprintln(w, "Creating job for command execution...")
+func createJobForCommandExecution(client kubernetes.Interface, secret *coreV1.Secret, config *schemas.GlobalConfiguration) (*coreV1.Pod, []string, error) {
+	outputMessages := []string{"Creating job for command execution..."}
 
 	jobDesc := &bbUtilK8s.JobDesc{
 		Name:               preflightPodName,
@@ -535,82 +530,67 @@ func createJobForCommandExecution(client kubernetes.Interface, w io.Writer, secr
 
 	job, err := bbUtilK8s.CreateJob(client, preflightPodNamespace, jobDesc)
 	if err != nil {
-		return nil, err
+		return nil, append(outputMessages, fmt.Sprintf("Failed to create preflightcheck job: %s", err.Error())), err
 	}
 
-	fmt.Fprintf(w, "Waiting for job %s to be ready...\n", job.Name)
+	outputMessages = append(outputMessages, fmt.Sprintf("Waiting for job %s to be ready...", job.Name))
 
 	for i := 0; i < config.PreflightCheckConfiguration.RetryCount; i++ {
 		pods, err := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: "job-name=preflightcheck"})
 		if err != nil {
-			return nil, err
+			return nil, append(outputMessages, fmt.Sprintf("Failed to fetch preflightcheck pod status: %s", err.Error())), err
 		}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == coreV1.PodRunning {
-				return &pod, nil
+				return &pod, outputMessages, nil
 			}
 		}
 		time.Sleep(time.Duration(config.PreflightCheckConfiguration.RetryDelay) * time.Second)
 	}
 
-	return nil, fmt.Errorf("timeout waiting for command execution job to be ready")
+	message := "Timeout waiting for command execution job to be ready"
+	return nil, append(outputMessages, message), fmt.Errorf(message)
 }
 
 // Internal helper function to cleanup k8s resources after the system parameters check is complete
 func deleteResourcesForCommandExecution(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintln(streams.Out, "Deleting namespace for command execution...")
-
 	return bbUtilK8s.DeleteNamespace(client, preflightPodNamespace)
 }
 
-// Internal helper function to execute CLI commands in a Pod running on the k8s cluster to verify system parameter check values
-func execCommand(cmd *cobra.Command, factory bbUtil.Factory, out io.Writer, errOut io.Writer, pod *coreV1.Pod, command []string) error {
-	exec, err := factory.GetCommandExecutor(cmd, pod, "", command, out, errOut)
-	if err != nil {
-		return err
-	}
-
-	err = exec.StreamWithContext(context.TODO(), remoteCommand.StreamOptions{
-		Stdin:  nil,
-		Stdout: out,
-		Stderr: errOut,
-	})
-
-	return err
-}
-
 // Internal helper function to print the results of every preflight check step out to the console
-func printPreflightCheckSummary(factory bbUtil.Factory, preflightChecks []preflightCheck) error {
-	streams, err := factory.GetIOStream()
+func printPreflightCheckSummary(cmd *cobra.Command, factory bbUtil.Factory, preflightChecks []preflightCheck) error {
+	outputClient, err := factory.GetOutputClient(cmd)
 	if err != nil {
 		return err
 	}
+
 	var errorsList []error
-	_, err = fmt.Fprintf(streams.Out, "\n\nPreflight Check Summary\n\n")
-	if err != nil {
-		errorsList = append(errorsList, err)
-	}
+	output := &outputSchema.PreflightCheckOutput{Name: "Preflight Check Summary"}
 
 	for _, check := range preflightChecks {
-		message := check.failureMessage
 		if check.status == passed {
-			message = check.successMessage
-		} else if check.status == unknown {
-			message = fmt.Sprintf("System Error - Execute command again to run %s", check.desc)
+			check.output = append(check.output, check.successMessage)
+		} else if check.status == failed {
+			check.output = append(check.output, check.failureMessage)
+		} else {
+			check.output = append(check.output, fmt.Sprintf("System Error Occured - Execute command again to retry"))
 		}
-		_, err := fmt.Fprintf(streams.Out, "%s %s...\n%s\n\n", check.desc, check.status, message)
-		if err != nil {
-			errorsList = append(errorsList, err)
+		stepOutput := &outputSchema.CheckStepOutput{
+			Name:   check.desc,
+			Status: string(check.status),
+			Output: check.output,
 		}
+		output.Steps = append(output.Steps, *stepOutput)
+	}
+
+	outputErr := outputClient.Output(output)
+	if outputErr != nil {
+		errorsList = append(errorsList, fmt.Errorf("failed to create preflight check output: %w", outputErr))
 	}
 	return errors.Join(errorsList...)
 }

@@ -3,12 +3,15 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
+	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
+	outputSchemas "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 
@@ -57,6 +60,14 @@ func ns(name string, phase coreV1.NamespacePhase) *coreV1.Namespace {
 	return ns
 }
 
+func checkOutput(t *testing.T, expected []string, actual []string) {
+	for _, value := range expected {
+		if !assert.Contains(t, actual, value) {
+			t.Errorf("\n\nexpected:\n%s\n\nactual:\n%s\n\n", value, strings.Join(actual, "\n"))
+		}
+	}
+}
+
 func TestCheckMetricsServer(t *testing.T) {
 	arl := metaV1.APIResourceList{
 		GroupVersion: "metrics.k8s.io/v1beta1",
@@ -77,35 +88,52 @@ func TestCheckMetricsServer(t *testing.T) {
 
 	var tests = []struct {
 		desc             string
-		expected         string
+		expected         []string
+		status           preflightCheckStatus
 		resources        []*metaV1.APIResourceList
 		failGetClient    bool
 		failServerGroups bool
 	}{
 		{
-			"metrics server not available",
-			"Check Failed - Metrics API not available.",
+			"Metrics Unavailable",
+			[]string{
+				"Checking metrics server...",
+				"Check Failed - Metrics API not available",
+			},
+			failed,
 			[]*metaV1.APIResourceList{},
 			false,
 			false,
 		},
 		{
 			"metrics server available",
-			"Check Passed - Metrics API available.",
+			[]string{
+				"Checking metrics server...",
+				"Check Passed - Metrics API available",
+			},
+			passed,
 			[]*metaV1.APIResourceList{&arl},
 			false,
 			false,
 		},
 		{
-			"metrics server not available - get client failed",
-			"failed to get k8s clientset",
+			"Get K8s Client Failure",
+			[]string{
+				"Checking metrics server...",
+				"Failed to get k8s clientset: testing error",
+			},
+			unknown,
 			[]*metaV1.APIResourceList{},
 			true,
 			false,
 		},
 		{
-			"metrics server not available - server groups failed",
-			"unexpected GroupVersion string: this/is/wrong",
+			"Get Server Groups Failure",
+			[]string{
+				"Checking metrics server...",
+				"Failed to get server groups: unexpected GroupVersion string: this/is/wrong",
+			},
+			unknown,
 			[]*metaV1.APIResourceList{&badArl},
 			false,
 			true,
@@ -115,24 +143,12 @@ func TestCheckMetricsServer(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
-			factory.ResetIOStream()
 			factory.SetResources(test.resources)
 			factory.SetFail.GetK8sClientset = test.failGetClient
 
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
-
-			checkMetricsServer(nil, factory, nil)
-			assert.Empty(t, in.String())
-			if !(test.failGetClient || test.failServerGroups) {
-				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errOut.String())
-			} else {
-				assert.Contains(t, errOut.String(), test.expected)
-				assert.Equal(t, "Checking metrics server...\n", out.String())
-			}
+			msgs, status := checkMetricsServer(nil, factory, nil)
+			checkOutput(t, msgs, test.expected)
+			assert.Equal(t, status, test.status)
 		})
 	}
 }
@@ -155,42 +171,63 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 
 	var tests = []struct {
 		desc                 string
-		expected             string
+		expected             []string
+		status               preflightCheckStatus
 		objects              []runtime.Object
 		failGetClientset     bool
 		failListStorageClass bool
 	}{
 		{
-			"no storage class",
-			"Check Failed - Default storage class not found.",
+			"No Storage Class",
+			[]string{
+				"Checking default storage class...",
+				"Check Failed - Default storage class not found",
+			},
+			failed,
 			[]runtime.Object{},
 			false,
 			false,
 		},
 		{
-			"default storage class",
-			"Check Passed - Default storage class foo found.",
+			"Default Storage Class",
+			[]string{
+				"Checking default storage class...",
+				"Check Passed - Default storage class foo found",
+			},
+			passed,
 			[]runtime.Object{fooSC},
 			false,
 			false,
 		},
 		{
 			"no default storage class",
-			"Check Failed - Default storage class not found.",
+			[]string{
+				"Checking default storage class...",
+				"Check Failed - Default storage class not found",
+			},
+			failed,
 			[]runtime.Object{barSC},
 			false,
 			false,
 		},
 		{
-			"failed to get clientset",
-			"failed to get k8s clientset",
+			"Failed Getting ClientSet",
+			[]string{
+				"Checking default storage class...",
+				"Failed to get k8s clientset: testing error",
+			},
+			unknown,
 			[]runtime.Object{},
 			true,
 			false,
 		},
 		{
-			"failed to list storage class",
-			"failed to list storage class",
+			"Failed GettingStorage Class",
+			[]string{
+				"Checking default storage class...",
+				"Failed to get storage classes: testing error",
+			},
+			unknown,
 			[]runtime.Object{},
 			false,
 			true,
@@ -205,14 +242,9 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
-
 			if test.failListStorageClass {
 				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
-					return true, nil, fmt.Errorf("failed to list storage class")
+					return true, nil, fmt.Errorf("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
 					clientset.StorageV1().StorageClasses().(*fakeTyped.FakeStorageClasses).Fake.PrependReactor("list", "storageclasses", failFunc)
@@ -221,17 +253,11 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			}
 
 			// Act
-			checkDefaultStorageClass(nil, factory, nil)
+			msgs, status := checkDefaultStorageClass(nil, factory, nil)
 
 			// Assert
-			assert.Empty(t, in.String())
-			if !(test.failGetClientset || test.failListStorageClass) {
-				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errOut.String())
-			} else {
-				assert.Equal(t, "Checking default storage class...\n", out.String())
-				assert.Contains(t, errOut.String(), test.expected)
-			}
+			checkOutput(t, test.expected, msgs)
+			assert.Equal(t, test.status, status)
 		})
 	}
 }
@@ -248,49 +274,74 @@ func TestCheckFluxController(t *testing.T) {
 
 	var tests = []struct {
 		desc             string
-		expected         string
+		expected         []string
+		status           preflightCheckStatus
 		objects          []runtime.Object
 		failGetClientset bool
 		failListPods     bool
 	}{
 		{
-			"no helm controller pod",
-			"Check Failed - flux helm-controller pod not found in flux-system namespace.",
+			"No Helm Controller",
+			[]string{
+				"Checking flux installation...",
+				"Check Failed - flux helm-controller pod not found in flux-system namespace",
+			},
+			failed,
 			[]runtime.Object{},
 			false,
 			false,
 		},
 		{
-			"no kustomize controller pod",
-			"Check Failed - flux kustomize-controller pod not found in flux-system namespace.",
+			"No Kustomize Controller",
+			[]string{
+				"Checking flux installation...",
+				"Check Failed - flux kustomize-controller pod not found in flux-system namespace",
+			},
+			failed,
 			[]runtime.Object{hcPodFailed, scPodFailed, ncPodFailed},
 			false,
 			false,
 		},
 		{
-			"failed kustomize controller pod",
-			"Check Failed - flux kustomize-controller pod not in running state.",
+			"Failing Kustomize Controller",
+			[]string{
+				"Checking flux installation...",
+				"Check Failed - flux kustomize-controller pod not in running state",
+			},
+			failed,
 			[]runtime.Object{kcPodFailed, hcPodRunning, ncPodRunning, scPodRunning},
 			false,
 			false,
 		},
 		{
-			"flux controller running",
-			"Check Passed - flux kustomize-controller pod running.",
+			"Flux Controller Running",
+			[]string{
+				"Checking flux installation...",
+				"Check Passed - flux kustomize-controller pod running",
+			},
+			passed,
 			[]runtime.Object{kcPodRunning, hcPodRunning, ncPodRunning, scPodRunning},
 			false,
 			false,
 		},
 		{
-			"failed to get clientset",
-			"failed to get k8s clientset",
+			"Failed Getting ClientSet",
+			[]string{
+				"Checking flux installation...",
+				"Failed to get k8s clientset: testing error",
+			},
+			unknown,
 			[]runtime.Object{},
 			true,
 			false,
 		},
 		{
-			"failed to list pods",
-			"failed to list pods",
+			"Failed Getting Pods",
+			[]string{
+				"Checking flux installation...",
+				"Failed to get pods: testing error",
+			},
+			unknown,
 			[]runtime.Object{},
 			false,
 			true,
@@ -301,18 +352,12 @@ func TestCheckFluxController(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
-			factory.ResetIOStream()
 			factory.SetObjects(test.objects)
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
-
 			if test.failListPods {
 				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
-					return true, nil, fmt.Errorf("failed to list pods")
+					return true, nil, fmt.Errorf("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
 					clientset.CoreV1().Pods("flux-system").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", failFunc)
@@ -321,17 +366,11 @@ func TestCheckFluxController(t *testing.T) {
 			}
 
 			// Act
-			checkFluxController(nil, factory, nil)
+			msgs, status := checkFluxController(nil, factory, nil)
 
 			// Assert
-			assert.Empty(t, in.String())
-			if !(test.failGetClientset || test.failListPods) {
-				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errOut.String())
-			} else {
-				assert.Equal(t, "Checking flux installation...\n", out.String())
-				assert.Contains(t, errOut.String(), test.expected)
-			}
+			checkOutput(t, test.expected, msgs)
+			assert.Equal(t, test.status, status)
 		})
 	}
 }
@@ -358,152 +397,132 @@ func TestCheckSystemParameters(t *testing.T) {
 	}
 	var tests = []struct {
 		desc                   string
-		expected               string
+		expected               []string
 		paramOverrides         map[string]string
-		checkFailed            bool
+		status                 preflightCheckStatus
 		failGetClientset       bool
 		failGetCommandExecutor bool
 		failDeleteNamespace    bool
-		extraExpected          []string
 	}{
 		{
 			"check failed for max_map_count (ECK)",
-			"Check Failed - vm.max_map_count needs to be at least 262144 for ECK to work.",
+			[]string{"Check Failed - vm.max_map_count needs to be at least 262144 for ECK to work. Current value 262100\n"},
 			map[string]string{"cat /proc/sys/vm/max_map_count": "262100"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check passed for max_map_count (ECK)",
-			"Check Passed - vm.max_map_count 262144 is suitable for ECK to work.",
+			[]string{"Check Passed - vm.max_map_count 262144 is suitable for ECK to work.\n"},
 			map[string]string{"cat /proc/sys/vm/max_map_count": "262144"},
-			true, // Sonarqube is higher than ECK, so this should fail
+			failed, // Sonarqube is higher than ECK, so this should fail
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check failed for max_map_count (Sonarqube)",
-			"Check Failed - vm.max_map_count needs to be at least 524288 for Sonarqube to work.",
+			[]string{"Check Failed - vm.max_map_count needs to be at least 524288 for Sonarqube to work. Current value 524280\n"},
 			map[string]string{"cat /proc/sys/vm/max_map_count": "524280"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check passed for max_map_count (Sonarqube)",
-			"Check Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.",
+			append(fullExpectedPassingOutput, "Check Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.\n"),
 			map[string]string{"cat /proc/sys/vm/max_map_count": "524288"},
+			passed,
 			false,
 			false,
 			false,
-			false,
-			[]string{},
 		},
 		{
 			"check failed for file-max (Sonarqube)",
-			"Check Failed - fs.file-max needs to be at least 131072 for Sonarqube to work.",
+			[]string{"Check Failed - fs.file-max needs to be at least 131072 for Sonarqube to work. Current value 131070\n"},
 			map[string]string{"cat /proc/sys/fs/file-max": "131070"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check passed for file-max (Sonarqube)",
-			"Check Passed - fs.file-max 131074 is suitable for Sonarqube to work.",
+			append(fullExpectedPassingOutput, "Check Passed - fs.file-max 131074 is suitable for Sonarqube to work.\n"),
 			map[string]string{"cat /proc/sys/fs/file-max": "131074"},
+			passed,
 			false,
 			false,
 			false,
-			false,
-			[]string{},
 		},
 		{
 			"check failed for ulimit -n (Sonarqube)",
-			"Check Failed - ulimit -n needs to be at least 131072 for Sonarqube to work.",
+			[]string{"Check Failed - ulimit -n needs to be at least 131072 for Sonarqube to work. Current value 131070\n"},
 			map[string]string{"ulimit -n": "131070"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check passed for ulimit -n (Sonarqube) unlimited",
-			"Check Passed - ulimit -n unlimited is suitable for Sonarqube to work.",
+			append(fullExpectedPassingOutput, "Check Passed - ulimit -n unlimited is suitable for Sonarqube to work.\n"),
 			map[string]string{"ulimit -n": "unlimited"},
+			passed,
 			false,
 			false,
 			false,
-			false,
-			[]string{},
 		},
 		{
 			"check failed for ulimit -n (Sonarqube) unknown",
-			"Check Undetermined - ulimit -n needs to be at least 131072 for Sonarqube to work. Current value unknown",
+			[]string{"Check Undetermined - ulimit -n needs to be at least 131072 for Sonarqube to work. Current value unknown\n"},
 			map[string]string{"ulimit -n": "unknown"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check failed for ulimit -u (Sonarqube)",
-			"Check Failed - ulimit -u needs to be at least 8192 for Sonarqube to work.",
+			[]string{"Check Failed - ulimit -u needs to be at least 8192 for Sonarqube to work. Current value 8190\n"},
 			map[string]string{"ulimit -u": "8190"},
-			true,
+			failed,
 			false,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"check passed for ulimit -u (Sonarqube)",
-			"Check Passed - ulimit -u 8192 is suitable for Sonarqube to work.",
+			append(fullExpectedPassingOutput, "Check Passed - ulimit -u 8192 is suitable for Sonarqube to work.\n"),
 			map[string]string{"ulimit -u": "8192"},
+			passed,
 			false,
 			false,
 			false,
-			false,
-			[]string{},
 		},
 		{
 			"failed to get clientset",
-			"failed to get k8s clientset",
+			[]string{"Failed to create resources for command execution: testing error"},
 			map[string]string{},
-			false,
+			unknown,
 			true,
 			false,
 			false,
-			[]string{},
 		},
 		{
 			"failed to get command executor",
-			"failed to get command executor",
+			[]string{"Failed to get command executor: testing error"},
 			map[string]string{},
-			false,
+			unknown,
 			false,
 			true,
 			false,
-			fullExpectedPassingOutput,
 		},
 		{
 			"failed to delete namespace",
-			"namespaces \"preflight-check\" not found",
-			map[string]string{},
-			false,
-			false,
-			false,
-			true,
 			[]string{
 				"Creating namespace for command execution...",
 				"Creating registry secret for command execution...",
@@ -512,20 +531,26 @@ func TestCheckSystemParameters(t *testing.T) {
 				"Checking system parameters...",
 				"Checking vm.max_map_count",
 				"vm.max_map_count = 524288",
-				"Check Passed - vm.max_map_count 524288 is suitable for ECK to work.",
+				"Check Passed - vm.max_map_count 524288 is suitable for ECK to work.\n",
 				"vm.max_map_count = 524288",
-				"Check Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.",
+				"Check Passed - vm.max_map_count 524288 is suitable for Sonarqube to work.\n",
 				"Checking fs.file-max",
 				"fs.file-max = 131072",
-				"Check Passed - fs.file-max 131072 is suitable for Sonarqube to work.",
+				"Check Passed - fs.file-max 131072 is suitable for Sonarqube to work.\n",
 				"Checking ulimit -n",
 				"ulimit -n = 131072",
-				"Check Passed - ulimit -n 131072 is suitable for Sonarqube to work.",
+				"Check Passed - ulimit -n 131072 is suitable for Sonarqube to work.\n",
 				"Checking ulimit -u",
 				"ulimit -u = 8192",
-				"Check Passed - ulimit -u 8192 is suitable for Sonarqube to work.",
+				"Check Passed - ulimit -u 8192 is suitable for Sonarqube to work.\n",
 				"Deleting namespace for command execution...",
+				"Error occurred when deleting system parameter check resources: namespaces \"preflight-check\" not found",
 			},
+			map[string]string{},
+			unknown,
+			false,
+			false,
+			true,
 		},
 	}
 
@@ -551,6 +576,7 @@ func TestCheckSystemParameters(t *testing.T) {
 
 			config, configErr := configClient.GetConfig()
 			assert.NoError(t, configErr)
+			config.OutputConfiguration.Format = "text"
 			config.PreflightCheckConfiguration.RegistryServer = "registry.foo"
 			config.PreflightCheckConfiguration.RegistryUsername = "user"
 			config.PreflightCheckConfiguration.RegistryPassword = "pass"
@@ -565,11 +591,6 @@ func TestCheckSystemParameters(t *testing.T) {
 			factory.SetFail.GetCommandExecutor = test.failGetCommandExecutor
 			modifiedParams := make(map[string]string)
 
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
-
 		CHECK_DEFAULTS:
 			for dk, dv := range defaultPassingParams {
 				for ok, ov := range test.paramOverrides {
@@ -583,25 +604,11 @@ func TestCheckSystemParameters(t *testing.T) {
 			executor.CommandResult = modifiedParams
 
 			// Act
-			status := checkSystemParameters(command, factory, config)
+			msgs, status := checkSystemParameters(command, factory, config)
 
 			// Assert
-			assert.Empty(t, in.String())
-			if !(test.failGetClientset || test.failGetCommandExecutor || test.failDeleteNamespace) {
-				assert.Contains(t, out.String(), test.expected)
-				assert.Empty(t, errOut.String())
-				if test.checkFailed {
-					assert.Equal(t, failed, status)
-				} else {
-					assert.Equal(t, passed, status)
-				}
-			} else {
-				for _, line := range test.extraExpected {
-					assert.Contains(t, out.String(), line)
-				}
-				assert.Contains(t, errOut.String(), test.expected)
-				assert.Equal(t, unknown, status)
-			}
+			checkOutput(t, test.expected, msgs)
+			assert.Equal(t, test.status, status)
 		})
 	}
 }
@@ -681,8 +688,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 	}
 	tests := []struct {
 		desc                 string
-		expectedOut          string
-		expectedErrOut       string
+		expectedOut          []string
 		failGetClientset     bool
 		failCreateNamespace  bool
 		failCreateSecret     bool
@@ -691,12 +697,15 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 		failDeleteNamespace  bool
 		failTimeoutNamespace bool
 		failCreatePod        bool
-		errorString          string
 	}{
 		{
 			"success",
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\nCreating job for command execution...\nWaiting for job preflightcheck to be ready...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"Creating job for command execution...",
+				"Waiting for job preflightcheck to be ready...",
+			},
 			false,
 			false,
 			false,
@@ -705,12 +714,12 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"",
 		},
 		{
 			"failed to get clientset",
-			"",
-			"",
+			[]string{
+				"testing error",
+			},
 			true,
 			false,
 			false,
@@ -719,12 +728,13 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"failed to get k8s clientset",
 		},
 		{
 			"failed to create namespace",
-			"Creating namespace for command execution...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"failed to create namespace",
+			},
 			false,
 			true,
 			false,
@@ -733,12 +743,14 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"failed to create namespace",
 		},
 		{
 			"failed to create secret",
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"***Invalid registry credentials provided. Ensure the registry server, username, and password values are all set!***",
+			},
 			false,
 			false,
 			true,
@@ -747,12 +759,16 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"\n***Invalid registry credentials provided. Ensure the registry server, username, and password values are all set!***",
 		},
 		{
 			"failed to get pod",
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\nCreating job for command execution...\nWaiting for job preflightcheck to be ready...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"Creating job for command execution...",
+				"Waiting for job preflightcheck to be ready...",
+				"Failed to fetch preflightcheck pod status: failed to get pod",
+			},
 			false,
 			false,
 			false,
@@ -761,12 +777,16 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"failed to get pod",
 		},
 		{
 			"failed to timeout pod",
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\nCreating job for command execution...\nWaiting for job preflightcheck to be ready...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"Creating job for command execution...",
+				"Waiting for job preflightcheck to be ready...",
+				"Timeout waiting for command execution job to be ready",
+			},
 			false,
 			false,
 			false,
@@ -775,12 +795,14 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			false,
-			"timeout waiting for command execution job to be ready",
 		},
 		{
 			"failed to delete namespace",
-			"Creating namespace for command execution...\nNamespace preflight-check already exists... It will be recreated\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Namespace preflight-check already exists... It will be recreated",
+				"namespaces \"preflight-check\" not found",
+			},
 			false,
 			false,
 			false,
@@ -789,12 +811,14 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			true,
 			false,
 			false,
-			"namespaces \"preflight-check\" not found",
 		},
 		{
 			"failed to timeout namespace",
-			"Creating namespace for command execution...\nNamespace preflight-check already exists... It will be recreated\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Namespace preflight-check already exists... It will be recreated",
+				"namespaces \"preflight-check\" already exists",
+			},
 			false,
 			false,
 			false,
@@ -803,12 +827,15 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			true,
 			false,
-			"namespaces \"preflight-check\" already exists",
 		},
 		{
 			"failed to create pod",
-			"Creating namespace for command execution...\nCreating registry secret for command execution...\nCreating job for command execution...\n",
-			"",
+			[]string{
+				"Creating namespace for command execution...",
+				"Creating registry secret for command execution...",
+				"Creating job for command execution...",
+				"Failed to create preflightcheck job: failed to create pod",
+			},
 			false,
 			false,
 			false,
@@ -817,7 +844,6 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			false,
 			false,
 			true,
-			"failed to create pod",
 		},
 	}
 
@@ -828,10 +854,6 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
 
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 			config := &schemas.GlobalConfiguration{}
@@ -905,12 +927,10 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 
 			// Act
-			pod, err := createResourcesForCommandExecution(command, factory, config)
+			pod, msgs, err := createResourcesForCommandExecution(command, factory, config)
 
 			// Assert
-			assert.Empty(t, in.String())
-			assert.Equal(t, test.expectedOut, out.String())
-			assert.Equal(t, test.expectedErrOut, errOut.String())
+			checkOutput(t, test.expectedOut, msgs)
 			if !(test.failGetClientset || test.failCreateNamespace || test.failCreateSecret || test.failGetPod || test.failTimeoutPod || test.failDeleteNamespace || test.failTimeoutNamespace || test.failCreatePod) {
 				assert.NoError(t, err)
 				assert.NotNil(t, pod)
@@ -918,7 +938,6 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			} else {
 				// do more testing on these
 				assert.Error(t, err)
-				assert.Equal(t, test.errorString, err.Error())
 				assert.Nil(t, pod)
 			}
 			if test.failTimeoutNamespace || test.failTimeoutPod {
@@ -935,20 +954,14 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 func TestDeleteResourcesForCommandExecution(t *testing.T) {
 	tests := []struct {
 		desc             string
-		expectedOut      string
-		expectedErrOut   string
 		failGetClientset bool
 	}{
 		{
 			"success",
-			"Deleting namespace for command execution...\n",
-			"",
 			false,
 		},
 		{
 			"failed to get clientset",
-			"",
-			"",
 			true,
 		},
 	}
@@ -958,12 +971,6 @@ func TestDeleteResourcesForCommandExecution(t *testing.T) {
 			// Arrange
 			command := &cobra.Command{}
 			factory := bbTestUtil.GetFakeFactory()
-			factory.ResetIOStream()
-			streams, _ := factory.GetIOStream()
-			in := streams.In.(*bytes.Buffer)
-			out := streams.Out.(*bytes.Buffer)
-			errOut := streams.ErrOut.(*bytes.Buffer)
-
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 			if !test.failGetClientset {
 				factory.SetObjects([]runtime.Object{ns("preflight-check", coreV1.NamespaceActive)})
@@ -973,22 +980,88 @@ func TestDeleteResourcesForCommandExecution(t *testing.T) {
 			err := deleteResourcesForCommandExecution(command, factory)
 
 			// Assert
-			assert.Empty(t, in.String())
-			assert.Equal(t, test.expectedOut, out.String())
-			assert.Equal(t, test.expectedErrOut, errOut.String())
 			if !test.failGetClientset {
 				assert.NoError(t, err)
 			} else {
 				assert.Error(t, err)
-				assert.Equal(t, "failed to get k8s clientset", err.Error())
+				assert.Equal(t, "testing error", err.Error())
 			}
 		})
 	}
 }
 
-// all of execCommandInPod is tested in check system parameters test
+func makeOutputSummary(checks []preflightCheck, format output.OutputFormat) string {
+	steps := []outputSchemas.CheckStepOutput{}
+
+	for _, value := range checks {
+		message := "System Error Occured - Execute command again to retry"
+		if value.status == passed {
+			message = value.successMessage
+		} else if value.status == failed {
+			message = value.failureMessage
+		}
+		steps = append(steps, outputSchemas.CheckStepOutput{
+			Name:   value.desc,
+			Output: []string{message},
+			Status: string(value.status),
+		})
+	}
+	summary := &outputSchemas.PreflightCheckOutput{
+		Name:  "Preflight Check Summary",
+		Steps: steps,
+	}
+
+	result := ""
+	switch format {
+	case output.TEXT:
+		byteSummary, _ := summary.MarshalHumanReadable()
+		result = string(byteSummary) + "\n"
+	case output.JSON:
+		byteSummary, _ := summary.MarshalJson()
+		result = string(byteSummary)
+	case output.YAML:
+		byteSummary, _ := summary.MarshalYaml()
+		result = string(byteSummary)
+	}
+	return result
+}
+
+func fakeCheckFn(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	return []string{}, passed
+}
+
+func getFakeChecks(status1 preflightCheckStatus, status2 preflightCheckStatus, status3 preflightCheckStatus) []preflightCheck {
+	return []preflightCheck{
+		{
+			desc:           "Check 1",
+			function:       fakeCheckFn,
+			status:         status1,
+			failureMessage: "Check 1 Failed",
+			successMessage: "Check 1 Passed",
+		},
+		{
+			desc:           "Check 2",
+			function:       fakeCheckFn,
+			status:         status2,
+			failureMessage: "Check 2 Failed",
+			successMessage: "Check 2 Passed",
+		},
+		{
+			desc:           "Check 3",
+			function:       fakeCheckFn,
+			status:         status3,
+			failureMessage: "Check 3 Failed",
+			successMessage: "Check 3 Passed",
+		},
+	}
+}
 
 func TestPrintPreflightCheckSummary(t *testing.T) {
+	allPassed := getFakeChecks(passed, passed, passed)
+	allFailed := getFakeChecks(failed, failed, failed)
+	allUnknown := getFakeChecks(unknown, unknown, unknown)
+	allMixed := getFakeChecks(passed, failed, unknown)
+
 	tests := []struct {
 		desc              string
 		expected          string
@@ -997,137 +1070,35 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 	}{
 		{
 			"all passed",
-			"\n\nPreflight Check Summary\n\nCheck 1 ...\nCheck 1 Failed\n\nCheck 2 ...\nCheck 2 Failed\n\nCheck 3 ...\nCheck 3 Failed\n\n",
-			[]preflightCheck{
-				{
-					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return passed
-					},
-					failureMessage: "Check 1 Failed",
-					successMessage: "Check 1 Passed",
-				},
-				{
-					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return passed
-					},
-					failureMessage: "Check 2 Failed",
-					successMessage: "Check 2 Passed",
-				},
-				{
-					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return passed
-					},
-					failureMessage: "Check 3 Failed",
-					successMessage: "Check 3 Passed",
-				},
-			},
+			makeOutputSummary(allPassed, output.TEXT),
+			allPassed,
 			false,
 		},
 		{
 			"all failed",
-			"\n\nPreflight Check Summary\n\nCheck 1 ...\nCheck 1 Failed\n\nCheck 2 ...\nCheck 2 Failed\n\nCheck 3 ...\nCheck 3 Failed\n\n",
-			[]preflightCheck{
-				{
-					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return failed
-					},
-					failureMessage: "Check 1 Failed",
-					successMessage: "Check 1 Passed",
-				},
-				{
-					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return failed
-					},
-					failureMessage: "Check 2 Failed",
-					successMessage: "Check 2 Passed",
-				},
-				{
-					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return failed
-					},
-					failureMessage: "Check 3 Failed",
-					successMessage: "Check 3 Passed",
-				},
-			},
+			makeOutputSummary(allFailed, output.TEXT),
+			allFailed,
 			false,
 		},
 		{
 			"all unknown",
-			"\n\nPreflight Check Summary\n\nCheck 1 ...\nCheck 1 Failed\n\nCheck 2 ...\nCheck 2 Failed\n\nCheck 3 ...\nCheck 3 Failed\n\n",
-			[]preflightCheck{
-				{
-					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return unknown
-					},
-					failureMessage: "Check 1 Failed",
-					successMessage: "Check 1 Passed",
-				},
-				{
-					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return unknown
-					},
-					failureMessage: "Check 2 Failed",
-					successMessage: "Check 2 Passed",
-				},
-				{
-					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return unknown
-					},
-					failureMessage: "Check 3 Failed",
-					successMessage: "Check 3 Passed",
-				},
-			},
+			makeOutputSummary(allUnknown, output.TEXT),
+			allUnknown,
 			false,
 		},
 		{
 			"mixed",
-			"\n\nPreflight Check Summary\n\nCheck 1 ...\nCheck 1 Failed\n\nCheck 2 ...\nCheck 2 Failed\n\nCheck 3 ...\nCheck 3 Failed\n\n",
-			[]preflightCheck{
-				{
-					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return passed
-					},
-					failureMessage: "Check 1 Failed",
-					successMessage: "Check 1 Passed",
-				},
-				{
-					desc: "Check 2",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return failed
-					},
-					failureMessage: "Check 2 Failed",
-					successMessage: "Check 2 Passed",
-				},
-				{
-					desc: "Check 3",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return unknown
-					},
-					failureMessage: "Check 3 Failed",
-					successMessage: "Check 3 Passed",
-				},
-			},
+			makeOutputSummary(allMixed, output.TEXT),
+			allMixed,
 			false,
 		},
 		{
 			"failed to write output",
-			"FakeWriter intentionally errored\nFakeWriter intentionally errored",
+			"failed to create preflight check output: unable to write human-readable output: FakeWriter intentionally errored",
 			[]preflightCheck{
 				{
-					desc: "Check 1",
-					function: func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-						return passed
-					},
+					desc:           "Check 1",
+					function:       fakeCheckFn,
 					failureMessage: "Check 1 Failed",
 					successMessage: "Check 1 Passed",
 				},
@@ -1141,6 +1112,10 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "/tmp")
+			v.Set("output-config.format", "text")
+
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
@@ -1151,7 +1126,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			}
 
 			// Act
-			err := printPreflightCheckSummary(factory, test.checks)
+			err := printPreflightCheckSummary(nil, factory, test.checks)
 
 			// Assert
 			assert.Empty(t, in.String())
@@ -1169,16 +1144,16 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 }
 
 func TestPreflightCheck(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return passed
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return failed
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return unknown
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, unknown
 	}
 
 	var tests = []struct {
@@ -1189,7 +1164,7 @@ func TestPreflightCheck(t *testing.T) {
 		{
 			desc: "Check Failure",
 			expected: []string{
-				"Foo Service Check Failed",
+				"Status: Failed",
 				"Foo Service Down",
 			},
 			check: preflightCheck{
@@ -1202,7 +1177,7 @@ func TestPreflightCheck(t *testing.T) {
 		{
 			desc: "Check Success",
 			expected: []string{
-				"Foo Service Check Passed",
+				"Status: Passed",
 				"Foo Service Up",
 			},
 			check: preflightCheck{
@@ -1215,7 +1190,7 @@ func TestPreflightCheck(t *testing.T) {
 		{
 			desc: "Check Error",
 			expected: []string{
-				"Foo Service Check Unknown",
+				"Status: Unknown",
 				"System Error",
 			},
 			check: preflightCheck{
@@ -1234,6 +1209,7 @@ func TestPreflightCheck(t *testing.T) {
 	buf := streams.Out.(*bytes.Buffer)
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "/tmp")
+	v.Set("output-config.format", "text")
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
@@ -1249,16 +1225,16 @@ func TestPreflightCheck(t *testing.T) {
 }
 
 func TestPreflightCheckCmd(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return passed
+	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return failed
+	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) preflightCheckStatus {
-		return unknown
+	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+		return []string{}, unknown
 	}
 
 	preflightChecks = []preflightCheck{
@@ -1289,17 +1265,18 @@ func TestPreflightCheckCmd(t *testing.T) {
 	buf := streams.Out.(*bytes.Buffer)
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "/tmp")
+	v.Set("output-config.format", "text")
 	cmd, cmdError := NewPreflightCheckCmd(factory)
 	assert.NoError(t, cmdError)
 	err := cmd.Execute()
 	assert.NoError(t, err)
 	output := buf.String()
-	assert.Contains(t, output, "Foo Service Check Failed")
+	assert.Contains(t, output, "Status: Failed")
 	assert.Contains(t, output, "Foo Service Down")
-	assert.Contains(t, output, "Bar Service Check Passed")
+	assert.Contains(t, output, "Status: Passed")
 	assert.Contains(t, output, "Bar Service Up")
-	assert.Contains(t, output, "Hello Service Check Unknown")
-	assert.Contains(t, output, "System Error - Execute command again to run Hello Service Check")
+	assert.Contains(t, output, "Status: Unknown")
+	assert.Contains(t, output, "System Error Occured - Execute command again to retry")
 }
 
 func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
@@ -1308,13 +1285,14 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	factory.SetObjects([]runtime.Object{})
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "/tmp")
+	v.Set("output-config.format", "text")
 	factory.SetFail.GetConfigClient = true
 	// Act
 	cmd, cmdError := NewPreflightCheckCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, cmdError)
-	if !assert.Contains(t, cmdError.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, cmdError.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", cmdError.Error())
 	}
 }
@@ -1350,6 +1328,7 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	factory.SetObjects([]runtime.Object{})
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "/tmp")
+	v.Set("output-config.format", "text")
 	cmd, _ := NewPreflightCheckCmd(factory)
 	// Act
 	factory.SetFail.GetConfigClient = true
@@ -1357,7 +1336,50 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestOutputFormatting(t *testing.T) {
+	checks := getFakeChecks(passed, failed, unknown)
+	var tests = []struct {
+		desc     string
+		format   output.OutputFormat
+		expected string
+	}{
+		{
+			desc:     "TEXT Format",
+			format:   output.TEXT,
+			expected: makeOutputSummary(checks, output.TEXT),
+		},
+		{
+			desc:     "JSON Format",
+			format:   output.JSON,
+			expected: makeOutputSummary(checks, output.JSON),
+		},
+		{
+			desc:     "YAML Format",
+			format:   output.YAML,
+			expected: makeOutputSummary(checks, output.YAML),
+		},
+	}
+
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	factory.SetObjects([]runtime.Object{})
+	streams, _ := factory.GetIOStream()
+	buf := streams.Out.(*bytes.Buffer)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			v.Set("output-config.format", string(test.format))
+			err := printPreflightCheckSummary(nil, factory, checks)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, buf.String())
+			buf.Reset()
+		})
 	}
 }
