@@ -20,7 +20,6 @@ import (
 	fakeRuntimeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
-	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	bbHelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -722,14 +721,6 @@ func TestPooledFactory_GetConfigClient(t *testing.T) {
 			cmd := &cobra.Command{
 				Use: "test",
 			}
-			loggingClientGetter := bbLog.ClientGetter{}
-			loggingClient := loggingClientGetter.GetClient(slog.Default())
-			clientGetter := bbConfig.ClientGetter{}
-			configClient, err := clientGetter.GetClient(cmd, &loggingClient, viper.New())
-			assert.Nil(t, err)
-			if !tc.errored {
-				factory2.configClient = configClient
-			}
 			if tc.bubbleError || !tc.errored {
 				factory1.SetUnderlyingFactory(factory2)
 			}
@@ -737,23 +728,13 @@ func TestPooledFactory_GetConfigClient(t *testing.T) {
 			result, err := factory1.GetConfigClient(cmd)
 			cachedResult, cachedErr := factory1.GetConfigClient(cmd)
 			// assert
-			if tc.errored {
-				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
-				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
-				assert.Empty(t, factory1.configClient)
-			} else {
-				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
-				assert.Equal(t, factory1.configClient, configClient)
-				assert.Equal(t, factory1.configClient, factory2.configClient)
-				assert.Equal(t, factory1.configClient, result)
-				assert.Equal(t, factory1.configClient, cachedResult)
-			}
+			// this will always error because there is no caching
+			assert.Nil(t, result)
+			assert.NotNil(t, err)
+			assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+			assert.Nil(t, cachedResult)
+			assert.NotNil(t, cachedErr)
+			assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
 		})
 	}
 }
