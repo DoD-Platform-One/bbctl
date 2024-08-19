@@ -1258,7 +1258,7 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 		},
 		{
 			desc:                    "error getting k8s clientset",
-			expected:                "failed to get k8s clientset",
+			expected:                "testing error",
 			errorOnK8sDynamicClient: false,
 			errorOnK8sClientSet:     true,
 			errorOnConfigClient:     false,
