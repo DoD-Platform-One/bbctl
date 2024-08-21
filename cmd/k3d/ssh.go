@@ -45,11 +45,11 @@ func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("unable to get config client: %w", err)
 	}
 	// make sure to sync this default with the one in the configuration schema
-	err = configClient.SetAndBindFlag("ssh-username", "ubuntu", "Username to use for SSH connection")
+	err = configClient.SetAndBindFlag("ssh-username", "", "ubuntu", "Username to use for SSH connection")
 	if err != nil {
 		return nil, fmt.Errorf("unable to bind flags: %w", err)
 	}
-	err = configClient.SetAndBindFlag("dry-run", false, "Print command but don't actually establish an SSH connection")
+	err = configClient.SetAndBindFlag("dry-run", "", false, "Print command but don't actually establish an SSH connection")
 	if err != nil {
 		return nil, fmt.Errorf("unable to bind flags: %w", err)
 	}

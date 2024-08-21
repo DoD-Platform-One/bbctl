@@ -50,6 +50,7 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	flagError := configClient.SetAndBindFlag(
 		"client",
+		"",
 		false,
 		"Print the bbctl client version only",
 	)

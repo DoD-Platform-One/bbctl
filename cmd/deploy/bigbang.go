@@ -54,6 +54,7 @@ func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	k3dFlagError := configClient.SetAndBindFlag(
 		"k3d",
+		"",
 		false,
 		"Include some boilerplate suitable for deploying into k3d",
 	)
@@ -63,6 +64,7 @@ func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	addOnFlagError := configClient.SetAndBindFlag(
 		"addon",
+		"",
 		[]string(nil),
 		"Enable this Big Bang addon in the deployment",
 	)

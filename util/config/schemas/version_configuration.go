@@ -5,6 +5,9 @@ import "github.com/spf13/viper"
 type VersionConfiguration struct {
 	// Gatekeeper: if true, check gatekeeper
 	Client bool `mapstructure:"client" yaml:"client"`
+
+	// AllCharts tells the version command to print the currently deployed release version for Big Bang and all it's components
+	AllCharts bool `mapstructure:"all-charts" yaml:"all-charts"`
 }
 
 // ReconcileConfiguration reconciles the configuration.

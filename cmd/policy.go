@@ -81,12 +81,12 @@ func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Unable to get config client: %v", clientError)
 	}
 
-	gatekeeperError := configClient.SetAndBindFlag("gatekeeper", false, "Print gatekeeper policy")
+	gatekeeperError := configClient.SetAndBindFlag("gatekeeper", "", false, "Print gatekeeper policy")
 	if gatekeeperError != nil {
 		return nil, fmt.Errorf("Unable to add flags to command: %v", gatekeeperError)
 	}
 
-	kyvernoError := configClient.SetAndBindFlag("kyverno", false, "Print kyverno policy")
+	kyvernoError := configClient.SetAndBindFlag("kyverno", "", false, "Print kyverno policy")
 	if kyvernoError != nil {
 		return nil, fmt.Errorf("Unable to add flags to command: %v", kyvernoError)
 	}

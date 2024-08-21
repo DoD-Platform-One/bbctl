@@ -201,6 +201,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	registryServerError := configClient.SetAndBindFlag(
 		"registryserver",
 		"",
+		"",
 		"Image registry server url",
 	)
 	if registryServerError != nil {
@@ -210,6 +211,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	registryUserError := configClient.SetAndBindFlag(
 		"registryusername",
 		"",
+		"",
 		"Image registry username",
 	)
 	if registryUserError != nil {
@@ -218,6 +220,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	registryPasswordError := configClient.SetAndBindFlag(
 		"registrypassword",
+		"",
 		"",
 		"Image registry password",
 	)

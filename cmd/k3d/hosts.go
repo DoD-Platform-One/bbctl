@@ -45,7 +45,7 @@ func NewHostsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("unable to get config client: %w", err)
 	}
 
-	err = configClient.SetAndBindFlag("private-ip", false, "Use the private IP instead of the public IP")
+	err = configClient.SetAndBindFlag("private-ip", "", false, "Use the private IP instead of the public IP")
 	if err != nil {
 		return nil, fmt.Errorf("unable to bind flags: %w", err)
 	}

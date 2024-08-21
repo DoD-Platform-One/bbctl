@@ -227,6 +227,7 @@ func TestSetAndBindFlag(t *testing.T) {
 	for _, tt := range tests {
 		// Arrange
 		name := "testName"
+		shortHand := "t"
 		description := "testDescription"
 		streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 		var loggingFunc = func(args ...string) {
@@ -243,7 +244,7 @@ func TestSetAndBindFlag(t *testing.T) {
 		}
 		var result interface{}
 		// Act
-		primaryErr := SetAndBindFlag(&configClient, name, tt.arg, description)
+		primaryErr := SetAndBindFlag(&configClient, name, shortHand, tt.arg, description)
 		err := v.BindPFlags(command.PersistentFlags())
 		// Assert
 		assert.NoError(t, err)
@@ -279,7 +280,7 @@ func TestSetAndBindFlagFail(t *testing.T) {
 		loggingClient: &loggingClient,
 	}
 	// Act
-	err := SetAndBindFlag(&configClient, "test", map[string]interface{}{"test": "test"}, "test")
+	err := SetAndBindFlag(&configClient, "test", "", map[string]interface{}{"test": "test"}, "test")
 	// Assert
 	assert.Error(t, err)
 	assert.Empty(t, in.String())
