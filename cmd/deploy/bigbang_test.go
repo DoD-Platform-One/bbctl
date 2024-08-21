@@ -3,12 +3,15 @@ package deploy
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -27,67 +30,179 @@ func TestBigBang_NewDeployBigBangCmd_MissingBigBangRepo(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "")
+	v.Set("output-config.format", "yaml")
+
 	// Act
 	cmd, _ := NewDeployBigBangCmd(factory)
 	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Error:Field validation for 'BigBangRepo' failed on the 'required' tag") {
+	if !assert.Contains(
+		t,
+		err.Error(),
+		"Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+	) {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 	assert.Equal(t, "bigbang", cmd.Use)
+}
+
+func TestDeployBigBangToCluster_encodeHelmOpts(t *testing.T) {
+	expectedOutput := `Release "bigbang" has been upgraded. Happy Helming!
+NAME: bigbang
+LAST DEPLOYED: Thu Aug 15 17:28:15 2024
+NAMESPACE: bigbang
+STATUS: deployed
+REVISION: 3
+TEST SUITE: None
+NOTES: Thank you for supporting PlatformOne!
+`
+
+	parsedData := encodeHelmOpts(expectedOutput)
+
+	expectedData := outputSchema.HelmOutput{
+		Message:      `Release "bigbang" has been upgraded. Happy Helming!`,
+		Name:         "bigbang",
+		Namespace:    "bigbang",
+		LastDeployed: "Thu Aug 15 17:28:15 2024",
+		Status:       "deployed",
+		Revision:     "3",
+		TestSuite:    "None",
+		Notes:        "Thank you for supporting PlatformOne!",
+	}
+
+	assert.Equal(t, expectedData, parsedData)
 }
 
 func TestBigBang_NewDeployBigBangCmd_WithK3d(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
+	factory.ResetPipe()
+
+	// Create the pipe using the factory
+	err := factory.CreatePipe()
+	assert.Nil(t, err)
+
+	// Get the pipe reader and writer
+	r, w := factory.GetPipe()
+
 	streams, _ := factory.GetIOStream()
-	in := streams.In.(*bytes.Buffer)
-	out := streams.Out.(*bytes.Buffer)
+	streams.In = r
+	streams.Out = w
+
+	out := new(bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
+
 	bigBangRepoLocation := "/tmp/big-bang"
 	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", bigBangRepoLocation)
-	expectedCmdString := fmt.Sprintf("Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= -f %[1]v/chart/ingress-certs.yaml -f %[1]v/docs/assets/configs/example/policy-overrides-k3d.yaml \n", bigBangRepoLocation)
-	// Act
-	cmd, _ := NewDeployBigBangCmd(factory)
+	v.Set("output-config.format", "yaml")
+	expectedOutput := fmt.Sprintf(
+		"message: 'Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  -f %[1]v/chart/ingress-certs.yaml -f %[1]v/docs/assets/configs/example/policy-overrides-k3d.yaml '\nname: \"\"\nlastdeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestsuite: \"\"\nnotes: \"\"\n",
+		bigBangRepoLocation,
+	)
+
+	cmd, err := NewDeployBigBangCmd(factory)
+	assert.Nil(t, err)
+
 	cmd.SetArgs([]string{"--k3d"})
-	assert.Nil(t, cmd.Execute())
+
+	// Use a WaitGroup to synchronize the goroutine
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		err = cmd.Execute()
+		assert.Nil(t, err)
+
+		// Close the writer to signal the end of input
+		w.Close()
+	}()
+
+	// Read the output from the pipe in the main goroutine
+	io.Copy(out, r)
+
+	// Wait for the goroutine to finish
+	wg.Wait()
+
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "bigbang", cmd.Use)
 	assert.Empty(t, errOut.String())
-	assert.Empty(t, in.String())
-	assert.Equal(t, expectedCmdString, out.String())
+
+	// Check the output
+	output := out.String()
+
+	assert.Equal(t, expectedOutput, output)
 }
 
 func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
+	factory.ResetPipe()
+
+	// Create the pipe using the factory
+	err := factory.CreatePipe()
+	assert.Nil(t, err)
+
+	// Get the pipe reader and writer
+	r, w := factory.GetPipe()
+
 	streams, _ := factory.GetIOStream()
-	in := streams.In.(*bytes.Buffer)
-	out := streams.Out.(*bytes.Buffer)
+	streams.In = r
+	streams.Out = w
+
+	out := new(bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
+
 	bigBangRepoLocation := "/tmp/big-bang"
 	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", bigBangRepoLocation)
-	// note that the order of the components is reversed
-	expectedCmdString := fmt.Sprintf("Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \n", bigBangRepoLocation)
-	// Act
-	cmd, _ := NewDeployBigBangCmd(factory)
+	v.Set("output-config.format", "yaml")
+	expectedOutput := fmt.Sprintf(
+		"message: 'Running command: helm upgrade -i bigbang %[1]v/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastdeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestsuite: \"\"\nnotes: \"\"\n",
+		bigBangRepoLocation,
+	)
+
+	cmd, err := NewDeployBigBangCmd(factory)
+	assert.Nil(t, err)
+
 	cmd.SetArgs([]string{"--addon=foo,bar", "--addon=baz"})
-	assert.Nil(t, cmd.Execute())
+
+	// Use a WaitGroup to synchronize the goroutine
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		err = cmd.Execute()
+		assert.Nil(t, err)
+
+		// Close the writer to signal the end of input
+		w.Close()
+	}()
+
+	// Read the output from the pipe in the main goroutine
+	io.Copy(out, r)
+
+	// Wait for the goroutine to finish
+	wg.Wait()
+
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "bigbang", cmd.Use)
 	assert.Empty(t, errOut.String())
-	assert.Empty(t, in.String())
-	assert.Equal(t, expectedCmdString, out.String())
+
+	// Check the output
+	output := out.String()
+
+	assert.Equal(t, expectedOutput, output)
 }
 
 func TestGetBigBangCmdConfigClientError(t *testing.T) {
@@ -97,6 +212,8 @@ func TestGetBigBangCmdConfigClientError(t *testing.T) {
 	bigBangRepoLocation := "/tmp/big-bang"
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", bigBangRepoLocation)
+	v.Set("output-config.format", "yaml")
+
 	factory.SetFail.GetConfigClient = true
 	// Act
 	cmd, err := NewDeployBigBangCmd(factory)
@@ -107,6 +224,7 @@ func TestGetBigBangCmdConfigClientError(t *testing.T) {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
+
 func TestDeployBigBangConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()

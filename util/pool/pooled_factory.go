@@ -3,6 +3,7 @@ package pool
 import (
 	"io"
 	"log/slog"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -48,6 +49,9 @@ type PooledFactory struct {
 	istioClientSets   istioClientsetPool
 	viper             *viper.Viper
 	ioStream          *genericIOOptions.IOStreams
+
+	pipeReader *os.File
+	pipeWriter *os.File
 }
 
 // NewPooledFactory returns a new pooled factory
@@ -235,7 +239,14 @@ func (pf *PooledFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 // GetCommandExecutor returns the command executor
 //
 // Not pooled (pass-through)
-func (pf *PooledFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
+func (pf *PooledFactory) GetCommandExecutor(
+	cmd *cobra.Command,
+	pod *coreV1.Pod,
+	container string,
+	command []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) (remoteCommand.Executor, error) {
 	if pf.underlyingFactory == nil {
 		return nil, &ErrFactoryNotInitialized{}
 	}
@@ -262,7 +273,10 @@ func (pf *PooledFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) 
 // GetCommandWrapper returns the command wrapper
 //
 // Not pooled (pass-through)
-func (pf *PooledFactory) GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error) {
+func (pf *PooledFactory) GetCommandWrapper(
+	name string,
+	args ...string,
+) (*bbUtilApiWrappers.Command, error) {
 	if pf.underlyingFactory == nil {
 		return nil, &ErrFactoryNotInitialized{}
 	}
@@ -272,7 +286,9 @@ func (pf *PooledFactory) GetCommandWrapper(name string, args ...string) (*bbUtil
 // GetIstioClientSet returns the Istio clientset
 //
 // Pooled by cfg
-func (pf *PooledFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
+func (pf *PooledFactory) GetIstioClientSet(
+	cfg *rest.Config,
+) (bbUtilApiWrappers.IstioClientset, error) {
 	if contains, client := pf.istioClientSets.contains(cfg); contains {
 		return client, nil
 	}
@@ -341,4 +357,37 @@ func (pf *PooledFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 		pf.ioStream = client
 	}
 	return client, err
+}
+
+// CreatePipe initializes the pipe if not already created
+func (pf *PooledFactory) CreatePipe() error {
+	if pf.pipeReader != nil && pf.pipeWriter != nil {
+		return nil
+	}
+
+	if pf.underlyingFactory == nil {
+		return &ErrFactoryNotInitialized{}
+	}
+
+	err := pf.underlyingFactory.CreatePipe()
+	if err != nil {
+		return err
+	}
+
+	r, w := pf.underlyingFactory.GetPipe()
+
+	pf.pipeReader = r
+	pf.pipeWriter = w
+	return nil
+}
+
+// SetPipe allows manually setting the pipe reader and writer
+func (pf *PooledFactory) SetPipe(r *os.File, w *os.File) {
+	pf.pipeReader = r
+	pf.pipeWriter = w
+}
+
+// GetPipe returns the reader and writer of the pipe
+func (pf *PooledFactory) GetPipe() (*os.File, *os.File) {
+	return pf.pipeReader, pf.pipeWriter
 }

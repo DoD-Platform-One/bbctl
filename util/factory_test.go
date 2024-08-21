@@ -35,7 +35,11 @@ func TestReadDefaultCredentialsFileMissing(t *testing.T) {
 	value, err := factory.ReadCredentialsFile("", "")
 	assert.Equal(t, "", value)
 	assert.NotNil(t, err)
-	expectedError := fmt.Sprintf("unable to read credentials file %s: open %s: no such file or directory", path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
+	expectedError := fmt.Sprintf(
+		"unable to read credentials file %s: open %s: no such file or directory",
+		path.Join(credsDir, "credentials.yaml"),
+		path.Join(credsDir, "credentials.yaml"),
+	)
 	assert.Equal(t, expectedError, err.Error())
 
 	// Cleanup
@@ -49,7 +53,10 @@ func TestReadCredentialsFile(t *testing.T) {
 	assert.Nil(t, err)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
+	viperInstance.Set(
+		"big-bang-credential-helper-credentials-file-path",
+		"./test/data/test-credentials.yaml",
+	)
 
 	// Act
 	// Test reading valid components
@@ -76,7 +83,11 @@ func TestReadCredentialsFile(t *testing.T) {
 	invalidURI, err := factory.ReadCredentialsFile("username", "invalidURI")
 	assert.Equal(t, "", invalidURI)
 	assert.NotNil(t, err)
-	assert.Equal(t, "no credentials found for invalidURI in ./test/data/test-credentials.yaml", err.Error())
+	assert.Equal(
+		t,
+		"no credentials found for invalidURI in ./test/data/test-credentials.yaml",
+		err.Error(),
+	)
 
 	// Force the viper instance to be nil to cause this to error downstream
 	factory.SetViper(nil)
@@ -84,7 +95,6 @@ func TestReadCredentialsFile(t *testing.T) {
 	assert.Empty(t, username)
 	assert.NotNil(t, err)
 	assert.Equal(t, "unable to get config client: viper instance is required", err.Error())
-
 }
 
 func TestGetCredentialHelper(t *testing.T) {
@@ -94,9 +104,12 @@ func TestGetCredentialHelper(t *testing.T) {
 	assert.Nil(t, err)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
+	viperInstance.Set(
+		"big-bang-credential-helper-credentials-file-path",
+		"./test/data/test-credentials.yaml",
+	)
 
-	var tests = []struct {
+	tests := []struct {
 		name             string
 		credentialHelper string
 		field            string
@@ -208,7 +221,15 @@ func TestGetCredentialHelperMissingFilePath(t *testing.T) {
 	assert.NotNil(t, helper)
 	assert.Empty(t, username)
 	assert.NotNil(t, err)
-	assert.Equal(t, fmt.Sprintf("unable to read credentials file: unable to read credentials file %s: open %s: no such file or directory", credsPath, credsPath), err.Error())
+	assert.Equal(
+		t,
+		fmt.Sprintf(
+			"unable to read credentials file: unable to read credentials file %s: open %s: no such file or directory",
+			credsPath,
+			credsPath,
+		),
+		err.Error(),
+	)
 
 	// Cleanup
 	os.Rename(path.Join(credsDir, "old-credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
@@ -279,7 +300,7 @@ func TestGetHelmConfig(t *testing.T) {
 	// Act
 	config, err := factory.getHelmConfig(fakeCommand, "helmconfigtest")
 	config.Log("debug") // Required to cover the closure on line 277
-	//Assert
+	// Assert
 	assert.NotNil(t, config)
 	assert.Nil(t, err)
 }
@@ -478,7 +499,14 @@ func TestGetCommandExecutor(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 	// Act
-	executor, err := factory.GetCommandExecutor(nil, pod, "foo", []string{"hello"}, &stdout, &stderr)
+	executor, err := factory.GetCommandExecutor(
+		nil,
+		pod,
+		"foo",
+		[]string{"hello"},
+		&stdout,
+		&stderr,
+	)
 	// Assert
 	assert.Nil(t, err)
 	assert.NotNil(t, executor)
@@ -514,7 +542,7 @@ func TestGetCommandExecutorBadConfig(t *testing.T) {
 func TestGetRuntimeClient(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-	var tests = []struct {
+	tests := []struct {
 		name             string
 		scheme           *runtime.Scheme
 		kubeconfig       string
@@ -627,4 +655,69 @@ func TestGetOutputClient(t *testing.T) {
 			assert.NotNil(t, outputClient.Output)
 		})
 	}
+}
+
+func TestCreatePipe(t *testing.T) {
+	// Arrange
+	factory := NewFactory(nil)
+
+	// Act
+	err := factory.CreatePipe()
+
+	// Assert
+	assert.Nil(t, err)
+
+	r, w := factory.GetPipe()
+	assert.NotNil(t, r)
+	assert.NotNil(t, w)
+
+	// Verify that the pipe works by writing to the writer and reading from the reader
+	testMessage := "Hello, Pipe!"
+	go func() {
+		w.Write([]byte(testMessage))
+		w.Close()
+	}()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r)
+	assert.Equal(t, testMessage, buf.String())
+}
+
+func TestSetPipe(t *testing.T) {
+	// Arrange
+	factory := NewFactory(nil)
+	r1, w1, err := os.Pipe()
+	assert.Nil(t, err)
+
+	// Act
+	factory.SetPipe(r1, w1)
+
+	r2, w2 := factory.GetPipe()
+
+	// Assert
+	assert.Equal(t, r1, r2)
+	assert.Equal(t, w1, w2)
+
+	// Verify that the pipe set works correctly by writing and reading
+	testMessage := "Testing SetPipe"
+	go func() {
+		w2.Write([]byte(testMessage))
+		w2.Close()
+	}()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(r2)
+	assert.Equal(t, testMessage, buf.String())
+}
+
+func TestGetPipeWithoutCreate(t *testing.T) {
+	// Arrange
+	factory := NewFactory(nil)
+
+	// Act
+	r, w := factory.GetPipe()
+
+	// Assert
+	assert.Nil(t, r)
+	assert.Nil(t, w)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 
@@ -165,6 +166,10 @@ type FakeFactory struct {
 	configClient        *bbConfig.ConfigClient
 	fakeCommandExecutor *FakeCommandExecutor
 
+	pipeReader    *os.File
+	pipeWriter    *os.File
+	OverWritePipe bool
+
 	SetFail struct {
 		GetConfigClient              bool
 		GetHelmClient                bool
@@ -209,7 +214,14 @@ func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
 	if f.SetFail.GetAWSClient {
 		return nil, fmt.Errorf("failed to get AWS client")
 	}
-	fakeClient, err := fakeAws.NewFakeClient(f.clusterIPs, &f.awsConfig, f.ec2Client, f.callerIdentity, f.stsClient, f.SetFail.AWS)
+	fakeClient, err := fakeAws.NewFakeClient(
+		f.clusterIPs,
+		&f.awsConfig,
+		f.ec2Client,
+		f.callerIdentity,
+		f.stsClient,
+		f.SetFail.AWS,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AWS client: %w", err)
 	}
@@ -231,7 +243,12 @@ func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.
 		return nil, fmt.Errorf("failed to get helm client")
 	}
 
-	return fakeHelm.NewFakeClient(f.helm.getRelease, f.helm.getList, f.helm.getValues, f.helm.releases)
+	return fakeHelm.NewFakeClient(
+		f.helm.getRelease,
+		f.helm.getList,
+		f.helm.getValues,
+		f.helm.releases,
+	)
 }
 
 // GetClientSet - get clientset
@@ -307,7 +324,10 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 	if err != nil {
 		return nil, fmt.Errorf("failed to add coreV1 to scheme: %w", err)
 	}
-	client := dynamicFake.NewSimpleDynamicClientWithCustomListKinds(scheme, f.gvrToListKind, f.objects...)
+	client := dynamicFake.NewSimpleDynamicClientWithCustomListKinds(
+		scheme,
+		f.gvrToListKind,
+		f.objects...)
 	for _, prepFunc := range f.SetFail.GetK8sDynamicClientPrepFuncs {
 		(*prepFunc)(client)
 	}
@@ -344,14 +364,20 @@ func (f *FakeFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
 
 // GetRuntimeClient - get runtime client
 func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, error) {
-
 	cb := fakeControllerClient.NewClientBuilder()
 	rc := cb.WithScheme(scheme).Build()
 	return rc, nil
 }
 
 // GetCommandExecutor - execute command in a Pod
-func (f *FakeFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
+func (f *FakeFactory) GetCommandExecutor(
+	cmd *cobra.Command,
+	pod *coreV1.Pod,
+	container string,
+	command []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) (remoteCommand.Executor, error) {
 	if f.SetFail.GetCommandExecutor {
 		return nil, fmt.Errorf("testing error")
 	}
@@ -382,7 +408,10 @@ func (f *FakeCommandExecutor) Stream(options remoteCommand.StreamOptions) error 
 }
 
 // StreamWithContext - stream command result with given context
-func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options remoteCommand.StreamOptions) error {
+func (f *FakeCommandExecutor) StreamWithContext(
+	ctx context.Context,
+	options remoteCommand.StreamOptions,
+) error {
 	stdout := options.Stdout
 	output := f.CommandResult[f.Command]
 	stdout.Write([]byte(output))
@@ -390,12 +419,17 @@ func (f *FakeCommandExecutor) StreamWithContext(ctx context.Context, options rem
 }
 
 // GetCommandWrapper - get command wrapper
-func (f *FakeFactory) GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error) {
+func (f *FakeFactory) GetCommandWrapper(
+	name string,
+	args ...string,
+) (*bbUtilApiWrappers.Command, error) {
 	return fakeApiWrappers.NewFakeCommand(name, args...), nil
 }
 
 // GetIstioClientSet - get istio clientset
-func (f *FakeFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
+func (f *FakeFactory) GetIstioClientSet(
+	cfg *rest.Config,
+) (bbUtilApiWrappers.IstioClientset, error) {
 	if f.SetFail.GetIstioClient {
 		return nil, fmt.Errorf("failed to get istio clientset")
 	}
@@ -445,8 +479,10 @@ func (f *FakeFactory) SetViper(v *viper.Viper) error {
 }
 
 // Temporary Singleton for IO Streams until implementation of bbctl #214
-var streams *genericIOOptions.IOStreams
-var oneStream sync.Once
+var (
+	streams   *genericIOOptions.IOStreams
+	oneStream sync.Once
+)
 
 // ResetIOStream resets the IOStreams singleton
 func (f *FakeFactory) ResetIOStream() {
@@ -471,4 +507,36 @@ func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 
 func (f *FakeFactory) SetIOStream(stream genericIOOptions.IOStreams) {
 	streams = &stream
+}
+
+// CreatePipe - create a pipe
+func (f *FakeFactory) CreatePipe() error {
+	if f.OverWritePipe {
+		f.SetPipe(f.pipeReader, f.pipeWriter)
+		return nil
+	}
+	r, w, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("Unable to create pipe: %w", err)
+	}
+	f.pipeReader = r
+	f.pipeWriter = w
+	return nil
+}
+
+// GetPipe - get the pipe reader and writer
+func (f *FakeFactory) GetPipe() (*os.File, *os.File) {
+	return f.pipeReader, f.pipeWriter
+}
+
+// SetPipe - set the pipe reader and writer
+func (f *FakeFactory) SetPipe(reader *os.File, writer *os.File) {
+	f.pipeReader = reader
+	f.pipeWriter = writer
+}
+
+// ResetPipe resets the pipe reader and writer to nil
+func (f *FakeFactory) ResetPipe() {
+	f.pipeReader = nil
+	f.pipeWriter = nil
 }
