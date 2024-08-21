@@ -1,15 +1,20 @@
 package deploy
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"path"
 	"slices"
+	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
 var (
@@ -17,11 +22,13 @@ var (
 
 	bigBangShort = i18n.T(`Deploy Big Bang components to your cluster`)
 
-	bigBangLong = templates.LongDesc(i18n.T(`Deploy Big Bang and optional Big Bang addons to your cluster.
+	bigBangLong = templates.LongDesc(
+		i18n.T(`Deploy Big Bang and optional Big Bang addons to your cluster.
 		This command invokes the helm command, so arguments after -- are passed to the underlying helm command.
 
 		Note: deployment of Big Bang requires Flux to have been deployed to your cluster. See "bbctl deploy flux" for more information.
-	`))
+	`),
+	)
 
 	bigBangExample = templates.Examples(i18n.T(`
 	    # Deploy Big Bang to your cluster
@@ -78,7 +85,11 @@ func getChartRelativePath(configClient *schemas.GlobalConfiguration, pathCmp ...
 	return path.Join(slices.Insert(pathCmp, 0, repoPath)...)
 }
 
-func insertHelmOptForExampleConfig(config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
+func insertHelmOptForExampleConfig(
+	config *schemas.GlobalConfiguration,
+	helmOpts []string,
+	chartName string,
+) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
@@ -93,7 +104,11 @@ func insertHelmOptForExampleConfig(config *schemas.GlobalConfiguration, helmOpts
 	)
 }
 
-func insertHelmOptForRelativeChart(config *schemas.GlobalConfiguration, helmOpts []string, chartName string) []string {
+func insertHelmOptForRelativeChart(
+	config *schemas.GlobalConfiguration,
+	helmOpts []string,
+	chartName string,
+) []string {
 	return slices.Insert(helmOpts,
 		0,
 		"-f",
@@ -118,6 +133,14 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	if configErr != nil {
 		return fmt.Errorf("error getting config: %w", configErr)
 	}
+	streams, err := factory.GetIOStream()
+	if err != nil {
+		return fmt.Errorf("Unable to create IO streams: %w", err)
+	}
+	outputClient, err := factory.GetOutputClient(command)
+	if err != nil {
+		return fmt.Errorf("Unable to create output client: %w", err)
+	}
 	credentialHelper, err := factory.GetCredentialHelper()
 	if err != nil {
 		return fmt.Errorf("unable to get credential helper: %w", err)
@@ -133,7 +156,12 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 
 	chartPath := getChartRelativePath(config, "chart")
 	helmOpts := slices.Clone(args)
-	loggingClient.Info(fmt.Sprintf("preparing to deploy Big Bang to cluster, k3d=%v", config.DeployBigBangConfiguration.K3d))
+	loggingClient.Info(
+		fmt.Sprintf(
+			"preparing to deploy Big Bang to cluster, k3d=%v",
+			config.DeployBigBangConfiguration.K3d,
+		),
+	)
 	if config.DeployBigBangConfiguration.K3d {
 		loggingClient.Info("Using k3d configuration")
 		helmOpts = insertHelmOptForExampleConfig(config, helmOpts, "policy-overrides-k3d.yaml")
@@ -161,16 +189,111 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 		fmt.Sprintf("registryCredentials.password=%v", password),
 	)
 
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return fmt.Errorf("Unable to create IO streams: %w", err)
-	}
 	cmd, err := factory.GetCommandWrapper("helm", helmOpts...)
 	if err != nil {
 		return fmt.Errorf("Unable to get command wrapper: %w", err)
 	}
+
+	// Use the factory to create the pipe
+	err = factory.CreatePipe()
+	if err != nil {
+		return fmt.Errorf("Unable to create pipe: %w", err)
+	}
+
+	r, w := factory.GetPipe()
+
+	streams.In = r
+	streams.Out = w
+
+	// Redirect command's stdout to the pipe's writer
 	cmd.SetStdout(streams.Out)
-	cmd.SetStderr(streams.ErrOut)
+	cmd.SetStderr(streams.ErrOut) // Set stderr to original
+
+	// Use a buffer to capture the output
+	var buf bytes.Buffer
+	var wg sync.WaitGroup
+
+	// Add one to the WaitGroup counter
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done() // Decrement the WaitGroup counter when the goroutine completes
+		io.Copy(&buf, streams.In)
+	}()
+
+	// Run the command
 	err = cmd.Run()
-	return err
+	if err != nil {
+		w.Close()
+		wg.Wait() // Wait for the goroutine to finish before returning
+		return err
+	}
+
+	// Close the writer to finish the reading process
+	w.Close()
+
+	// Wait for the goroutine to finish
+	wg.Wait()
+
+	// Process captured output
+	data := &outputSchema.BigbangOutput{
+		Data: encodeHelmOpts(buf.String()),
+	}
+	err = outputClient.Output(data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func encodeHelmOpts(data string) outputSchema.HelmOutput {
+	// Read the buffered output
+	lines := strings.Split(data, "\n")
+
+	// Initialize the outputSchemas.HelmOutput struct
+	helmOutput := outputSchema.HelmOutput{}
+
+	// Iterate over the lines to populate the struct
+	for i, line := range lines {
+		if i == 0 {
+			helmOutput.Message = line // Store the first line as Message
+			continue
+		}
+		parts := strings.SplitN(line, ": ", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			switch key {
+			case "NAME":
+				helmOutput.Name = value
+			case "LAST DEPLOYED":
+				helmOutput.LastDeployed = value
+			case "NAMESPACE":
+				helmOutput.Namespace = value
+			case "STATUS":
+				helmOutput.Status = value
+			case "REVISION":
+				helmOutput.Revision = value
+			case "TEST SUITE":
+				helmOutput.TestSuite = value
+			case "NOTES":
+				if helmOutput.Notes == "" {
+					helmOutput.Notes = value
+				} else {
+					helmOutput.Notes += "\n" + value
+				}
+			}
+		} else if strings.TrimSpace(line) != "" {
+			line = strings.TrimPrefix(line, "NOTES:")
+			// Collect multiline notes
+			if helmOutput.Notes == "" {
+				helmOutput.Notes = line
+			} else {
+				helmOutput.Notes += "\n" + line
+			}
+		}
+	}
+
+	return helmOutput
 }

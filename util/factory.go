@@ -48,7 +48,14 @@ type Factory interface {
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
-	GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error)
+	GetCommandExecutor(
+		cmd *cobra.Command,
+		pod *coreV1.Pod,
+		container string,
+		command []string,
+		stdout io.Writer,
+		stderr io.Writer,
+	) (remoteCommand.Executor, error)
 	GetCredentialHelper() (CredentialHelper, error)
 	GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error)
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
@@ -56,6 +63,9 @@ type Factory interface {
 	GetViper() (*viper.Viper, error)
 	SetViper(*viper.Viper) error
 	GetIOStream() (*genericIOOptions.IOStreams, error)
+	CreatePipe() error
+	GetPipe() (*os.File, *os.File)
+	SetPipe(reader *os.File, writer *os.File)
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
@@ -63,6 +73,8 @@ func NewFactory(referenceFactory Factory) *UtilityFactory {
 	factory := &UtilityFactory{
 		referenceFactory: referenceFactory,
 		viperInstance:    viper.New(),
+		pipeReader:       nil, // Explicitly initializing to nil (optional, as they default to nil)
+		pipeWriter:       nil,
 	}
 	if factory.referenceFactory == nil {
 		factory.referenceFactory = factory
@@ -74,6 +86,8 @@ func NewFactory(referenceFactory Factory) *UtilityFactory {
 type UtilityFactory struct {
 	referenceFactory Factory
 	viperInstance    *viper.Viper
+	pipeReader       *os.File
+	pipeWriter       *os.File
 }
 
 // CredentialsFile struct represents credentials YAML files with a top level field called `credentials`
@@ -230,7 +244,10 @@ func (f *UtilityFactory) GetGitLabClient() (bbGitLab.Client, error) {
 		return nil, fmt.Errorf("unable to get client: %w", configErr)
 	}
 	clientGetter := bbGitLab.ClientGetter{}
-	client, err := clientGetter.GetClient(config.GitLabConfiguration.BaseURL, config.GitLabConfiguration.Token)
+	client, err := clientGetter.GetClient(
+		config.GitLabConfiguration.BaseURL,
+		config.GitLabConfiguration.Token,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get GitLab client: %w", err)
 	}
@@ -340,7 +357,10 @@ func (f *UtilityFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.
 // Errors when there are issues creating the k8s REST config
 func (f *UtilityFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error) {
 	// init runtime controller client
-	runtimeClient, err := runtimeClient.New(ctrl.GetConfigOrDie(), runtimeClient.Options{Scheme: scheme})
+	runtimeClient, err := runtimeClient.New(
+		ctrl.GetConfigOrDie(),
+		runtimeClient.Options{Scheme: scheme},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +387,14 @@ func (f *UtilityFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 // GetCommandExecutor initializes and returns a new SPDY executor that can run the given command in a Pod in the k8s cluster
 //
 // # Returns a nil executor and an error if there are any issues with the intialization
-func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod, container string, command []string, stdout io.Writer, stderr io.Writer) (remoteCommand.Executor, error) {
+func (f *UtilityFactory) GetCommandExecutor(
+	cmd *cobra.Command,
+	pod *coreV1.Pod,
+	container string,
+	command []string,
+	stdout io.Writer,
+	stderr io.Writer,
+) (remoteCommand.Executor, error) {
 	client, err := f.referenceFactory.GetK8sClientset(cmd)
 	if err != nil {
 		return nil, err
@@ -398,7 +425,10 @@ func (f *UtilityFactory) GetCommandExecutor(cmd *cobra.Command, pod *coreV1.Pod,
 // Internal helper function to create configs for GetHelmClient
 //
 // Errors if Helm action.Configuration.Init fails
-func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*action.Configuration, error) {
+func (f *UtilityFactory) getHelmConfig(
+	cmd *cobra.Command,
+	namespace string,
+) (*action.Configuration, error) {
 	configClient, err := f.referenceFactory.GetConfigClient(cmd)
 	if err != nil {
 		return nil, err
@@ -440,14 +470,19 @@ func (f *UtilityFactory) getHelmConfig(cmd *cobra.Command, namespace string) (*a
 // GetCommandWrapper initializes and returns a new Command instance which encapsulates the functionality needed to run a CLI command
 // `name` is the command to execute i.e. kubectl
 // `args` string values are all passed to the command as CLI arguments
-func (f *UtilityFactory) GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error) {
+func (f *UtilityFactory) GetCommandWrapper(
+	name string,
+	args ...string,
+) (*bbUtilApiWrappers.Command, error) {
 	return bbUtilApiWrappers.NewExecRunner(name, args...), nil
 }
 
 // GetIstioClientSet initializes and returns a new istio client set by calling versioned.NewForConfig() with the provided REST config settings
 //
 // # Returns a nil client and an error if there are any issues with the intialization
-func (f *UtilityFactory) GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
+func (f *UtilityFactory) GetIstioClientSet(
+	cfg *rest.Config,
+) (bbUtilApiWrappers.IstioClientset, error) {
 	clientSet, err := versioned.NewForConfig(cfg)
 	return clientSet, err
 }
@@ -494,4 +529,26 @@ func (f *UtilityFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 		Out:    os.Stdout,
 		ErrOut: os.Stderr,
 	}, nil
+}
+
+// CreatePipe creates a new os.Pipe and stores the reader and writer
+func (f *UtilityFactory) CreatePipe() error {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("Unable to create pipe: %w", err)
+	}
+	f.pipeReader = r
+	f.pipeWriter = w
+	return nil
+}
+
+// GetPipe returns the currently set pipe reader and writer
+func (f *UtilityFactory) GetPipe() (*os.File, *os.File) {
+	return f.pipeReader, f.pipeWriter
+}
+
+// SetPipe sets the pipe reader and writer
+func (f *UtilityFactory) SetPipe(reader *os.File, writer *os.File) {
+	f.pipeReader = reader
+	f.pipeWriter = writer
 }
