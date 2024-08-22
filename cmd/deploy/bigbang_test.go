@@ -220,7 +220,7 @@ func TestGetBigBangCmdConfigClientError(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -267,4 +267,134 @@ func TestBigBangFailToGetConfig(t *testing.T) {
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
+}
+
+func TestBigBangFailToGetStreams(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetIOStreams = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create IO streams:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetOutputClient(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetOutputClient = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create output client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetCredentialHelper(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCredentialHelper = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get credential helper:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetCredentials(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCredentialFunction = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get username:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetCommandWrapper(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCommandWrapper = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get command wrapper:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangFailToGetPipe(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.CreatePipe = true
+	cmd, cmdErr := NewDeployBigBangCmd(factory)
+
+	// Act
+	err := deployBigBangToCluster(cmd, factory, []string{})
+
+	// Assert
+	assert.NoError(t, cmdErr)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create pipe:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestBigBangEncodeNotes(t *testing.T) {
+	// Arrange
+	output := "first line is the message\nNOTES: This is a multi-line note:\n that contains multiple : symbols which should cause it to fail parsing earlier\n in the execution of: encodeHelmOpts()"
+	// Act
+	schema := encodeHelmOpts(output)
+	//Assert
+	assert.Equal(t, "first line is the message", schema.Message)
+	assert.Equal(t, "This is a multi-line note:\n that contains multiple : symbols which should cause it to fail parsing earlier\n in the execution of: encodeHelmOpts()", schema.Notes)
 }

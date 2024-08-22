@@ -54,11 +54,11 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 	}
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return fmt.Errorf("Unable to create IO streams: %w", err)
+		return fmt.Errorf("unable to create IO streams: %w", err)
 	}
 	outputClient, err := factory.GetOutputClient(command)
 	if err != nil {
-		return fmt.Errorf("Unable to create output client: %w", err)
+		return fmt.Errorf("unable to create output client: %w", err)
 	}
 	credentialHelper, err := factory.GetCredentialHelper()
 	if err != nil {
@@ -78,13 +78,13 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 
 	cmd, err := factory.GetCommandWrapper(installFluxPath, fluxArgs...)
 	if err != nil {
-		return fmt.Errorf("Unable to get command wrapper: %w", err)
+		return fmt.Errorf("unable to get command wrapper: %w", err)
 	}
 
 	// Use the factory to create the pipe
 	err = factory.CreatePipe()
 	if err != nil {
-		return fmt.Errorf("Unable to create pipe: %w", err)
+		return fmt.Errorf("unable to create pipe: %w", err)
 	}
 
 	r, w := factory.GetPipe()
@@ -154,7 +154,7 @@ func parseOutput(data string) outputSchema.Output {
 			continue
 		}
 
-		parts := strings.SplitN(line, ": ", 2)
+		parts := strings.Split(line, ": ")
 		if len(parts) != 2 {
 			parsedOutput.Actions = append(parsedOutput.Actions, line)
 			continue

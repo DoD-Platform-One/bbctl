@@ -186,6 +186,11 @@ type FakeFactory struct {
 		GetIstioClient               bool
 		GetIOStreams                 bool
 		GetLoggingClient             bool
+		GetOutputClient              bool
+		GetCredentialHelper          bool
+		GetCredentialFunction        bool
+		GetCommandWrapper            bool
+		CreatePipe                   bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
@@ -203,6 +208,15 @@ type FakeFactory struct {
 
 // GetCredentialHelper - get credential helper
 func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
+	if f.SetFail.GetCredentialHelper {
+		return nil, fmt.Errorf("failed to get credential helper")
+	}
+	if f.SetFail.GetCredentialFunction {
+		fn := func(arg1 string, arg2 string) (string, error) {
+			return "", fmt.Errorf("no credentials found")
+		}
+		return fn, nil
+	}
 	credentialHelper := func(arg1 string, arg2 string) (string, error) {
 		return "", nil
 	}
@@ -259,6 +273,10 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 
 // GetOutputClient
 func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
+	if f.SetFail.GetOutputClient {
+		return nil, fmt.Errorf("failed to get output client")
+	}
+
 	streams, err := f.GetIOStream()
 	if err != nil {
 		return nil, err
@@ -423,6 +441,9 @@ func (f *FakeFactory) GetCommandWrapper(
 	name string,
 	args ...string,
 ) (*bbUtilApiWrappers.Command, error) {
+	if f.SetFail.GetCommandWrapper {
+		return nil, fmt.Errorf("failed to get command wrapper")
+	}
 	return fakeApiWrappers.NewFakeCommand(name, args...), nil
 }
 
@@ -511,6 +532,9 @@ func (f *FakeFactory) SetIOStream(stream genericIOOptions.IOStreams) {
 
 // CreatePipe - create a pipe
 func (f *FakeFactory) CreatePipe() error {
+	if f.SetFail.CreatePipe {
+		return fmt.Errorf("unable to get pipe")
+	}
 	if f.OverWritePipe {
 		f.SetPipe(f.pipeReader, f.pipeWriter)
 		return nil

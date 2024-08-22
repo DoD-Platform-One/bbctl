@@ -179,7 +179,7 @@ func TestFlux_NewDeployFluxCmd_Run_Json(t *testing.T) {
 	v.Set("output-config.format", "json")
 
 	// Expected output from the command
-	expectedOutput := "{\n  \"general_info\": {},\n  \"actions\": [\n    \"Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p\"\n  ],\n  \"warnings\": []\n}" // Replace with the actual expected output
+	expectedOutput := `{"general_info":{},"actions":["Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p"],"warnings":[]}`
 
 	// Act
 	cmd := NewDeployFluxCmd(factory)
@@ -320,4 +320,129 @@ func TestFluxFailToGetConfig(t *testing.T) {
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
+}
+
+func TestFluxFailToGetStreams(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetIOStreams = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create IO streams:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetOutputClient(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetOutputClient = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create output client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetCredentialHelper(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCredentialHelper = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get credential helper:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetCredentials(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCredentialFunction = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get username:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetCommandWrapper(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetCommandWrapper = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get command wrapper:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxFailToGetPipe(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp/big-bang")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.CreatePipe = true
+	cmd := NewDeployFluxCmd(factory)
+
+	// Act
+	err := deployFluxToCluster(factory, cmd, []string{})
+
+	// Assert
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to create pipe:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestFluxOutputParsing(t *testing.T) {
+	// Arrange
+	output := "\n\n Action 1 \n Warning: Warning 1\n invalid: warning: Action: 2\n key: value\n REGISTRY_URL: localhost\n REGISTRY_USERNAME: username"
+	// Act
+	schema := parseOutput(output)
+	// Assert
+	assert.Equal(t, map[string]string{"REGISTRY_URL": "localhost", "REGISTRY_USERNAME": "username"}, schema.GeneralInfo)
+	assert.Equal(t, []string{"Action 1", "invalid: warning: Action: 2", "key: value"}, schema.Actions)
+	assert.Equal(t, []string{"Warning 1"}, schema.Warnings)
 }
