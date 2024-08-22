@@ -12,14 +12,14 @@ import (
 // Client interface
 type Client[C schemas.BaseConfiguration] interface {
 	GetConfig() C
-	SetAndBindFlag(string, interface{}, string) error
+	SetAndBindFlag(string, string, any, string) error
 }
 
 // GetConfigFunc type
 type GetConfigFunc func(*ConfigClient) (*schemas.GlobalConfiguration, error)
 
 // SetAndBindFlagFunc type
-type SetAndBindFlagFunc func(*ConfigClient, string, interface{}, string) error
+type SetAndBindFlagFunc func(*ConfigClient, string, string, any, string) error
 
 // ConfigClient is composed of functions to interact with configuration.
 type ConfigClient struct {
@@ -59,6 +59,6 @@ func (client *ConfigClient) GetConfig() (*schemas.GlobalConfiguration, error) {
 }
 
 // SetAndBindFlag sets and binds a flag to a command and viper.
-func (client *ConfigClient) SetAndBindFlag(name string, value interface{}, description string) error {
-	return client.setAndBindFlag(client, name, value, description)
+func (client *ConfigClient) SetAndBindFlag(name string, shorthand string, value any, description string) error {
+	return client.setAndBindFlag(client, name, shorthand, value, description)
 }

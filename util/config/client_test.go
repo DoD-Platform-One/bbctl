@@ -39,7 +39,7 @@ func TestClientGetConfig(t *testing.T) {
 func TestClientSetAndBindFlag(t *testing.T) {
 	// Arrange
 	expected := "test"
-	setAndBindFlagFunc := func(client *ConfigClient, name string, value interface{}, description string) error {
+	setAndBindFlagFunc := func(client *ConfigClient, name string, shortHand string, value interface{}, description string) error {
 		return errors.New(expected)
 	}
 	client := &ConfigClient{
@@ -47,7 +47,7 @@ func TestClientSetAndBindFlag(t *testing.T) {
 	}
 
 	// Act
-	actual := client.SetAndBindFlag("", "", "")
+	actual := client.SetAndBindFlag("", "", "", "")
 
 	// Assert
 	assert.NotNil(t, actual)

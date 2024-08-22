@@ -146,6 +146,7 @@ func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	flagError := configClient.SetAndBindFlag(
 		"audit",
+		"",
 		false,
 		"list violations in audit mode",
 	)

@@ -79,7 +79,7 @@ func TestK3d_RootSshError(t *testing.T) {
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
 		if name == "ssh-username" {
 			return expectedError
 		}
@@ -111,7 +111,7 @@ func TestK3d_RootHostsError(t *testing.T) {
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
 		if name == "private-ip" {
 			return expectedError
 		}
