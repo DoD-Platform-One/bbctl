@@ -28,7 +28,7 @@ func (o *BigbangOutput) MarshalYaml() ([]byte, error) {
 }
 
 func (o *BigbangOutput) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(o.Data, "", "  ")
+	return json.Marshal(o.Data)
 }
 
 func (o *BigbangOutput) MarshalHumanReadable() ([]byte, error) {
@@ -63,7 +63,7 @@ func (fo *FluxOutput) MarshalYaml() ([]byte, error) {
 }
 
 func (fo *FluxOutput) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(fo.Data, "", "  ")
+	return json.Marshal(fo.Data)
 }
 
 func (fo *FluxOutput) MarshalHumanReadable() ([]byte, error) {

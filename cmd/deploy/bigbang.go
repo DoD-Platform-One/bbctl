@@ -56,7 +56,7 @@ func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+		return nil, fmt.Errorf("unable to get config client: %w", clientError)
 	}
 
 	k3dFlagError := configClient.SetAndBindFlag(
@@ -135,11 +135,11 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	}
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return fmt.Errorf("Unable to create IO streams: %w", err)
+		return fmt.Errorf("unable to create IO streams: %w", err)
 	}
 	outputClient, err := factory.GetOutputClient(command)
 	if err != nil {
-		return fmt.Errorf("Unable to create output client: %w", err)
+		return fmt.Errorf("unable to create output client: %w", err)
 	}
 	credentialHelper, err := factory.GetCredentialHelper()
 	if err != nil {
@@ -191,13 +191,13 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 
 	cmd, err := factory.GetCommandWrapper("helm", helmOpts...)
 	if err != nil {
-		return fmt.Errorf("Unable to get command wrapper: %w", err)
+		return fmt.Errorf("unable to get command wrapper: %w", err)
 	}
 
 	// Use the factory to create the pipe
 	err = factory.CreatePipe()
 	if err != nil {
-		return fmt.Errorf("Unable to create pipe: %w", err)
+		return fmt.Errorf("unable to create pipe: %w", err)
 	}
 
 	r, w := factory.GetPipe()
@@ -255,9 +255,17 @@ func encodeHelmOpts(data string) outputSchema.HelmOutput {
 	helmOutput := outputSchema.HelmOutput{}
 
 	// Iterate over the lines to populate the struct
+	notes := false
 	for i, line := range lines {
 		if i == 0 {
 			helmOutput.Message = line // Store the first line as Message
+			continue
+		}
+		// Once we read the line starting with `NOTES:`, all the remaining input should be considered part of a multi-line note string
+		if notes {
+			if strings.TrimSpace(line) != "" {
+				helmOutput.Notes += "\n" + line
+			}
 			continue
 		}
 		parts := strings.SplitN(line, ": ", 2)
@@ -278,19 +286,8 @@ func encodeHelmOpts(data string) outputSchema.HelmOutput {
 			case "TEST SUITE":
 				helmOutput.TestSuite = value
 			case "NOTES":
-				if helmOutput.Notes == "" {
-					helmOutput.Notes = value
-				} else {
-					helmOutput.Notes += "\n" + value
-				}
-			}
-		} else if strings.TrimSpace(line) != "" {
-			line = strings.TrimPrefix(line, "NOTES:")
-			// Collect multiline notes
-			if helmOutput.Notes == "" {
-				helmOutput.Notes = line
-			} else {
-				helmOutput.Notes += "\n" + line
+				helmOutput.Notes = value
+				notes = true
 			}
 		}
 	}
