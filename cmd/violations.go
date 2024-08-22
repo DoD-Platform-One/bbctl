@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -14,8 +14,6 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
@@ -23,6 +21,8 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
+	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
 var (
@@ -83,7 +83,8 @@ type violationsCmdHelper struct {
 	k8sClientSet kubernetes.Interface
 	configClient *config.ConfigClient
 	logger       log.Client
-	streams      genericIOOptions.IOStreams
+	outputClient output.Client
+	violations   []policyViolation
 }
 
 func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violationsCmdHelper, error) {
@@ -107,9 +108,9 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violat
 		return nil, err
 	}
 
-	streams, err := factory.GetIOStream()
+	outputClient, err := factory.GetOutputClient(cmd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting output client: %w", err)
 	}
 
 	return &violationsCmdHelper{
@@ -117,7 +118,7 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violat
 		k8sClientSet: k8sClientSet,
 		logger:       loggingClient,
 		configClient: configClient,
-		streams:      *streams,
+		outputClient: outputClient,
 	}, nil
 }
 
@@ -131,7 +132,7 @@ func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			v, err := newViolationsCmdHelper(cmd, factory)
 			if err != nil {
-				return fmt.Errorf("Error getting violations helper client: %v", err)
+				return fmt.Errorf("error getting violations helper client: %v", err)
 			}
 
 			return v.getViolations()
@@ -140,7 +141,7 @@ func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("Unable to get config client: %w", clientError)
+		return nil, fmt.Errorf("unable to get config client: %w", clientError)
 	}
 
 	flagError := configClient.SetAndBindFlag(
@@ -149,7 +150,7 @@ func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"list violations in audit mode",
 	)
 	if flagError != nil {
-		return nil, fmt.Errorf("Error setting and binding flags: %w", flagError)
+		return nil, fmt.Errorf("error setting and binding flags: %w", flagError)
 	}
 
 	return cmd, nil
@@ -193,7 +194,12 @@ func (v *violationsCmdHelper) getViolations() error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("Errors occurred while listing violations: %v", errs)
+		return fmt.Errorf("errors occurred while listing violations: %v", errs)
+	}
+
+	printErr := v.printViolation()
+	if printErr != nil {
+		return fmt.Errorf("error printing violations: %w", printErr)
 	}
 
 	return nil
@@ -245,6 +251,8 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 			continue
 		}
 
+		violationsFound = true
+
 		policy := ""
 		name := event.InvolvedObject.Name
 		if admissionEvent {
@@ -252,7 +260,7 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 			name = "NA"
 		}
 
-		violation := &policyViolation{
+		violation := policyViolation{
 			name:      name,
 			kind:      event.InvolvedObject.Kind,
 			namespace: event.GetNamespace(),
@@ -261,13 +269,11 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 			timestamp: event.CreationTimestamp.UTC().Format(time.RFC3339),
 		}
 
-		violationsFound = true
-
-		printViolation(violation, v.streams.Out)
+		v.violations = append(v.violations, violation)
 	}
 
 	if !violationsFound {
-		fmt.Fprintf(v.streams.Out, "No events found for policy violations\n\n")
+		v.logger.Debug("No kyverno violations found in cluster.")
 	}
 
 	return nil
@@ -311,7 +317,7 @@ func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
 
 		violationsFound = true
 
-		violation := &policyViolation{
+		violation := policyViolation{
 			name:       event.Annotations["resource_name"],
 			kind:       event.Annotations["resource_kind"],
 			namespace:  event.Annotations["resource_namespace"],
@@ -320,17 +326,20 @@ func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
 			timestamp:  event.CreationTimestamp.UTC().Format(time.RFC3339),
 		}
 
-		printViolation(violation, v.streams.Out)
+		v.violations = append(v.violations, violation)
 	}
 
 	if !violationsFound {
-		fmt.Fprintf(v.streams.Out, "No events found for deny violations\n\n")
-		fmt.Fprintf(v.streams.Out, "Do you have the following values defined for the gatekeeper chart?\n\n")
-		fmt.Fprintf(v.streams.Out, "gatekeeper:\n")
-		fmt.Fprintf(v.streams.Out, "  emitAdmissionEvents: true\n")
-		fmt.Fprintf(v.streams.Out, "  logDenies: true\n\n")
-		fmt.Fprintf(v.streams.Out, "Note that violations in dryrun and warn mode are not effected by these settings.\n")
-		fmt.Fprintf(v.streams.Out, "To list dryrun violations, use --audit flag.\n")
+		var value bytes.Buffer
+		value.WriteString("No deny violations events found in cluster.")
+		value.WriteString("\nDo you have the following values defined for the gatekeeper chart?")
+		value.WriteString("\ngatekeeper:")
+		value.WriteString("\n\temitAdmissionEvents: true")
+		value.WriteString("\n\tlogDenies: true")
+		value.WriteString("\nNote that violations in dryrun and warn mode are not effected by these settings.")
+		value.WriteString("\nTo list dryrun violations, use --audit flag.")
+
+		v.logger.Info(value.String())
 	}
 
 	return nil
@@ -344,7 +353,7 @@ func (v *violationsCmdHelper) listGkAuditViolations(namespace string) error {
 	}
 
 	if len(gkCrds.Items) == 0 {
-		fmt.Fprintf(v.streams.Out, "No violations found in audit\n\n\n")
+		v.logger.Debug("No gatekeeper audit violations found in cluster.")
 		return nil
 	}
 
@@ -358,7 +367,10 @@ func (v *violationsCmdHelper) listGkAuditViolations(namespace string) error {
 			// get violations
 			violations, _ := getGkConstraintViolations(&c)
 			// process violations
-			v.processGkViolations(namespace, violations, crdName)
+			processErr := v.processGkViolations(namespace, violations, crdName)
+			if processErr != nil {
+				return fmt.Errorf("error processing GK violations: %w", processErr)
+			}
 		}
 	}
 
@@ -387,12 +399,13 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 	for i, v := range statusViolations {
 		details, _ := v.(map[string]interface{})
 		violations[i] = policyViolation{
-			name:      fmt.Sprintf("%s", details["name"]),
-			namespace: fmt.Sprintf("%s", details["namespace"]),
-			kind:      fmt.Sprintf("%s", details["kind"]),
-			action:    fmt.Sprintf("%s", details["enforcementAction"]),
-			message:   fmt.Sprintf("%s", details["message"]),
-			timestamp: violationTimestamp,
+			name:       fmt.Sprintf("%s", details["name"]),
+			constraint: fmt.Sprintf("%s", details["constraint"]),
+			namespace:  fmt.Sprintf("%s", details["namespace"]),
+			kind:       fmt.Sprintf("%s", details["kind"]),
+			action:     fmt.Sprintf("%s", details["enforcementAction"]),
+			message:    fmt.Sprintf("%s", details["message"]),
+			timestamp:  violationTimestamp,
 		}
 	}
 
@@ -400,31 +413,53 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 }
 
 // processGkViolations filters the violations based on the namespace and prints them out
-func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) {
+func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) error {
 	if len(*violations) != 0 {
-		fmt.Fprintf(v.streams.Out, "%s\n\n", crdName)
+		v.logger.Debug("Custom resource definitions: %s", crdName)
 		violationsFound := false
 		for _, violation := range *violations {
 			if namespace != "" && violation.namespace != namespace {
 				continue
 			}
 			violationsFound = true
-			printViolation(&violation, v.streams.Out)
+			v.violations = append(v.violations, violation)
 		}
 		if !violationsFound {
-			fmt.Fprintf(v.streams.Out, "No violations found in audit\n\n\n")
+			v.logger.Debug("No violations found while processing gatekeeper violation audit.")
 		}
 	}
+	return nil
 }
 
-// printViolation prints the violation information to the defined io.Writer
-func printViolation(v *policyViolation, w io.Writer) {
-	fmt.Fprintf(w, "Time: %s, Resource: %s, Kind: %s, Namespace: %s\n", v.timestamp, v.name, v.kind, v.namespace)
-	if v.constraint != "" {
-		fmt.Fprintf(w, "Constraint: %s\n", v.policy)
+// printViolation prints the violation information to the defined client io.Writer
+func (v *violationsCmdHelper) printViolation() error {
+	if len(v.violations) == 0 {
+		v.logger.Debug("No violations found in cluster.")
+		output := &outputSchema.ViolationsOutput{Name: "No Violations"}
+		outputErr := v.outputClient.Output(output)
+		if outputErr != nil {
+			return outputErr
+		}
+		return nil
 	}
-	if v.policy != "" {
-		fmt.Fprintf(w, "Policy: %s\n", v.policy)
+	v.logger.Debug("Violations found in cluster.")
+	output := &outputSchema.ViolationsOutput{Name: "Violations"}
+	for _, violation := range v.violations {
+		violationOutput := &outputSchema.Violation{
+			Timestamp:  violation.timestamp,
+			Name:       violation.name,
+			Kind:       violation.kind,
+			Namespace:  violation.namespace,
+			Constraint: violation.constraint,
+			Policy:     violation.policy,
+			Message:    violation.message,
+			Action:     violation.action,
+		}
+		output.Violations = append(output.Violations, *violationOutput)
 	}
-	fmt.Fprintf(w, "%s\n\n", v.message)
+	outputErr := v.outputClient.Output(output)
+	if outputErr != nil {
+		return fmt.Errorf("unable to print violations to client: %w", outputErr)
+	}
+	return nil
 }

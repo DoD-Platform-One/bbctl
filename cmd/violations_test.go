@@ -9,7 +9,6 @@ import (
 
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"github.com/spf13/cobra"
@@ -82,15 +81,15 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
+	factory.SetFail.GetConfigClient = true
 
 	// Act
-	factory.SetFail.GetConfigClient = true
 	cmd, err := NewViolationsCmd(factory)
 
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -98,26 +97,22 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 func TestViolationsFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	loggingClient, _ := factory.GetLoggingClient()
-	cmd, _ := NewViolationsCmd(factory)
-	viper, _ := factory.GetViper()
-	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
-		return &schemas.GlobalConfiguration{
-			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
-	}
-	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
-	factory.SetConfigClient(client)
+	factory.SetHelmReleases(nil)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "yaml")
+	factory.SetFail.GetConfigClient = true
 
 	// Act
-	err1 := cmd.RunE(cmd, []string{})
+	cmd, err := NewViolationsCmd(factory)
 
 	// Assert
-	assert.Error(t, err1)
-	if !assert.Contains(t, err1.Error(), "error getting config:") {
-		t.Errorf("unexpected output: %s", err1.Error())
+	assert.Nil(t, cmd)
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "unable to get config client") {
+		t.Errorf("unexpected output: %s", err.Error())
 	}
+
 }
 
 func TestViolationsCmdHelperError(t *testing.T) {
@@ -135,7 +130,7 @@ func TestViolationsCmdHelperError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Error getting violations helper client:") {
+	if !assert.Contains(t, err.Error(), "error getting violations helper client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -223,6 +218,23 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 		Items: []unstructured.Unstructured{*constraint},
 	}
 
+	violation1 := `- name: r1
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: '%!s(<nil>)'
+  message: invalid config
+  action: '%!s(<nil>)'
+  timestamp: "2021-11-27T23:55:33Z"`
+	violation2 := `- name: r2
+  kind: k2
+  namespace: ns2
+  policy: ""
+  constraint: '%!s(<nil>)'
+  message: invalid config
+  action: '%!s(<nil>)'
+  timestamp: "2021-11-27T23:55:33Z"`
+
 	var tests = []struct {
 		desc       string
 		namespace  string
@@ -233,30 +245,37 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 		{
 			"no violations in given namespace",
 			"ns0",
-			"No violations found in audit",
-			"Resource: r1, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList, constraintList},
 		},
 		{
 			"no violations in any namespace",
 			"",
-			"",
-			"Resource: r1, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{},
 		},
 
 		{
-			"violations in given namespace",
+			"violations in given namespace 1",
 			"ns1",
-			"Resource: r1, Kind: k1, Namespace: ns1",
-			"Resource: r2, Kind: k2, Namespace: ns2",
+			violation1,
+			violation2,
+			[]runtime.Object{crdList, constraintList},
+		},
+		{
+			"violations in given namespace 2",
+			"ns2",
+			violation2,
+			violation1,
 			[]runtime.Object{crdList, constraintList},
 		},
 		{
 			"violations in any namespace",
 			"",
-			"Resource: r2, Kind: k2, Namespace: ns2",
-			"No violations found in audit",
+			violation2,
+			"name: No Violations\nviolations: []",
 			[]runtime.Object{crdList, constraintList},
 		},
 	}
@@ -271,13 +290,14 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 			buf := streams.Out.(*bytes.Buffer)
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
-				t.Errorf("unexpected output: %s", buf.String())
+				t.Errorf("unexpected output:\nOutput:\n%s\nExpected:\n%s", buf.String(), test.expected)
 			}
 			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
-				t.Errorf("unexpected output: %s; checked for '%s'", buf.String(), test.unexpected)
+				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
 			assert.Nil(t, err)
 		})
@@ -310,6 +330,22 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 
 	evt1 := eventGK("foo", "k1", "ns1", "FailedAdmission", "abc", ts)
 	evt2 := eventGK("bar", "k2", "ns2", "FailedAdmission", "xyz", ts)
+	violation1 := `- name: foo
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: ':'
+  message: abc
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `- name: bar
+  kind: k2
+  namespace: ns2
+  policy: ""
+  constraint: ':'
+  message: xyz
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
 
 	var tests = []struct {
 		desc       string
@@ -321,29 +357,36 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 		{
 			"no violations in any namespace",
 			"",
-			"No events found for deny violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList},
 		},
 		{
 			"no violations in given namespace",
 			"ns0",
-			"No events found for deny violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"violations in given namespace",
+			"violations in given namespace 1",
 			"ns1",
-			"Resource: foo, Kind: k1, Namespace: ns1",
-			"Resource: bar, Kind: k2, Namespace: ns2",
+			violation1,
+			violation2,
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+		{
+			"violations in given namespace 2",
+			"ns2",
+			violation2,
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
 			"violations in any namespace",
 			"",
-			"Resource: bar, Kind: k2, Namespace: ns2",
-			"No violation events found",
+			violation2,
+			"name: No Violations\nviolations: []",
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 	}
@@ -356,15 +399,16 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
-				t.Errorf("unexpected output: %s", buf.String())
+				t.Errorf("unexpected output:\nOutput:\n%s\nExpected:\n%s", buf.String(), test.expected)
 			}
-			if strings.Contains(buf.String(), test.unexpected) {
-				t.Errorf("unexpected output: %s", buf.String())
+			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
+				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
 			assert.Nil(t, err)
 		})
@@ -401,6 +445,23 @@ func TestKyvernoAuditViolations(t *testing.T) {
 	evt1 := eventKyverno("foo", "k1", "ns1", "policy-controller", "FailedAdmission", ts)
 	evt2 := eventKyverno("bar", "k2", "ns2", "policy-controller", "FailedAdmission", ts)
 
+	violation1 := `- name: foo
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: ""
+  message: FailedAdmission
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `- name: bar
+  kind: k2
+  namespace: ns2
+  policy: ""
+  constraint: ""
+  message: FailedAdmission
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
+
 	var tests = []struct {
 		desc       string
 		namespace  string
@@ -411,29 +472,36 @@ func TestKyvernoAuditViolations(t *testing.T) {
 		{
 			"no violations in any namespace",
 			"",
-			"No events found for policy violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList},
 		},
 		{
 			"no violations in given namespace",
 			"ns0",
-			"No events found for policy violations",
-			"Resource: foo, Kind: k1, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"violations in given namespace",
+			"violations in given namespace 1",
 			"ns1",
-			"Resource: foo, Kind: k1, Namespace: ns1",
-			"Resource: bar, Kind: k2, Namespace: ns2",
+			violation1,
+			violation2,
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+		{
+			"violations in given namespace 2",
+			"ns2",
+			violation2,
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
 			"violations in any namespace",
 			"",
-			"Resource: bar, Kind: k2, Namespace: ns2",
-			"No events found for policy violations",
+			violation2,
+			"name: No Violations\nviolations: []",
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 	}
@@ -446,15 +514,16 @@ func TestKyvernoAuditViolations(t *testing.T) {
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, []string{"--audit"})
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
-				t.Errorf("unexpected output: %s", buf.String())
+				t.Errorf("unexpected output:\nOutput:\n%s\nExpected:\n%s", buf.String(), test.expected)
 			}
-			if strings.Contains(buf.String(), test.unexpected) {
-				t.Errorf("unexpected output: %s", buf.String())
+			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
+				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
 			assert.Nil(t, err)
 		})
@@ -491,6 +560,23 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 	evt1 := eventKyverno("foo", "po", "ns1", "admission-controller", "FailedAdmission", ts)
 	evt2 := eventKyverno("bar", "cp", "ns2", "admission-controller", "FailedAdmission", ts)
 
+	violation1 := `- name: NA
+  kind: po
+  namespace: ns1
+  policy: foo
+  constraint: ""
+  message: FailedAdmission
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `- name: NA
+  kind: cp
+  namespace: ns2
+  policy: bar
+  constraint: ""
+  message: FailedAdmission
+  action: ""
+  timestamp: "2021-12-01T20:01:05Z"`
+
 	var tests = []struct {
 		desc       string
 		namespace  string
@@ -501,29 +587,36 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 		{
 			"no violations in any namespace",
 			"",
-			"No events found for policy violations",
-			"Resource: NA, Kind: po, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList},
 		},
 		{
 			"no violations in given namespace",
 			"ns0",
-			"No events found for policy violations",
-			"Resource: NA, Kind: po, Namespace: ns1",
+			"name: No Violations\nviolations: []",
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
-			"violations in given namespace",
+			"violations in given namespace 1",
 			"ns1",
-			"Resource: NA, Kind: po, Namespace: ns1",
-			"Resource: NA, Kind: po, Namespace: ns2",
+			violation1,
+			violation2,
+			[]runtime.Object{crdList, evt1, evt2},
+		},
+		{
+			"violations in given namespace 2",
+			"ns2",
+			violation2,
+			violation1,
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 		{
 			"violations in any namespace",
 			"",
-			"Resource: NA, Kind: cp, Namespace: ns2",
-			"No events found for policy violations",
+			violation2,
+			"name: No Violations\nviolations: []",
 			[]runtime.Object{crdList, evt1, evt2},
 		},
 	}
@@ -536,15 +629,16 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := violationsCmd(factory, test.namespace, nil)
 			err := cmd.Execute()
 			if !strings.Contains(buf.String(), test.expected) {
-				t.Errorf("unexpected output: %s", buf.String())
+				t.Errorf("unexpected output:\nOutput:\n%s\nExpected:\n%s", buf.String(), test.expected)
 			}
-			if strings.Contains(buf.String(), test.unexpected) {
-				t.Errorf("unexpected output: %s", buf.String())
+			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
+				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
 			assert.Nil(t, err)
 		})
@@ -563,14 +657,14 @@ func TestGetViolations(t *testing.T) {
 		{
 			"no errors",
 			"",
-			"",
+			"name: No Violations\nviolations: []\n",
 			false,
 			false,
 			false,
 		},
 		{
 			"error checking gatekeeper exists",
-			"Errors occurred while listing violations: [error getting gatekeeper crds: error in list crds]",
+			"errors occurred while listing violations: [error getting gatekeeper crds: error in list crds]",
 			"",
 			true,
 			false,
@@ -578,7 +672,7 @@ func TestGetViolations(t *testing.T) {
 		},
 		{
 			"error checking kyverno exists",
-			"Errors occurred while listing violations: [error getting kyverno crds: error in list crds]",
+			"errors occurred while listing violations: [error getting kyverno crds: error in list crds]",
 			"",
 			false,
 			true,
@@ -587,7 +681,7 @@ func TestGetViolations(t *testing.T) {
 
 		{
 			"errors listing both kyverno and gatekeeper",
-			"Errors occurred while listing violations: [error listing gatekeeper violations: error in list events error listing kyverno violations: error in list events]",
+			"errors occurred while listing violations: [error listing gatekeeper violations: error in list events error listing kyverno violations: error in list events]",
 			"",
 			false,
 			false,
@@ -602,6 +696,7 @@ func TestGetViolations(t *testing.T) {
 			factory.ResetIOStream()
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
@@ -754,6 +849,9 @@ func TestKyvernoExists(t *testing.T) {
 			cmd := violationsCmd(factory, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnDynamicClient
 			factory.SetGVRToListKind(gvrToListKindForKyverno())
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
@@ -766,6 +864,7 @@ func TestKyvernoExists(t *testing.T) {
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
 			assert.Nil(t, err)
+			assert.NotNil(t, tv)
 
 			// Act
 			exists, err := tv.kyvernoExists()
@@ -787,6 +886,21 @@ func TestKyvernoExists(t *testing.T) {
 }
 
 func TestListKyvernoViolations(t *testing.T) {
+	violation1 := `- name: NA
+  kind: k1
+  namespace: ns1
+  policy: foo
+  constraint: ""
+  message: FailedAdmission
+  action: ""`
+	violation2 := `- name: bar
+  kind: k2
+  namespace: ns1
+  policy: ""
+  constraint: ""
+  message: FailedAudit
+  action: ""`
+
 	tests := []struct {
 		desc              string
 		expected          string
@@ -796,21 +910,21 @@ func TestListKyvernoViolations(t *testing.T) {
 	}{
 		{
 			"no violations",
-			"No events found for policy violations\n\n",
+			"",
 			false,
 			true,
 			false,
 		},
 		{
 			"admission violations",
-			"Resource: NA, Kind: k1, Namespace: ns1\nPolicy: foo\nFailedAdmission\n\n",
+			violation1,
 			false,
 			false,
 			false,
 		},
 		{
 			"audit violations",
-			"Resource: bar, Kind: k2, Namespace: ns1\nFailedAudit\n\n",
+			violation2,
 			false,
 			false,
 			true,
@@ -832,6 +946,9 @@ func TestListKyvernoViolations(t *testing.T) {
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListEvents {
@@ -859,13 +976,15 @@ func TestListKyvernoViolations(t *testing.T) {
 
 			// Act
 			err = tv.listKyvernoViolations("ns1", test.auditViolations)
+			printErr := tv.printViolation()
 
 			// Assert
+			assert.Nil(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListEvents {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Empty(t, out.String())
+				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
 				return
 			}
 
@@ -901,6 +1020,9 @@ func TestGatekeeperExists(t *testing.T) {
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListCRDs {
@@ -938,6 +1060,13 @@ func TestGatekeeperExists(t *testing.T) {
 // listGkViolations tested in previous tests
 
 func TestListGkDenyViolations(t *testing.T) {
+	violation1 := `- name: foo
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: ':'
+  message: abc
+  action: ""`
 	tests := []struct {
 		desc              string
 		expected          string
@@ -946,13 +1075,13 @@ func TestListGkDenyViolations(t *testing.T) {
 	}{
 		{
 			"no violations",
-			"No events found for deny violations\n\n",
+			"name: No Violations\nviolations: []\n",
 			false,
 			true,
 		},
 		{
 			"deny violations",
-			"Resource: foo, Kind: k1, Namespace: ns1\nConstraint: \nabc\n\n",
+			violation1,
 			false,
 			false,
 		},
@@ -972,6 +1101,9 @@ func TestListGkDenyViolations(t *testing.T) {
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, "", nil)
 
 			if test.errorOnListEvents {
@@ -996,13 +1128,15 @@ func TestListGkDenyViolations(t *testing.T) {
 
 			// Act
 			err = tv.listGkDenyViolations("ns1")
+			printErr := tv.printViolation()
 
 			// Assert
+			assert.Nil(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListEvents {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Empty(t, out.String())
+				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
 				return
 			}
 			assert.Nil(t, err)
@@ -1012,6 +1146,13 @@ func TestListGkDenyViolations(t *testing.T) {
 }
 
 func TestListGkAuditViolations(t *testing.T) {
+	violation1 := `- name: foo
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: '%!s(<nil>)'
+  message: FailedAdmission
+  action: deny`
 	tests := []struct {
 		desc                   string
 		expected               string
@@ -1021,14 +1162,14 @@ func TestListGkAuditViolations(t *testing.T) {
 	}{
 		{
 			"no violations",
-			"No violations found in audit\n\n\n",
+			"name: No Violations\nviolations: []\n",
 			false,
 			true,
 			false,
 		},
 		{
 			"audit violations",
-			"Resource: foo, Kind: k1, Namespace: ns1\nFailedAdmission\n\n",
+			violation1,
 			false,
 			false,
 			false,
@@ -1057,6 +1198,9 @@ func TestListGkAuditViolations(t *testing.T) {
 			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, "", nil)
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 
@@ -1134,13 +1278,15 @@ func TestListGkAuditViolations(t *testing.T) {
 
 			// Act
 			err = tv.listGkAuditViolations("ns1")
+			printErr := tv.printViolation()
 
 			// Assert
+			assert.Nil(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListCrds || test.errorOnListConstraints {
 				assert.NotNil(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Empty(t, out.String())
+				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
 				return
 			}
 			assert.Nil(t, err)
@@ -1150,6 +1296,13 @@ func TestListGkAuditViolations(t *testing.T) {
 }
 
 func TestGetGkConstraintViolations(t *testing.T) {
+	violation1 := `- name: foo
+  kind: k1
+  namespace: ns1
+  policy: ""
+  constraint: ""
+  message: FailedAdmission
+  action: deny`
 	tests := []struct {
 		desc                   string
 		expected               string
@@ -1158,13 +1311,13 @@ func TestGetGkConstraintViolations(t *testing.T) {
 	}{
 		{
 			"no violations",
-			"No violations found in audit\n\n\n",
+			"name: No Violations\nviolations: []\n",
 			false,
 			false,
 		},
 		{
 			"violations",
-			"Resource: foo, Kind: k1, Namespace: ns1\nFailedAdmission\n\n",
+			violation1,
 			false,
 			false,
 		},
@@ -1279,6 +1432,9 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 			factory.ResetIOStream()
 			streams, _ := factory.GetIOStream()
 			out := streams.Out.(*bytes.Buffer)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("output-config.format", "yaml")
 			cmd := violationsCmd(factory, "", nil)
 			factory.SetFail.GetK8sDynamicClient = test.errorOnK8sDynamicClient
 			factory.SetFail.GetK8sClientset = test.errorOnK8sClientSet
@@ -1311,3 +1467,99 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 
 // processGkViolations tested in previous tests
 // printViolations tested in previous tests
+
+func TestViolationsOutputClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetIOStreams = true
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "")
+
+	// Act
+	cmd, _ := NewViolationsCmd(factory)
+	cmdHelper, err := newViolationsCmdHelper(cmd, factory)
+
+	// Assert
+	assert.Nil(t, cmdHelper)
+	expectedError := "error getting output client: failed to get streams"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got: %v", expectedError, err)
+	}
+}
+
+func TestViolationsErrorBindingFlags(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+
+	expectedError := fmt.Errorf("failed to set and bind flag")
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+		if name == "audit" {
+			return expectedError
+		}
+		return nil
+	}
+
+	logClient, _ := factory.GetLoggingClient()
+	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
+	assert.Nil(t, err)
+	factory.SetConfigClient(configClient)
+
+	// Act
+	cmd, err := NewViolationsCmd(factory)
+
+	// Assert
+	assert.Nil(t, cmd)
+	assert.NotNil(t, err)
+	assert.Equal(t, fmt.Sprintf("error setting and binding flags: %s", expectedError.Error()), err.Error())
+}
+
+func TestViolationsPrintViolationsErr(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "")
+	cmd := violationsCmd(factory, "", nil)
+	eventList := &v1.EventList{
+		Items: []v1.Event{
+			*eventKyverno("foo", "k1", "ns1", "admission-controller", "FailedAdmission", time.Now()),
+			*eventKyverno("bar", "k2", "ns1", "policy-controller", "FailedAudit", time.Now()),
+		},
+	}
+	factory.SetObjects([]runtime.Object{eventList})
+
+	tv, err := newViolationsCmdHelper(cmd, factory)
+	assert.Nil(t, err)
+
+	// Act
+	err = tv.listKyvernoViolations("ns1", true)
+	printErr := tv.printViolation()
+
+	// Assert
+	assert.Nil(t, err)
+	assert.NotNil(t, printErr)
+	assert.Contains(t, printErr.Error(), "unable to print violations to client: unsupported format: ")
+}
+
+func TestNoViolationsPrintViolationsErr(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "yaml")
+	cmd := violationsCmd(factory, "", nil)
+
+	tv, err := newViolationsCmdHelper(cmd, factory)
+	assert.Nil(t, err)
+
+	// Act
+	printErr := tv.printViolation()
+
+	// Assert
+	assert.Nil(t, printErr)
+}
