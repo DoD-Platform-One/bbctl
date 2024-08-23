@@ -191,6 +191,7 @@ type FakeFactory struct {
 		GetCredentialFunction        bool
 		GetCommandWrapper            bool
 		CreatePipe                   bool
+		GetRuntimeClient             bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
@@ -382,6 +383,9 @@ func (f *FakeFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
 
 // GetRuntimeClient - get runtime client
 func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, error) {
+	if f.SetFail.GetRuntimeClient {
+		return nil, fmt.Errorf("test error")
+	}
 	cb := fakeControllerClient.NewClientBuilder()
 	rc := cb.WithScheme(scheme).Build()
 	return rc, nil
