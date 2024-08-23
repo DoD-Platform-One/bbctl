@@ -1495,7 +1495,7 @@ func TestViolationsErrorBindingFlags(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 
 	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, value interface{}, description string) error {
+	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
 		if name == "audit" {
 			return expectedError
 		}
