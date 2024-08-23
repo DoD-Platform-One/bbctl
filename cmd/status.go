@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
@@ -24,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
 var (
@@ -119,10 +119,18 @@ type fluxKZData struct {
 
 // bbStatus queries the Kubernetes cluster and gets the Status of the various bigbang-controlled components
 func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
+	output := &outputSchema.StatusOutput{Name: "Status Summary"}
+
 	// get client-go client
 	clientset, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to get k8s clientset: %w", err)
+	}
+
+	//get output client
+	outputClient, err := factory.GetOutputClient(cmd)
+	if err != nil {
+		return fmt.Errorf("Failed to get output client: %w", err)
 	}
 
 	// get runtime controller client
@@ -134,7 +142,7 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
 
 	fluxClient, err := factory.GetRuntimeClient(scheme)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to get runtime client: %w", err)
 	}
 
 	// get constants
@@ -150,59 +158,88 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
 	}
 
 	// get Big Bang helm release status
-	fmt.Println(getBigBangStatus(helmClient))
+	bigBangStatus := &outputSchema.CheckStatusOutput{
+		Name:   "BigBang Status",
+		Output: getBigBangStatus(helmClient),
+	}
+	output.Statuses = append(output.Statuses, *bigBangStatus)
 
 	// get k8s pod status
-	fmt.Println(getPodStatus(clientset))
+	podStatus := &outputSchema.CheckStatusOutput{
+		Name:   "Pod Status",
+		Output: getPodStatus(clientset),
+	}
+	output.Statuses = append(output.Statuses, *podStatus)
 
 	// get k8s statefulset status
-	fmt.Println(getStatefulSetStatus(clientset))
+	statefulSetStatus := &outputSchema.CheckStatusOutput{
+		Name:   "StatefulSet Status",
+		Output: getStatefulSetStatus(clientset),
+	}
+	output.Statuses = append(output.Statuses, *statefulSetStatus)
 
 	// get k8s deployment status
-	fmt.Println(getDeploymentStatus(clientset))
+	deploymentStatus := &outputSchema.CheckStatusOutput{
+		Name:   "k8s Deployment Status",
+		Output: getDeploymentStatus(clientset),
+	}
+	output.Statuses = append(output.Statuses, *deploymentStatus)
 
 	// get k8s daemonset status
-	fmt.Println(getDaemonSetsStatus(clientset))
+	daemonsetStatus := &outputSchema.CheckStatusOutput{
+		Name:   "k8s DaemonSet Status",
+		Output: getDaemonSetsStatus(clientset),
+	}
+	output.Statuses = append(output.Statuses, *daemonsetStatus)
 
 	// get flux helm release status
-	fmt.Println(getFluxHelmReleases(fluxClient))
+	fluxHelmStatus := &outputSchema.CheckStatusOutput{
+		Name:   "Flux Helm Release Status",
+		Output: getFluxHelmReleases(fluxClient),
+	}
+	output.Statuses = append(output.Statuses, *fluxHelmStatus)
 
 	// get flux git repository status
-	fmt.Println(getFluxGitRepositories(fluxClient))
+	fluxGitStatus := &outputSchema.CheckStatusOutput{
+		Name:   "Flux Git Repository Status",
+		Output: getFluxGitRepositories(fluxClient),
+	}
+	output.Statuses = append(output.Statuses, *fluxGitStatus)
 
 	// get flux kustomization status
-	fmt.Println(getFluxKustomizations(fluxClient))
+	fluxKustomizationStatus := &outputSchema.CheckStatusOutput{
+		Name:   "Flux Kustomization Status",
+		Output: getFluxKustomizations(fluxClient),
+	}
+	output.Statuses = append(output.Statuses, *fluxKustomizationStatus)
 
+	outputErr := outputClient.Output(output)
+	if outputErr != nil {
+		return fmt.Errorf("failed to create status output: %w", outputErr)
+	}
 	return nil
 }
 
 // getBigBangStatus gets the Status of the "bigbang" HelmRelease itself
-func getBigBangStatus(helmClient helm.Client) string {
-	var sb strings.Builder
-
+func getBigBangStatus(helmClient helm.Client) []string {
 	// get constants
 	constants, err := static.GetDefaultConstants()
 	if err != nil {
-		sb.WriteString(err.Error())
-		return sb.String()
+		return []string{err.Error()}
 	}
 
 	release, err := helmClient.GetRelease(constants.BigBangHelmReleaseName)
 	if err != nil {
-		sb.WriteString("No Big Bang release was found.\n")
-		return sb.String()
+		return []string{"No Big Bang release was found.\n"}
 	}
-
-	sb.WriteString(fmt.Sprintf("Found %s release version %s status: %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version, release.Info.Status))
-
-	return sb.String()
+	return []string{fmt.Sprintf("Found %s release version %s status: %s\n", release.Chart.Metadata.Name, release.Chart.Metadata.Version, release.Info.Status)}
 }
 
 // getFluxKustomizations queries the cluster for Flux Kustomizations and returns a string with the Status of
 // the Kustomizations. If the kustomization is not ready, the status is reported as "Not Ready" and remediation
 // steps are provided.
-func getFluxKustomizations(fc client.Client) string {
-	var sb strings.Builder
+func getFluxKustomizations(fc client.Client) []string {
+	outputMessages := []string{}
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -212,8 +249,7 @@ func getFluxKustomizations(fc client.Client) string {
 
 	listErr := fc.List(ctx, kustomizationsList, &client.ListOptions{})
 	if listErr != nil {
-		sb.WriteString(listErr.Error())
-		return sb.String()
+		return []string{listErr.Error()}
 	}
 
 	// declare empty slice of fluxKZData
@@ -235,26 +271,26 @@ func getFluxKustomizations(fc client.Client) string {
 	}
 
 	if len(kustomizationsList.Items) == 0 {
-		sb.WriteString("No Flux kustomizations were found.\n")
+		outputMessages = append(outputMessages, "No Flux kustomizations were found.\n")
 	} else if len(fluxKZs) == 0 {
-		sb.WriteString("All Flux kustomizations are ready.\n")
+		outputMessages = append(outputMessages, "All Flux kustomizations are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fluxKZs)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d Flux kustomizations that are not ready:\n", len(fluxKZs)))
 		for _, fluxKZDataObj := range fluxKZs {
-			sb.WriteString(fmt.Sprintf(statusString, fluxKZDataObj.namespace, fluxKZDataObj.name, fluxKZDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fluxKZDataObj.name, fluxKZDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, fluxKZDataObj.namespace, fluxKZDataObj.name, fluxKZDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  flux reconcile kustomization %s -n %s --with-source\n", fluxKZDataObj.name, fluxKZDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getFluxGitRepositories queries the cluster for Flux GitRepository resources and returns a string with the Status of
 // the GitRepositories. If the GitRepository is not ready, the status is reported as "Not Ready" and remediation
 // steps are provided.
-func getFluxGitRepositories(fluxClient client.Client) string {
-	var sb strings.Builder
+func getFluxGitRepositories(fluxClient client.Client) []string {
+	outputMessages := []string{}
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -264,8 +300,7 @@ func getFluxGitRepositories(fluxClient client.Client) string {
 
 	listErr := fluxClient.List(ctx, fluxGRList, &client.ListOptions{})
 	if listErr != nil {
-		sb.WriteString(listErr.Error())
-		return sb.String()
+		return []string{listErr.Error()}
 	}
 
 	// declare empty slice of fluxGRData
@@ -287,27 +322,27 @@ func getFluxGitRepositories(fluxClient client.Client) string {
 	}
 
 	if len(fluxGRList.Items) == 0 {
-		sb.WriteString("No Flux git repositories were found.\n")
+		outputMessages = append(outputMessages, "No Flux git repositories were found.\n")
 	} else if len(fluxGRs) == 0 {
-		sb.WriteString("All Flux git repositories are ready.\n")
+		outputMessages = append(outputMessages, "All Flux git repositories are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux git repositories that are not ready:\n", len(fluxGRs)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d Flux git repositories that are not ready:\n", len(fluxGRs)))
 		for _, fluxGRDataObj := range fluxGRs {
-			sb.WriteString(fmt.Sprintf(statusString, fluxGRDataObj.namespace, fluxGRDataObj.name, fluxGRDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe git repository %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
-			sb.WriteString(fmt.Sprintf("  flux reconcile source git %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, fluxGRDataObj.namespace, fluxGRDataObj.name, fluxGRDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  kubectl describe git repository %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf("  flux reconcile source git %s -n %s\n", fluxGRDataObj.name, fluxGRDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getFluxHelmReleases queries the Kubernetes cluster for Flux HelmRelease resources and returns a string with the Status of
 // the HelmReleases. If the HelmRelease is not ready, the status is reported as "Not Ready" and remediation
 // steps are provided.
-func getFluxHelmReleases(fluxClient client.Client) string {
-	var sb strings.Builder
+func getFluxHelmReleases(fluxClient client.Client) []string {
+	outputMessages := []string{}
 
 	// set a deadline for the Kubernetes API operations
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -317,8 +352,7 @@ func getFluxHelmReleases(fluxClient client.Client) string {
 
 	listErr := fluxClient.List(ctx, helmReleaseList, &client.ListOptions{})
 	if listErr != nil {
-		sb.WriteString(listErr.Error())
-		return sb.String()
+		return []string{listErr.Error()}
 	}
 
 	// declare empty slice of fluxHRData
@@ -340,33 +374,32 @@ func getFluxHelmReleases(fluxClient client.Client) string {
 	}
 
 	if len(helmReleaseList.Items) == 0 {
-		sb.WriteString("No Flux helm releases were found.\n")
+		outputMessages = append(outputMessages, "No Flux helm releases were found.\n")
 	} else if len(fluxHRs) == 0 {
-		sb.WriteString("All Flux helm releases are reconciled.\n")
+		outputMessages = append(outputMessages, "All Flux helm releases are reconciled.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d Flux helm releases that are not reconciled:\n", len(fluxHRs)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d Flux helm releases that are not reconciled:\n", len(fluxHRs)))
 		for _, fluxHRDataObj := range fluxHRs {
-			sb.WriteString(fmt.Sprintf(statusString, fluxHRDataObj.namespace, fluxHRDataObj.name, fluxHRDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  flux suspend helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
-			sb.WriteString(fmt.Sprintf("  flux resume helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
-			sb.WriteString(fmt.Sprintf("  flux reconcile helm release %s -n %s --with-source\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, fluxHRDataObj.namespace, fluxHRDataObj.name, fluxHRDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  flux suspend helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf("  flux resume helm release %s -n %s\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf("  flux reconcile helm release %s -n %s --with-source\n", fluxHRDataObj.name, fluxHRDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getDaemonSetsStatus queries the Kubernetes cluster for DaemonSet resources and returns a string with the Status of
 // the DaemonSets. If the DaemonSets are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getDaemonSetsStatus(clientset k8sClient.Interface) string {
-	var sb strings.Builder
+func getDaemonSetsStatus(clientset k8sClient.Interface) []string {
+	outputMessages := []string{}
 
 	daemonSetList, err := clientset.AppsV1().DaemonSets("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		sb.WriteString(err.Error())
-		return sb.String()
+		return []string{err.Error()}
 	}
 
 	// declare empty slice of DmstData
@@ -389,32 +422,31 @@ func getDaemonSetsStatus(clientset k8sClient.Interface) string {
 	}
 
 	if len(daemonSetList.Items) == 0 {
-		sb.WriteString("No Daemonsets were found.\n")
+		outputMessages = append(outputMessages, "No Daemonsets were found.\n")
 	} else if len(daemonSetDataList) == 0 {
-		sb.WriteString("All Daemonsets are available.\n")
+		outputMessages = append(outputMessages, "All Daemonsets are available.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(daemonSetDataList)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d DaemonSets that are not available:\n", len(daemonSetDataList)))
 		for _, daemonSetDataObj := range daemonSetDataList {
-			sb.WriteString(fmt.Sprintf(statusString, daemonSetDataObj.namespace, daemonSetDataObj.name, daemonSetDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", daemonSetDataObj.name, daemonSetDataObj.namespace))
-			sb.WriteString(fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", daemonSetDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, daemonSetDataObj.namespace, daemonSetDataObj.name, daemonSetDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  kubectl describe daemonset %s -n %s\n", daemonSetDataObj.name, daemonSetDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf("  use kubectl to view logs of any daemonset pods in namespace %s\n", daemonSetDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getDeploymentStatus queries the Kubernetes cluster for Deployment resources and returns a string with the Status of
 // the Deployments. If the Deployments are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getDeploymentStatus(clientset k8sClient.Interface) string {
-	var sb strings.Builder
+func getDeploymentStatus(clientset k8sClient.Interface) []string {
+	outputMessages := []string{}
 
 	deploymentList, err := clientset.AppsV1().Deployments("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		sb.WriteString(err.Error())
-		return sb.String()
+		return []string{err.Error()}
 	}
 
 	// declare empty slice of DpmtData
@@ -437,31 +469,31 @@ func getDeploymentStatus(clientset k8sClient.Interface) string {
 	}
 
 	if len(deploymentList.Items) == 0 {
-		sb.WriteString("No Deployments were found.\n")
+		outputMessages = append(outputMessages, "No Deployments were found.\n")
 	} else if len(deploymentDataList) == 0 {
-		sb.WriteString("All Deployments are ready.\n")
+		outputMessages = append(outputMessages, "All Deployments are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(deploymentDataList)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d k8s Deployments that are not ready:\n", len(deploymentDataList)))
+
 		for _, deploymentDataObj := range deploymentDataList {
-			sb.WriteString(fmt.Sprintf(statusString, deploymentDataObj.namespace, deploymentDataObj.name, deploymentDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", deploymentDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, deploymentDataObj.namespace, deploymentDataObj.name, deploymentDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", deploymentDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getStatefulSetStatus queries the Kubernetes cluster for StatefulSet resources and returns a string with the Status of
 // the StatefulSets. If the StatefulSets are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getStatefulSetStatus(clientset k8sClient.Interface) string {
-	var sb strings.Builder
+func getStatefulSetStatus(clientset k8sClient.Interface) []string {
+	outputMessages := []string{}
 
 	statefulSetList, err := clientset.AppsV1().StatefulSets("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		sb.WriteString(err.Error())
-		return sb.String()
+		return []string{err.Error()}
 	}
 
 	// declare empty slice of StsData
@@ -484,31 +516,30 @@ func getStatefulSetStatus(clientset k8sClient.Interface) string {
 	}
 
 	if len(statefulSetList.Items) == 0 {
-		sb.WriteString("No StatefulSets were found.\n")
+		outputMessages = append(outputMessages, "No StatefulSets were found.\n")
 	} else if len(statefulSetDataList) == 0 {
-		sb.WriteString("All StatefulSets are ready.\n")
+		outputMessages = append(outputMessages, "All StatefulSets are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(statefulSetDataList)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d StatefulSets that are not ready:\n", len(statefulSetDataList)))
 		for _, statefulSetDataObj := range statefulSetDataList {
-			sb.WriteString(fmt.Sprintf(statusString, statefulSetDataObj.namespace, statefulSetDataObj.name, statefulSetDataObj.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", statefulSetDataObj.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, statefulSetDataObj.namespace, statefulSetDataObj.name, statefulSetDataObj.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  Use kubectl to check the logs of the related pods in namespace %s\n", statefulSetDataObj.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // getPodStatus queries the Kubernetes cluster for Pod resources and returns a string with the Status of
 // the Pods. If the Pods are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getPodStatus(clientset k8sClient.Interface) string {
-	var sb strings.Builder
+func getPodStatus(clientset k8sClient.Interface) []string {
+	outputMessages := []string{}
 
 	podsList, err := clientset.CoreV1().Pods("").List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		sb.WriteString(err.Error())
-		return sb.String()
+		return []string{err.Error()}
 	}
 
 	// declare empty slice of podData
@@ -544,17 +575,17 @@ func getPodStatus(clientset k8sClient.Interface) string {
 	}
 
 	if len(podDataList) == 0 {
-		sb.WriteString("All pods are ready.\n")
+		outputMessages = append(outputMessages, "All pods are ready.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("There are %d pods that are not ready:\n", len(podDataList)))
+		outputMessages = append(outputMessages, fmt.Sprintf("There are %d pods that are not ready:\n", len(podDataList)))
 		for _, pod := range podDataList {
-			sb.WriteString(fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
-			sb.WriteString(commandHelp)
-			sb.WriteString(fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace))
+			outputMessages = append(outputMessages, fmt.Sprintf(statusString, pod.namespace, pod.name, pod.status))
+			outputMessages = append(outputMessages, commandHelp)
+			outputMessages = append(outputMessages, fmt.Sprintf("  kubectl logs %s -n %s\n", pod.name, pod.namespace))
 		}
 	}
 
-	return sb.String()
+	return outputMessages
 }
 
 // processPodStatus processes the status of a pod and adds it to the list of pods that are ready

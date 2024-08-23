@@ -17,6 +17,7 @@ import (
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 
 	helmV2Beta1 "github.com/fluxcd/helm-controller/api/v2beta1"
 	kustomizeV1Beta1 "github.com/fluxcd/kustomize-controller/api/v1beta1"
@@ -34,6 +35,10 @@ func TestGetStatusUsage(t *testing.T) {
 
 func TestGetStatus(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
 
 	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
@@ -77,14 +82,14 @@ func TestGetBigBangStatus(t *testing.T) {
 	helmClient, err := factory.GetHelmClient(nil, constants.BigBangNamespace)
 	assert.NoError(t, err)
 	var response = getBigBangStatus(helmClient)
-	assert.Contains(t, response, "No Big Bang release was found")
+	assert.Contains(t, response[0], "No Big Bang release was found")
 
 	// prepare the helm client with big bang release
 	factory = bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(releaseFixture)
 	helmClient, _ = factory.GetHelmClient(nil, constants.BigBangNamespace)
 	response = getBigBangStatus(helmClient)
-	assert.Contains(t, response, "Found bigbang release version")
+	assert.Contains(t, response[0], "Found bigbang release version")
 }
 
 func TestGetFluxKustomizations(t *testing.T) {
@@ -128,19 +133,19 @@ func TestGetFluxKustomizations(t *testing.T) {
 
 	// test with no flux git repositories
 	var response = getFluxKustomizations(fluxClient)
-	assert.Contains(t, response, "No Flux kustomizations were found")
+	assert.Contains(t, response[0], "No Flux kustomizations were found")
 
 	// test with reconciled flux git repositories
 	err := fluxClient.Create(context.TODO(), &readyK)
 	assert.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
-	assert.Contains(t, response, "All Flux kustomizations are ready")
+	assert.Contains(t, response[0], "All Flux kustomizations are ready")
 
 	// test with unreconciled flux git repositories
 	err = fluxClient.Create(context.TODO(), &notReadyK)
 	assert.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
-	assert.Contains(t, response, "There are 1 Flux kustomizations that are not ready")
+	assert.Contains(t, response[0], "There are 1 Flux kustomizations that are not ready")
 }
 
 func TestGetFluxGitRepositories(t *testing.T) {
@@ -184,19 +189,19 @@ func TestGetFluxGitRepositories(t *testing.T) {
 
 	// test with no flux git repositories
 	var response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "No Flux git repositories were found")
+	assert.Contains(t, response[0], "No Flux git repositories were found")
 
 	// test with reconciled flux git repositories
 	err := fluxClient.Create(context.TODO(), &readyGR)
 	assert.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "All Flux git repositories are ready")
+	assert.Contains(t, response[0], "All Flux git repositories are ready")
 
 	// test with unreconciled flux git repositories
 	err = fluxClient.Create(context.TODO(), &notReadyGR)
 	assert.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
-	assert.Contains(t, response, "There are 1 Flux git repositories that are not ready")
+	assert.Contains(t, response[0], "There are 1 Flux git repositories that are not ready")
 }
 
 func TestGetFluxHelmReleases(t *testing.T) {
@@ -240,19 +245,19 @@ func TestGetFluxHelmReleases(t *testing.T) {
 
 	// test with no flux helm releases
 	var response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "No Flux helm releases were found")
+	assert.Contains(t, response[0], "No Flux helm releases were found")
 
 	// test with reconciled flux helm release
 	err := fluxClient.Create(context.TODO(), &reconciledHR)
 	assert.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "All Flux helm releases are reconciled")
+	assert.Contains(t, response[0], "All Flux helm releases are reconciled")
 
 	// test with unreconciled flux helm release
 	err = fluxClient.Create(context.TODO(), &unreconciledHR)
 	assert.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
-	assert.Contains(t, response, "There are 1 Flux helm releases that are not reconciled")
+	assert.Contains(t, response[0], "There are 1 Flux helm releases that are not reconciled")
 }
 
 func TestGetDaemonSetStatus(t *testing.T) {
@@ -283,7 +288,7 @@ func TestGetDaemonSetStatus(t *testing.T) {
 
 	// test with no daemonset data
 	var response = getDaemonSetsStatus(clientSet)
-	assert.Contains(t, response, "No Daemonsets were found")
+	assert.Contains(t, response[0], "No Daemonsets were found")
 
 	// test with available daemonset
 	_, err1 := clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), availDaemonSet, metaV1.CreateOptions{})
@@ -291,7 +296,7 @@ func TestGetDaemonSetStatus(t *testing.T) {
 		t.Errorf("error injecting daemonset add: %v", err1)
 	}
 	response = getDaemonSetsStatus(clientSet)
-	assert.Contains(t, response, "All Daemonsets are available")
+	assert.Contains(t, response[0], "All Daemonsets are available")
 
 	// test with not available daemonset
 	_, err1 = clientSet.AppsV1().DaemonSets("test-ns").Create(context.TODO(), notAvailDaemonSet, metaV1.CreateOptions{})
@@ -299,7 +304,7 @@ func TestGetDaemonSetStatus(t *testing.T) {
 		t.Errorf("error injecting daemonset add: %v", err1)
 	}
 	response = getDaemonSetsStatus(clientSet)
-	assert.Contains(t, response, "There are 1 DaemonSets that are not available")
+	assert.Contains(t, response[0], "There are 1 DaemonSets that are not available")
 }
 
 func TestGetDeploymentStatus(t *testing.T) {
@@ -330,7 +335,7 @@ func TestGetDeploymentStatus(t *testing.T) {
 
 	// test with no deployment data
 	var response = getDeploymentStatus(clientSet)
-	assert.Contains(t, response, "No Deployments were found")
+	assert.Contains(t, response[0], "No Deployments were found")
 
 	// test with ready deployment
 	_, err1 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), readyD, metaV1.CreateOptions{})
@@ -338,7 +343,7 @@ func TestGetDeploymentStatus(t *testing.T) {
 		t.Errorf("error injecting deployment add: %v", err1)
 	}
 	response = getDeploymentStatus(clientSet)
-	assert.Contains(t, response, "All Deployments are ready")
+	assert.Contains(t, response[0], "All Deployments are ready")
 
 	// test with not ready deployment
 	_, err2 := clientSet.AppsV1().Deployments("test-ns").Create(context.TODO(), notReadyD, metaV1.CreateOptions{})
@@ -346,7 +351,7 @@ func TestGetDeploymentStatus(t *testing.T) {
 		t.Errorf("error injecting Deployment add: %v", err1)
 	}
 	response = getDeploymentStatus(clientSet)
-	assert.Contains(t, response, "There are 1 k8s Deployments that are not ready")
+	assert.Contains(t, response[0], "There are 1 k8s Deployments that are not ready")
 }
 
 func TestGetStatefulSetStatus(t *testing.T) {
@@ -377,7 +382,7 @@ func TestGetStatefulSetStatus(t *testing.T) {
 
 	// test with no statefulset data
 	var response = getStatefulSetStatus(clientSet)
-	assert.Contains(t, response, "No StatefulSets were found")
+	assert.Contains(t, response[0], "No StatefulSets were found")
 
 	// test with ready statefulset
 	_, err1 := clientSet.AppsV1().StatefulSets("test-ns").Create(context.TODO(), readySts, metaV1.CreateOptions{})
@@ -385,7 +390,7 @@ func TestGetStatefulSetStatus(t *testing.T) {
 		t.Errorf("error injecting statefulset add: %v", err1)
 	}
 	response = getStatefulSetStatus(clientSet)
-	assert.Contains(t, response, "All StatefulSets are ready")
+	assert.Contains(t, response[0], "All StatefulSets are ready")
 
 	// test with not ready statefulset
 	_, err2 := clientSet.AppsV1().StatefulSets("test-ns").Create(context.TODO(), notReadySts, metaV1.CreateOptions{})
@@ -393,7 +398,7 @@ func TestGetStatefulSetStatus(t *testing.T) {
 		t.Errorf("error injecting statefulset add: %v", err1)
 	}
 	response = getStatefulSetStatus(clientSet)
-	assert.Contains(t, response, "There are 1 StatefulSets that are not ready")
+	assert.Contains(t, response[0], "There are 1 StatefulSets that are not ready")
 }
 
 func TestGetPodStatus(t *testing.T) {
@@ -463,7 +468,7 @@ func TestGetPodStatus(t *testing.T) {
 		t.Errorf("error injecting pod add: %v", err1)
 	}
 	var response = getPodStatus(clientSet)
-	assert.Contains(t, response, "All pods are ready")
+	assert.Contains(t, response[0], "All pods are ready")
 
 	// add test with unhealthy pods
 	_, err2 := clientSet.CoreV1().Pods("test-ns").Create(context.TODO(), runningBadPod, metaV1.CreateOptions{})
@@ -475,7 +480,7 @@ func TestGetPodStatus(t *testing.T) {
 		t.Errorf("error injecting pod add: %v", err3)
 	}
 	response = getPodStatus(clientSet)
-	assert.Contains(t, response, "2 pods that are not ready")
+	assert.Contains(t, response[0], "2 pods that are not ready")
 }
 
 func TestProcessPodStatus(t *testing.T) {
@@ -632,4 +637,100 @@ func TestGetContainerStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetStatus_NoHelmClient(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+
+	cmd := NewStatusCmd(factory)
+	assert.NotNil(t, cmd)
+	factory.SetFail.GetHelmClient = true
+	err := cmd.RunE(cmd, []string{})
+
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get helm client") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestGetStatus_NoK8sClientset(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+
+	cmd := NewStatusCmd(factory)
+	assert.NotNil(t, cmd)
+	factory.SetFail.GetK8sClientset = true
+	err := cmd.RunE(cmd, []string{})
+
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Failed to get k8s clientset:") {
+		t.Errorf("unexpected output: %s", err)
+	}
+}
+
+func TestGetStatus_NoOutputClient(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+
+	cmd := NewStatusCmd(factory)
+	assert.NotNil(t, cmd)
+	factory.SetFail.GetIOStreams = true
+	err := cmd.RunE(cmd, []string{})
+
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Failed to get output client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestGetStatus_NoRuntimeClient(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	viper, _ := factory.GetViper()
+	// Required value or the execution will fail
+	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("output-config.format", "yaml")
+
+	cmd := NewStatusCmd(factory)
+	assert.NotNil(t, cmd)
+	factory.SetFail.GetRuntimeClient = true
+	err := cmd.RunE(cmd, []string{})
+
+	assert.Error(t, err)
+	if !assert.Contains(t, err.Error(), "Failed to get runtime client:") {
+		t.Errorf("unexpected output: %s", err.Error())
+	}
+}
+
+func TestGetStatus_FailOutput(t *testing.T) {
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/tmp")
+	v.Set("output-config.format", "yaml")
+
+	streams, _ := factory.GetIOStream()
+	in := streams.In.(*bytes.Buffer)
+	out := streams.Out.(*bytes.Buffer)
+	errOut := streams.ErrOut.(*bytes.Buffer)
+	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+
+	cmd := NewStatusCmd(factory)
+	assert.NotNil(t, cmd)
+	err := cmd.RunE(cmd, []string{})
+
+	assert.Error(t, err)
+	assert.Empty(t, in.String())
+	assert.Empty(t, errOut.String())
+	assert.Equal(t, "failed to create status output: unable to write YAML output: FakeWriter intentionally errored", err.Error())
+	assert.Empty(t, out.String())
 }
