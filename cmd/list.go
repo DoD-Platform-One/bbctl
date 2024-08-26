@@ -5,10 +5,9 @@ import (
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 
-	"github.com/gosuri/uitable"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v3/pkg/cli/output"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -52,10 +51,6 @@ func NewReleasesCmd(factory bbUtil.Factory) *cobra.Command {
 //
 // Returns an error if the release information could not be found
 func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, constantClient static.ConstantsClient) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return fmt.Errorf("error getting IO streams: %s", err.Error())
-	}
 	constants, err := constantClient.GetConstants()
 	if err != nil {
 		return err
@@ -73,12 +68,28 @@ func listHelmReleases(cmd *cobra.Command, factory bbUtil.Factory, constantClient
 			constants.BigBangNamespace, err.Error())
 	}
 
-	table := uitable.New()
-	table.AddRow("NAME", "NAMESPACE", "REVISION", "STATUS", "CHART", "APPVERSION")
-	for _, r := range releases {
-		chart := fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version)
-		table.AddRow(r.Name, r.Namespace, r.Version, r.Info.Status, chart, r.Chart.Metadata.AppVersion)
+	outputClient, outClientErr := factory.GetOutputClient(cmd)
+	if outClientErr != nil {
+		return fmt.Errorf("error getting output client: %w", outClientErr)
 	}
 
-	return output.EncodeTable(streams.Out, table)
+	var tableOutput outputSchema.HelmReleaseTableOutput
+	for _, r := range releases {
+		releaseOutput := outputSchema.HelmReleaseOutput{
+			Name:       r.Name,
+			Namespace:  r.Namespace,
+			Revision:   r.Version,
+			Status:     r.Info.Status.String(),
+			Chart:      fmt.Sprintf("%s-%s", r.Chart.Metadata.Name, r.Chart.Metadata.Version),
+			AppVersion: r.Chart.Metadata.AppVersion,
+		}
+
+		tableOutput.Releases = append(tableOutput.Releases, releaseOutput)
+	}
+
+	outputErr := outputClient.Output(&tableOutput)
+	if outputErr != nil {
+		return fmt.Errorf("error marshaling Helm release output: %w", outputErr)
+	}
+	return nil
 }

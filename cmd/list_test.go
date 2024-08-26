@@ -55,6 +55,9 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(releaseFixture)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "/path/to/repo")
+	v.Set("output-config.format", "text")
 
 	streams, _ := factory.GetIOStream()
 	buf := streams.Out.(*bytes.Buffer)
@@ -133,4 +136,62 @@ func TestListHelmReleases_NoConstants(t *testing.T) {
 
 	// then
 	assert.NotNil(t, error)
+}
+
+func TestListHelmReleases_OutputClientError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetIOStreams = 1
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "")
+
+	// Act
+	cmd := NewReleasesCmd(factory)
+	err := listHelmReleases(cmd, factory, static.DefaultClient)
+
+	// Assert
+	expectedError := "error getting output client: failed to get streams"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
+}
+
+func TestListHelmReleases_MarshalError(t *testing.T) {
+	// Arrange
+	chartInfo := &chart.Chart{
+		Metadata: &chart.Metadata{
+			Name:    "bigbang",
+			Version: "1.0.2",
+		},
+	}
+
+	releaseFixture := []*release.Release{
+		{
+			Name:      "bigbang",
+			Version:   1,
+			Namespace: "bigbang",
+			Info: &release.Info{
+				Status: release.StatusDeployed,
+			},
+			Chart: chartInfo,
+		},
+	}
+
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	factory.SetHelmReleases(releaseFixture)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	v.Set("output-config.format", "test")
+
+	// Act
+	cmd := NewReleasesCmd(factory)
+	err := cmd.RunE(cmd, []string{})
+
+	// Assert
+	expectedError := "error marshaling Helm release output: unsupported format: test"
+	if err == nil || err.Error() != expectedError {
+		t.Errorf("Expected error: %s, got %v", expectedError, err)
+	}
 }
