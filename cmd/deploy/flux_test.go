@@ -13,6 +13,7 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
 
 func TestFlux_NewDeployFluxCmd(t *testing.T) {
@@ -99,7 +100,8 @@ func TestFlux_NewDeployFluxCmd_Run_Text(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Get the pipe reader and writer
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 
 	streams, _ := factory.GetIOStream()
 	streams.In = r
@@ -162,7 +164,8 @@ func TestFlux_NewDeployFluxCmd_Run_Json(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Get the pipe reader and writer
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 
 	streams, _ := factory.GetIOStream()
 	streams.In = r
@@ -225,7 +228,8 @@ func TestFlux_NewDeployFluxCmd_Run_Yaml(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Get the pipe reader and writer
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 
 	streams, _ := factory.GetIOStream()
 	streams.In = r
@@ -286,7 +290,7 @@ func TestDeployFluxConfigClientError(t *testing.T) {
 	v.Set("output-config.format", "yaml")
 
 	cmd := NewDeployFluxCmd(factory)
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	err := cmd.RunE(cmd, []string{})
 	// Assert
@@ -322,117 +326,162 @@ func TestFluxFailToGetConfig(t *testing.T) {
 	}
 }
 
-func TestFluxFailToGetStreams(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetIOStreams = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create IO streams:") {
-		t.Errorf("unexpected output: %s", err.Error())
+func TestDeployFluxToClusterErrors(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		failOnConfigClient      bool
+		failOnConfig            bool
+		failOnIOStreams         bool
+		failOnOutputClient      bool
+		failOnCredential        bool
+		failOnUsername          bool
+		failOnPassword          bool
+		failOnGetCommandWrapper bool
+		failOnCreatePipe        bool
+		failOnGetPipe           bool
+		failOnCmdRun            bool
+		failOnOutput            bool
+		expectedError           string
+		expectedOutput          string
+	}{
+		{
+			name:               "Fail on Config Client",
+			failOnConfigClient: true,
+			expectedError:      "failed to get config client",
+		},
+		{
+			name:          "Fail on Config",
+			failOnConfig:  true,
+			expectedError: "error getting config",
+		},
+		{
+			name:            "Fail on IO Streams",
+			failOnIOStreams: true,
+			expectedError:   "unable to create IO streams",
+		},
+		{
+			name:               "Fail on Output Client",
+			failOnOutputClient: true,
+			expectedError:      "unable to create output client",
+		},
+		{
+			name:             "Fail on Credential",
+			failOnCredential: true,
+			expectedError:    "unable to get credential helper",
+		},
+		{
+			name:           "Fail on Username",
+			failOnUsername: true,
+			expectedError:  "unable to get username",
+		},
+		{
+			name:           "Fail on Password",
+			failOnPassword: true,
+			expectedError:  "unable to get password",
+		},
+		{
+			name:                    "Fail on Get Command Wrapper",
+			failOnGetCommandWrapper: true,
+			expectedError:           "unable to get command wrapper",
+		},
+		{
+			name:             "Fail on Create Pipe",
+			failOnCreatePipe: true,
+			expectedError:    "unable to create pipe",
+		},
+		{
+			name:          "Fail on Get Pipe",
+			failOnGetPipe: true,
+			expectedError: "Unable to get pipe",
+		},
+		{
+			name:          "Fail on Command Run",
+			failOnCmdRun:  true,
+			expectedError: "Failed to run command",
+		},
+		{
+			name:           "Fail on Output",
+			failOnOutput:   true,
+			expectedError:  "FakeWriter intentionally errored",
+			expectedOutput: "error: must specify one of: flux",
+		},
 	}
-}
-
-func TestFluxFailToGetOutputClient(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetOutputClient = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create output client:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestFluxFailToGetCredentialHelper(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCredentialHelper = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get credential helper:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestFluxFailToGetCredentials(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCredentialFunction = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get username:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestFluxFailToGetCommandWrapper(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCommandWrapper = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get command wrapper:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestFluxFailToGetPipe(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.CreatePipe = true
-	cmd := NewDeployFluxCmd(factory)
-
-	// Act
-	err := deployFluxToCluster(factory, cmd, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create pipe:") {
-		t.Errorf("unexpected output: %s", err.Error())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			streams, err := factory.GetIOStream()
+			// TODO: fix the flux client changing up the streams
+			originalOut := (*streams).Out
+			assert.Nil(t, err)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "/tmp/big-bang")
+			v.Set("format", "yaml")
+			if tc.failOnConfigClient {
+				factory.SetFail.GetConfigClient = 1
+			}
+			if tc.failOnConfig {
+				v.Set("big-bang-repo", "")
+			}
+			if tc.failOnIOStreams {
+				factory.SetFail.GetIOStreams = 1
+			}
+			if tc.failOnOutputClient {
+				factory.SetFail.GetOutputClient = true
+			}
+			if tc.failOnCredential {
+				factory.SetFail.GetCredentialHelper = true
+			}
+			if tc.failOnUsername {
+				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+					if s1 == "username" {
+						return "", fmt.Errorf("Dummy Error")
+					}
+					return "dummy", nil
+				})
+			}
+			if tc.failOnPassword {
+				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+					if s1 == "password" {
+						return "", fmt.Errorf("Dummy Error")
+					}
+					return "dummy", nil
+				})
+			}
+			if tc.failOnGetCommandWrapper {
+				factory.SetFail.GetCommandWrapper = true
+			}
+			if tc.failOnCreatePipe {
+				factory.SetFail.CreatePipe = true
+			}
+			if tc.failOnGetPipe {
+				factory.SetFail.GetPipe = true
+			}
+			if tc.failOnCmdRun {
+				factory.SetFail.SetCommandWrapperRunError = true
+			}
+			if tc.failOnOutput {
+				fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+				streams.Out = fakeWriter
+				factory.SetIOStream(streams)
+				originalOut = fakeWriter
+			}
+			cmd := NewDeployFluxCmd(factory)
+			// Act
+			err = deployFluxToCluster(factory, cmd, []string{})
+			// Assert
+			assert.Error(t, err)
+			if !assert.Contains(t, err.Error(), tc.expectedError) {
+				t.Errorf("unexpected output: %s", err.Error())
+			}
+			if tc.failOnOutput {
+				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeWriter).ActualBuffer.(*bytes.Buffer).String())
+			} else {
+				result := originalOut.(*bytes.Buffer).String()
+				assert.Contains(t, result, tc.expectedOutput)
+			}
+		})
 	}
 }
 

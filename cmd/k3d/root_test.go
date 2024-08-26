@@ -40,7 +40,7 @@ func TestK3d_RootIOStreamError(t *testing.T) {
 	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 
 	// Act
 	cmd, err := NewK3dCmd(factory)

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -73,6 +74,7 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			ShouldError:  false,
 			ExtraConfigs: []schemas.BaseConfiguration{},
 		},
+		GitLabConfiguration: schemas.GitLabConfiguration{},
 		K3dSshConfiguration: schemas.K3dSshConfiguration{
 			User: "test",
 		},
@@ -81,6 +83,10 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 		LogFormat:    "json",
 		LogLevel:     "debug",
 		LogOutput:    "stderr",
+		OutputConfiguration: schemas.OutputConfiguration{
+			Format: "text",
+		},
+		PolicyConfiguration: schemas.PolicyConfiguration{},
 		PreflightCheckConfiguration: schemas.PreflightCheckConfiguration{
 			RegistryServer:   "test",
 			RegistryUsername: "test",
@@ -115,6 +121,8 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			Timeout:            "test",
 			DisableCompression: true,
 		},
+		VersionConfiguration:    schemas.VersionConfiguration{},
+		ViolationsConfiguration: schemas.ViolationsConfiguration{},
 	}
 }
 
@@ -289,30 +297,120 @@ func TestSetAndBindFlagFail(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
-	// Arrange
-	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
-	var loggingFunc = func(args ...string) {
-		_, err := streams.ErrOut.Write([]byte(args[0]))
-		assert.NoError(t, err)
+	testCases := []struct {
+		name                 string
+		shouldFail           bool
+		errorOnUnmarshal     bool
+		errorOnBind          bool
+		errorOnReconcile     bool
+		errorOnValidation    bool
+		expectedErrorMessage string
+	}{
+		{
+			name:                 "no errors",
+			shouldFail:           false,
+			errorOnUnmarshal:     false,
+			errorOnBind:          false,
+			errorOnReconcile:     false,
+			errorOnValidation:    false,
+			expectedErrorMessage: "",
+		},
+		{
+			name:                 "error on unmarshal",
+			shouldFail:           true,
+			errorOnUnmarshal:     true,
+			errorOnBind:          false,
+			errorOnReconcile:     false,
+			errorOnValidation:    false,
+			expectedErrorMessage: "test unmarshall error",
+		},
+		{
+			name:                 "error on bind",
+			shouldFail:           true,
+			errorOnUnmarshal:     false,
+			errorOnBind:          true,
+			errorOnReconcile:     false,
+			errorOnValidation:    false,
+			expectedErrorMessage: "test bind error",
+		},
+		{
+			name:                 "error on reconcile",
+			shouldFail:           true,
+			errorOnUnmarshal:     false,
+			errorOnBind:          false,
+			errorOnReconcile:     true,
+			errorOnValidation:    false,
+			expectedErrorMessage: "Error reconciling configuration: error reconciling ExampleConfiguration: should error was set",
+		},
+		{
+			name:                 "error on validation",
+			shouldFail:           true,
+			errorOnUnmarshal:     false,
+			errorOnBind:          false,
+			errorOnReconcile:     false,
+			errorOnValidation:    true,
+			expectedErrorMessage: "Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
 	}
-	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
-	v := viper.New()
-	v.Set("big-bang-repo", "test")
-	command := &cobra.Command{}
-	configClient := ConfigClient{
-		command:       command,
-		loggingClient: &loggingClient,
-		viperInstance: v,
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
+			var loggingFunc = func(args ...string) {
+				_, err := streams.ErrOut.Write([]byte(args[0]))
+				assert.NoError(t, err)
+			}
+			loggingClient := bbTestLog.NewFakeClient(loggingFunc)
+			v := viper.New()
+			v.Set("big-bang-repo", "test")
+			command := &cobra.Command{}
+			configClient := ConfigClient{
+				command:       command,
+				loggingClient: &loggingClient,
+				viperInstance: v,
+			}
+			var config *schemas.GlobalConfiguration
+			var err error
+			u := v.Unmarshal
+			b := v.BindPFlags
+			if tc.errorOnUnmarshal {
+				u = func(rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+					return errors.New("test unmarshall error")
+				}
+			}
+			if tc.errorOnBind {
+				b = func(flags *pflag.FlagSet) error {
+					return errors.New("test bind error")
+				}
+			}
+			if tc.errorOnReconcile {
+				v.Set("example-config-should-error", true)
+			}
+			if tc.errorOnValidation {
+				v.Set("big-bang-repo", "")
+			}
+			// Act
+			if tc.shouldFail {
+				config, err = getConfigWithFunc(&configClient, u, b)
+			} else {
+				config, err = getConfig(&configClient)
+			}
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, config)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrorMessage)
+			} else {
+				assert.Empty(t, in.String())
+				assert.Empty(t, out.String())
+				assert.Empty(t, errOut.String())
+				assert.NotNil(t, config)
+				assert.NoError(t, err)
+				assert.Equal(t, "test", config.BigBangRepo)
+			}
+		})
 	}
-	// Act
-	config, err := getConfig(&configClient)
-	// Assert
-	assert.Empty(t, in.String())
-	assert.Empty(t, out.String())
-	assert.Empty(t, errOut.String())
-	assert.NotNil(t, config)
-	assert.NoError(t, err)
-	assert.Equal(t, "test", config.BigBangRepo)
 }
 
 func TestGetConfigFailValidation(t *testing.T) {

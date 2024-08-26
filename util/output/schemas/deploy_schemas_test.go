@@ -1,123 +1,117 @@
-package output
+package schemas
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
-func TestBBDeployOutputFormat(t *testing.T) {
-	helmOutput := HelmOutput{
-		Message:      "Testing Output",
-		Name:         "Helm Test Output",
-		LastDeployed: "2024-01-01T00:00:00Z",
-		Namespace:    "test",
-		Status:       "running",
-		Revision:     "1",
-		TestSuite:    "",
-		Notes:        "",
+func TestBigbangOutput_Marshall(t *testing.T) {
+	testObject := &BigbangOutput{
+		Data: HelmOutput{
+			Message:      "test",
+			Name:         "test",
+			LastDeployed: "test",
+			Namespace:    "test",
+			Status:       "test",
+			Revision:     "test",
+			TestSuite:    "test",
+			Notes:        "test",
+		},
 	}
-	bbOutput := BigbangOutput{Data: helmOutput}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		input    *BigbangOutput
 		expected string
 	}{
 		{
-			name:     "YAML Output",
-			format:   output.YAML,
-			expected: "message: Testing Output\nname: Helm Test Output\nlastdeployed: \"2024-01-01T00:00:00Z\"\nnamespace: test\nstatus: running\nrevision: \"1\"\ntestsuite: \"\"\nnotes: \"\"\n",
+			name:     "YAML",
+			input:    testObject,
+			expected: "message: test\nname: test\nlastdeployed: test\nnamespace: test\nstatus: test\nrevision: test\ntestsuite: test\nnotes: test\n",
 		},
 		{
-			name:     "JSON Output",
-			format:   output.JSON,
-			expected: `{"Message":"Testing Output","Name":"Helm Test Output","LastDeployed":"2024-01-01T00:00:00Z","Namespace":"test","Status":"running","Revision":"1","TestSuite":"","Notes":""}`,
+			name:     "JSON",
+			input:    testObject,
+			expected: "{\"Message\":\"test\",\"Name\":\"test\",\"LastDeployed\":\"test\",\"Namespace\":\"test\",\"Status\":\"test\",\"Revision\":\"test\",\"TestSuite\":\"test\",\"Notes\":\"test\"}",
 		},
 		{
-			name:     "Text Output",
-			format:   output.TEXT,
-			expected: "Message: Testing Output\nName: Helm Test Output\nLast Deployed: 2024-01-01T00:00:00Z\nNamespace: test\nStatus: running\nRevision: 1\nTest Suite: \nNotes:\n\n",
+			name:     "HumanReadable",
+			input:    testObject,
+			expected: "Message: test\nName: test\nLast Deployed: test\nNamespace: test\nStatus: test\nRevision: test\nTest Suite: test\nNotes:\ntest\n",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			switch tt.format {
-			case output.YAML:
-				actual, err := bbOutput.MarshalYaml()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
-			case output.JSON:
-				actual, err := bbOutput.MarshalJson()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
-			case output.TEXT:
-				actual, err := bbOutput.MarshalHumanReadable()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Arrange
+			// Act
+			var actual []byte
+			var err error
+			switch test.name {
+			case "YAML":
+				actual, err = test.input.MarshalYaml()
+			case "JSON":
+				actual, err = test.input.MarshalJson()
+			case "HumanReadable":
+				actual, err = test.input.MarshalHumanReadable()
 			}
+			// Assert
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, string(actual))
 		})
 	}
 }
 
-func TestFluxDeployOutputFormat(t *testing.T) {
-	fluxOutput := FluxOutput{
+func TestFluxOutput_Marshall(t *testing.T) {
+	testObject := &FluxOutput{
 		Data: Output{
 			GeneralInfo: map[string]string{
-				"key":    "value",
-				"config": "option",
+				"test": "test",
 			},
-			Actions: []string{
-				"Action 1",
-				"Action 2",
-			},
-			Warnings: []string{
-				"Warning 1",
-				"Warning 2",
-			},
+			Actions:  []string{"test"},
+			Warnings: []string{"test"},
 		},
 	}
+
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		input    *FluxOutput
 		expected string
 	}{
 		{
-			name:     "YAML Output",
-			format:   output.YAML,
-			expected: "general_info:\n  config: option\n  key: value\nactions:\n- Action 1\n- Action 2\nwarnings:\n- Warning 1\n- Warning 2\n",
+			name:     "YAML",
+			input:    testObject,
+			expected: "general_info:\n  test: test\nactions:\n- test\nwarnings:\n- test\n",
 		},
 		{
-			name:     "JSON Output",
-			format:   output.JSON,
-			expected: `{"general_info":{"config":"option","key":"value"},"actions":["Action 1","Action 2"],"warnings":["Warning 1","Warning 2"]}`,
+			name:     "JSON",
+			input:    testObject,
+			expected: "{\"general_info\":{\"test\":\"test\"},\"actions\":[\"test\"],\"warnings\":[\"test\"]}",
 		},
 		{
-			name:     "Text Output",
-			format:   output.TEXT,
-			expected: "General Info:\n  key: value\n  config: option\n\nActions:\n  Action 1\n  Action 2\n\nWarnings:\n  Warning 1\n  Warning 2\n",
+			name:     "HumanReadable",
+			input:    testObject,
+			expected: "General Info:\n  test: test\n\nActions:\n  test\n\nWarnings:\n  test\n",
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			switch tt.format {
-			case output.YAML:
-				actual, err := fluxOutput.MarshalYaml()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
-			case output.JSON:
-				actual, err := fluxOutput.MarshalJson()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
-			case output.TEXT:
-				actual, err := fluxOutput.MarshalHumanReadable()
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(actual))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Arrange
+			// Act
+			var actual []byte
+			var err error
+			switch test.name {
+			case "YAML":
+				actual, err = test.input.MarshalYaml()
+			case "JSON":
+				actual, err = test.input.MarshalJson()
+			case "HumanReadable":
+				actual, err = test.input.MarshalHumanReadable()
 			}
+			// Assert
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, string(actual))
 		})
 	}
 }

@@ -136,7 +136,7 @@ func TestK3d_SshBadArgs(t *testing.T) {
 func TestK3d_SshErrorGettingConfigClient(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
@@ -258,7 +258,7 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 		{
 			name: "ErrorGettingConfigClient",
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
-				factory.SetFail.GetConfigClient = true
+				factory.SetFail.GetConfigClient = 1
 			},
 			errmsg: "unable to get config client: failed to get config client",
 		},

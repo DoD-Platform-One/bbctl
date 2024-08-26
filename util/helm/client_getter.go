@@ -13,9 +13,10 @@ import (
 
 // RESTClientGetter defines the values of a helm REST client
 type RESTClientGetter struct {
-	namespace      string
-	restConfig     *rest.Config
-	warningHandler func(string)
+	namespace             string
+	restConfig            *rest.Config
+	warningHandler        func(string)
+	toRESTConfigShouldErr bool
 }
 
 // NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace' and 'restConfig' and optiional warningHandlerOverride (default is fmt.Print).
@@ -35,6 +36,9 @@ func NewRESTClientGetter(restConfig *rest.Config, namespace string, warningHandl
 
 // ToRESTConfig returns a REST config build from a given kubeconfig
 func (c *RESTClientGetter) ToRESTConfig() (*rest.Config, error) {
+	if c.toRESTConfigShouldErr {
+		return nil, fmt.Errorf("test error")
+	}
 	return c.restConfig, nil
 }
 
@@ -50,7 +54,10 @@ func (c *RESTClientGetter) ToDiscoveryClient() (discovery.CachedDiscoveryInterfa
 	// This setting is only used for discovery.
 	config.Burst = 100
 
-	discoveryClient, _ := discovery.NewDiscoveryClientForConfig(config)
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		return nil, err
+	}
 
 	return memory.NewMemCacheClient(discoveryClient), nil
 }

@@ -218,7 +218,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 		{
 			name: "ErrorGettingIOStreams",
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
-				factory.SetFail.GetIOStreams = true
+				factory.SetFail.GetIOStreams = 1
 			},
 			errmsg: "unable to get IOStreams: failed to get streams",
 		},
@@ -232,7 +232,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 		{
 			name: "ErrorGettingConfigClient",
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
-				factory.SetFail.GetConfigClient = true
+				factory.SetFail.GetConfigClient = 1
 			},
 			errmsg: "unable to get config client: failed to get config client",
 		},
@@ -369,7 +369,7 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 
 	// Act
 	cmd, err := NewHostsCmd(factory)

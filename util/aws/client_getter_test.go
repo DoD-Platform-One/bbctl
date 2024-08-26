@@ -11,9 +11,8 @@ func TestClientGetter_GetClient(t *testing.T) {
 	clientGetter := ClientGetter{}
 
 	// Act
-	client, err := clientGetter.GetClient()
+	client := clientGetter.GetClient()
 
 	// Assert
 	assert.NotNil(t, client)
-	assert.Nil(t, err)
 }

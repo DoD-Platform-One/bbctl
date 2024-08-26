@@ -54,7 +54,7 @@ func NewClient(
 	getEc2Client GetEc2ClientFunc,
 	getIdentity GetIdentityFunc,
 	getStsClient GetStsClientFunc,
-) (Client, error) {
+) Client {
 	return &awsClient{
 		config:                  config,
 		getClusterIps:           getClusterIPs,
@@ -62,7 +62,7 @@ func NewClient(
 		getEc2Client:            getEc2Client,
 		getIdentity:             getIdentity,
 		getStsClient:            getStsClient,
-	}, nil
+	}
 }
 
 // Config - get the AWS SDK configuration

@@ -68,7 +68,7 @@ func TestK3d_CreateFailToGetConfigClient(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", bigBangRepoLocation)
 	cmd := NewCreateClusterCmd(factory)
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	err := cmd.RunE(cmd, []string{})
 	// Assert

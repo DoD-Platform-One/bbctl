@@ -13,6 +13,7 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
 
 func TestBigBang_NewDeployBigBangCmd(t *testing.T) {
@@ -86,7 +87,8 @@ func TestBigBang_NewDeployBigBangCmd_WithK3d(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Get the pipe reader and writer
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 
 	streams, _ := factory.GetIOStream()
 	streams.In = r
@@ -151,7 +153,8 @@ func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Get the pipe reader and writer
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 
 	streams, _ := factory.GetIOStream()
 	streams.In = r
@@ -214,7 +217,7 @@ func TestGetBigBangCmdConfigClientError(t *testing.T) {
 	v.Set("big-bang-repo", bigBangRepoLocation)
 	v.Set("output-config.format", "yaml")
 
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	cmd, err := NewDeployBigBangCmd(factory)
 	// Assert
@@ -232,7 +235,7 @@ func TestDeployBigBangConfigClientError(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", bigBangRepoLocation)
 	cmd, _ := NewDeployBigBangCmd(factory)
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	err := cmd.RunE(cmd, []string{})
 
@@ -269,123 +272,171 @@ func TestBigBangFailToGetConfig(t *testing.T) {
 	}
 }
 
-func TestBigBangFailToGetStreams(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetIOStreams = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create IO streams:") {
-		t.Errorf("unexpected output: %s", err.Error())
+func TestDeployBigBangToClusterErrors(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		errorOnLoggingClient    bool
+		errorOnConfigClient     bool
+		errorOnConfig           bool
+		errorOnIOStream         bool
+		errorOnOutputClient     bool
+		errorOnCredentialHelper bool
+		errorOnUsername         bool
+		errorOnPassword         bool
+		errorOnCommandWrapper   bool
+		errorOnCreatePipe       bool
+		errorOnGetPipe          bool
+		errorOnCmdRun           bool
+		errorOnOutput           bool
+		expectedError           string
+		expectedOutput          string
+	}{
+		{
+			name:                 "Error on logging client",
+			errorOnLoggingClient: true,
+			expectedError:        "failed to get logging client",
+		},
+		{
+			name:                "Error on config client",
+			errorOnConfigClient: true,
+			expectedError:       "failed to get config client",
+		},
+		{
+			name:          "Error on config",
+			errorOnConfig: true,
+			expectedError: "error getting config",
+		},
+		{
+			name:            "Error on IO stream",
+			errorOnIOStream: true,
+			expectedError:   "unable to create IO streams",
+		},
+		{
+			name:                "Error on output client",
+			errorOnOutputClient: true,
+			expectedError:       "unable to create output client",
+		},
+		{
+			name:                    "Error on credential helper",
+			errorOnCredentialHelper: true,
+			expectedError:           "unable to get credential helper",
+		},
+		{
+			name:            "Error on username",
+			errorOnUsername: true,
+			expectedError:   "Dummy Error",
+		},
+		{
+			name:            "Error on password",
+			errorOnPassword: true,
+			expectedError:   "Dummy Error",
+		},
+		{
+			name:                  "Error on command wrapper",
+			errorOnCommandWrapper: true,
+			expectedError:         "failed to get command wrapper",
+		},
+		{
+			name:              "Error on create pipe",
+			errorOnCreatePipe: true,
+			expectedError:     "failed to create pipe",
+		},
+		{
+			name:           "Error on get pipe",
+			errorOnGetPipe: true,
+			expectedError:  "failed to get pipe",
+		},
+		{
+			name:          "Error on command run",
+			errorOnCmdRun: true,
+			expectedError: "Failed to run command",
+		},
+		{
+			name:           "Error on output",
+			errorOnOutput:  true,
+			expectedError:  "unable to write YAML output: FakeWriter intentionally errored",
+			expectedOutput: "Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  -f /tmp/big-bang/chart/ingress-certs.yaml -f /tmp/big-bang/docs/assets/configs/example/policy-overrides.yaml ",
+		},
 	}
-}
 
-func TestBigBangFailToGetOutputClient(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetOutputClient = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create output client:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestBigBangFailToGetCredentialHelper(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCredentialHelper = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get credential helper:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestBigBangFailToGetCredentials(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCredentialFunction = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get username:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestBigBangFailToGetCommandWrapper(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetCommandWrapper = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to get command wrapper:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
-func TestBigBangFailToGetPipe(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "/tmp/big-bang")
-	v.Set("output-config.format", "yaml")
-	factory.SetFail.CreatePipe = true
-	cmd, cmdErr := NewDeployBigBangCmd(factory)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.NoError(t, cmdErr)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "unable to create pipe:") {
-		t.Errorf("unexpected output: %s", err.Error())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			streams, err := factory.GetIOStream()
+			// TODO: fix the flux client changing up the streams
+			originalOut := (*streams).Out
+			assert.Nil(t, err)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "/tmp/big-bang")
+			v.Set("format", "yaml")
+			if tc.errorOnLoggingClient {
+				factory.SetFail.GetLoggingClient = true
+			}
+			if tc.errorOnConfigClient {
+				factory.SetFail.GetConfigClient = 1
+			}
+			if tc.errorOnConfig {
+				v.Set("big-bang-repo", "")
+			}
+			if tc.errorOnIOStream {
+				factory.SetFail.GetIOStreams = 1
+			}
+			if tc.errorOnOutputClient {
+				factory.SetFail.GetOutputClient = true
+			}
+			if tc.errorOnCredentialHelper {
+				factory.SetFail.GetCredentialHelper = true
+			}
+			if tc.errorOnUsername {
+				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+					if s1 == "username" {
+						return "", fmt.Errorf("Dummy Error")
+					}
+					return "dummy", nil
+				})
+			}
+			if tc.errorOnPassword {
+				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+					if s1 == "password" {
+						return "", fmt.Errorf("Dummy Error")
+					}
+					return "dummy", nil
+				})
+			}
+			if tc.errorOnCommandWrapper {
+				factory.SetFail.GetCommandWrapper = true
+			}
+			if tc.errorOnCreatePipe {
+				factory.SetFail.CreatePipe = true
+			}
+			if tc.errorOnGetPipe {
+				factory.SetFail.GetPipe = true
+			}
+			if tc.errorOnCmdRun {
+				factory.SetFail.SetCommandWrapperRunError = true
+			}
+			if tc.errorOnOutput {
+				fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+				streams.Out = fakeWriter
+				factory.SetIOStream(streams)
+				originalOut = fakeWriter
+			}
+			cmd, _ := NewDeployBigBangCmd(factory)
+			// Act
+			err = deployBigBangToCluster(cmd, factory, []string{})
+			// Assert
+			assert.Error(t, err)
+			if !assert.Contains(t, err.Error(), tc.expectedError) {
+				t.Errorf("unexpected output: %s", err.Error())
+			}
+			if tc.errorOnOutput {
+				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeWriter).ActualBuffer.(*bytes.Buffer).String())
+			} else {
+				result := originalOut.(*bytes.Buffer).String()
+				assert.Contains(t, result, tc.expectedOutput)
+			}
+		})
 	}
 }
 

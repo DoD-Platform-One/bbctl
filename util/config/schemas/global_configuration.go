@@ -16,12 +16,12 @@ type GlobalConfiguration struct {
 	DeployBigBangConfiguration DeployBigBangConfiguration `mapstructure:"deploy-big-bang" yaml:"deploy-big-bang"`
 	// Example configuration: object
 	ExampleConfiguration ExampleConfiguration `mapstructure:"example-config" yaml:"example-config"`
+	// GitLab configuration: object
+	GitLabConfiguration GitLabConfiguration `mapstructure:"gitlab" yaml:"gitlab"`
 	// K3d SSH configuration: object
 	K3dSshConfiguration K3dSshConfiguration `mapstructure:"k3d-ssh" yaml:"k3d-ssh"`
 	// Add source to log: boolean
 	LogAddSource bool `mapstructure:"bbctl-log-add-source" yaml:"bbctl-log-add-source"`
-	// GitLab configuration: object
-	GitLabConfiguration GitLabConfiguration `mapstructure:"gitlab" yaml:"gitlab"`
 	// Log file location: file path
 	LogFile string `mapstructure:"bbctl-log-file" yaml:"bbctl-log-file"`
 	// Log format: json, text
@@ -70,8 +70,9 @@ func (g *GlobalConfiguration) getSubConfigurations() []BaseConfiguration {
 	return []BaseConfiguration{
 		&g.DeployBigBangConfiguration,
 		&g.ExampleConfiguration,
-		&g.K3dSshConfiguration,
 		&g.GitLabConfiguration,
+		&g.K3dSshConfiguration,
+		&g.OutputConfiguration,
 		&g.PolicyConfiguration,
 		&g.PreflightCheckConfiguration,
 		&g.UtilCredentialHelperConfiguration,

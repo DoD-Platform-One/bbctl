@@ -171,26 +171,29 @@ type FakeFactory struct {
 	OverWritePipe bool
 
 	SetFail struct {
-		GetConfigClient              bool
+		GetCredentialHelper          bool
+		GetConfigClient              int // the number of times to pass before returning an error every time, 0 is never fail
+		getConfigClientCount         int // the number of times the GetConfigClient function has been called
 		GetHelmClient                bool
+		GetOutputClient              bool
 		GetK8sDynamicClient          bool
 		GetK8sDynamicClientPrepFuncs []*func(clientset *dynamicFake.FakeDynamicClient)
 		GetK8sClientset              bool
 		GetK8sClientsetPrepFuncs     []*func(clientset *fake.Clientset)
 		GetCommandExecutor           bool
+		GetCommandWrapper            bool
+		SetCommandWrapperRunError    bool
 		GetPolicyClient              bool
 		GetCrds                      bool
 		GetDescriptor                bool
 		DescriptorType               string
 		GetAWSClient                 bool
 		GetIstioClient               bool
-		GetIOStreams                 bool
+		GetIOStreams                 int // the number of times to pass before returning an error every time, 0 is never fail
+		getIOStreamsCount            int // the number of times the GetIOStreams function has been called
 		GetLoggingClient             bool
-		GetOutputClient              bool
-		GetCredentialHelper          bool
-		GetCredentialFunction        bool
-		GetCommandWrapper            bool
 		CreatePipe                   bool
+		GetPipe                      bool
 		GetRuntimeClient             bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
@@ -205,6 +208,8 @@ type FakeFactory struct {
 		getList    helm.GetListFunc
 		getValues  helm.GetValuesFunc
 	}
+
+	credentialHelper bbUtil.CredentialHelper
 }
 
 // GetCredentialHelper - get credential helper
@@ -212,16 +217,16 @@ func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
 	if f.SetFail.GetCredentialHelper {
 		return nil, fmt.Errorf("failed to get credential helper")
 	}
-	if f.SetFail.GetCredentialFunction {
-		fn := func(arg1 string, arg2 string) (string, error) {
-			return "", fmt.Errorf("no credentials found")
+	if f.credentialHelper == nil {
+		f.credentialHelper = func(arg1 string, arg2 string) (string, error) {
+			return "", nil
 		}
-		return fn, nil
 	}
-	credentialHelper := func(arg1 string, arg2 string) (string, error) {
-		return "", nil
-	}
-	return credentialHelper, nil
+	return f.credentialHelper, nil
+}
+
+func (f *FakeFactory) SetCredentialHelper(credentialHelper bbUtil.CredentialHelper) {
+	f.credentialHelper = credentialHelper
 }
 
 // GetAWSClient constructs a fake AWS client
@@ -277,7 +282,6 @@ func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, erro
 	if f.SetFail.GetOutputClient {
 		return nil, fmt.Errorf("failed to get output client")
 	}
-
 	streams, err := f.GetIOStream()
 	if err != nil {
 		return nil, err
@@ -448,7 +452,15 @@ func (f *FakeFactory) GetCommandWrapper(
 	if f.SetFail.GetCommandWrapper {
 		return nil, fmt.Errorf("failed to get command wrapper")
 	}
-	return fakeApiWrappers.NewFakeCommand(name, args...), nil
+	wrapper := fakeApiWrappers.NewFakeCommand(name, f.SetFail.SetCommandWrapperRunError, args...)
+	streams, err := f.GetIOStream()
+	if err != nil {
+		return nil, err
+	}
+	wrapper.SetStdout(streams.Out)
+	wrapper.SetStderr(streams.ErrOut)
+	wrapper.SetStdin(streams.In)
+	return wrapper, nil
 }
 
 // GetIstioClientSet - get istio clientset
@@ -475,8 +487,8 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 	if f.configClient != nil {
 		return f.configClient, nil
 	}
-
-	if f.SetFail.GetConfigClient {
+	f.SetFail.getConfigClientCount++
+	if f.SetFail.GetConfigClient > 0 && f.SetFail.getConfigClientCount >= f.SetFail.GetConfigClient {
 		return nil, fmt.Errorf("failed to get config client")
 	}
 	clientGetter := bbConfig.ClientGetter{}
@@ -517,7 +529,8 @@ func (f *FakeFactory) ResetIOStream() {
 
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
 func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
-	if f.SetFail.GetIOStreams {
+	f.SetFail.getIOStreamsCount++
+	if f.SetFail.GetIOStreams > 0 && f.SetFail.getIOStreamsCount >= f.SetFail.GetIOStreams {
 		return nil, fmt.Errorf("failed to get streams")
 	}
 	oneStream.Do(func() {
@@ -530,14 +543,14 @@ func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 	return streams, nil
 }
 
-func (f *FakeFactory) SetIOStream(stream genericIOOptions.IOStreams) {
-	streams = &stream
+func (f *FakeFactory) SetIOStream(stream *genericIOOptions.IOStreams) {
+	streams = stream
 }
 
 // CreatePipe - create a pipe
 func (f *FakeFactory) CreatePipe() error {
 	if f.SetFail.CreatePipe {
-		return fmt.Errorf("unable to get pipe")
+		return fmt.Errorf("failed to create pipe")
 	}
 	if f.OverWritePipe {
 		f.SetPipe(f.pipeReader, f.pipeWriter)
@@ -553,14 +566,18 @@ func (f *FakeFactory) CreatePipe() error {
 }
 
 // GetPipe - get the pipe reader and writer
-func (f *FakeFactory) GetPipe() (*os.File, *os.File) {
-	return f.pipeReader, f.pipeWriter
+func (f *FakeFactory) GetPipe() (*os.File, *os.File, error) {
+	if f.SetFail.GetPipe {
+		return nil, nil, fmt.Errorf("failed to get pipe")
+	}
+	return f.pipeReader, f.pipeWriter, nil
 }
 
 // SetPipe - set the pipe reader and writer
-func (f *FakeFactory) SetPipe(reader *os.File, writer *os.File) {
+func (f *FakeFactory) SetPipe(reader *os.File, writer *os.File) error {
 	f.pipeReader = reader
 	f.pipeWriter = writer
+	return nil
 }
 
 // ResetPipe resets the pipe reader and writer to nil

@@ -33,10 +33,7 @@ func NewUpdateCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		Example: updateRootExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := streams.Out.Write([]byte(fmt.Sprintln("Please provide a subcommand for update (see help)")))
-			if err != nil {
-				return fmt.Errorf("Unable to write to output stream: %v", err)
-			}
-			return nil
+			return err
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,

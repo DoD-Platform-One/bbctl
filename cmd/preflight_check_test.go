@@ -1286,7 +1286,7 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "/tmp")
 	v.Set("output-config.format", "text")
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	cmd, cmdError := NewPreflightCheckCmd(factory)
 	// Assert
@@ -1331,7 +1331,7 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	v.Set("output-config.format", "text")
 	cmd, _ := NewPreflightCheckCmd(factory)
 	// Act
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, cmd)

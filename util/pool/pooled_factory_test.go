@@ -3,6 +3,7 @@ package pool
 import (
 	"bytes"
 	"log/slog"
+	"os"
 	"reflect"
 	"testing"
 
@@ -98,8 +99,7 @@ func TestPooledFactory_GetAWSClient(t *testing.T) {
 			factory2 := NewPooledFactory()
 			if !tc.errored {
 				clientGetter := bbAws.ClientGetter{}
-				awsClient, err := clientGetter.GetClient()
-				assert.Nil(t, err)
+				awsClient := clientGetter.GetClient()
 				factory2.awsClient = awsClient
 			}
 			if tc.bubbleError || !tc.errored {
@@ -878,6 +878,127 @@ func TestPooledFactory_GetIOStream(t *testing.T) {
 				assert.Equal(t, factory1.ioStream, streams)
 				assert.Equal(t, factory1.ioStream, result)
 				assert.Equal(t, factory1.ioStream, cachedResult)
+			}
+		})
+	}
+}
+
+func TestPooledFactory_CreatePipe(t *testing.T) {
+	testCases := getCommonTestCases(t)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory1 := NewPooledFactory()
+			factory2 := NewPooledFactory()
+			fakeReader, fakeWriter, err := os.Pipe()
+			assert.Nil(t, err)
+			if !tc.errored {
+				factory2.pipeReader, factory2.pipeWriter = fakeReader, fakeWriter
+			}
+			if tc.bubbleError || !tc.errored {
+				factory1.SetUnderlyingFactory(factory2)
+			}
+			// act
+			err = factory1.CreatePipe()
+			cachedErr := factory1.CreatePipe()
+			// assert
+			if tc.errored {
+				assert.NotNil(t, err)
+				assert.NotNil(t, cachedErr)
+				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				assert.Nil(t, factory1.pipeReader)
+				assert.Nil(t, factory1.pipeWriter)
+			} else {
+				assert.Nil(t, err)
+				assert.Nil(t, cachedErr)
+				assert.Nil(t, factory1.pipeReader)
+				assert.Nil(t, factory1.pipeWriter)
+			}
+		})
+	}
+}
+
+func TestPooledFactory_SetPipe(t *testing.T) {
+	testCases := getCommonTestCases(t)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory1 := NewPooledFactory()
+			factory2 := NewPooledFactory()
+			fakeReader, fakeWriter, err := os.Pipe()
+			assert.Nil(t, err)
+			if !tc.errored {
+				factory2.pipeReader, factory2.pipeWriter = fakeReader, fakeWriter
+			}
+			if tc.bubbleError || !tc.errored {
+				factory1.SetUnderlyingFactory(factory2)
+			}
+			// act
+			err = factory1.SetPipe(fakeReader, fakeWriter)
+			// assert
+			if tc.errored {
+				assert.NotNil(t, err)
+				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				if tc.bubbleError {
+					assert.NotNil(t, factory1.pipeReader)
+					assert.NotNil(t, factory1.pipeWriter)
+					assert.Nil(t, factory2.pipeReader)
+					assert.Nil(t, factory2.pipeWriter)
+					assert.Equal(t, factory1.pipeReader, fakeReader)
+					assert.Equal(t, factory1.pipeWriter, fakeWriter)
+				} else {
+					assert.Nil(t, factory1.pipeReader)
+					assert.Nil(t, factory1.pipeWriter)
+				}
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, factory1.pipeReader, fakeReader)
+				assert.Equal(t, factory1.pipeWriter, fakeWriter)
+				assert.Equal(t, factory1.pipeReader, factory2.pipeReader)
+				assert.Equal(t, factory1.pipeWriter, factory2.pipeWriter)
+			}
+		})
+	}
+}
+
+func TestPooledFactory_GetPipe(t *testing.T) {
+	testCases := getCommonTestCases(t)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory1 := NewPooledFactory()
+			factory2 := NewPooledFactory()
+			fakeReader, fakeWriter, err := os.Pipe()
+			assert.Nil(t, err)
+			if !tc.errored {
+				factory2.pipeReader, factory2.pipeWriter = fakeReader, fakeWriter
+			}
+			if tc.bubbleError || !tc.errored {
+				factory1.SetUnderlyingFactory(factory2)
+			}
+			// act
+			reader, writer, err := factory1.GetPipe()
+			cachedReader, cachedWriter, cachedErr := factory1.GetPipe()
+			// assert
+			if tc.errored {
+				assert.Nil(t, reader)
+				assert.Nil(t, writer)
+				assert.NotNil(t, err)
+				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				assert.Nil(t, cachedReader)
+				assert.Nil(t, cachedWriter)
+				assert.NotNil(t, cachedErr)
+				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+			} else {
+				assert.NotNil(t, reader)
+				assert.NotNil(t, writer)
+				assert.Nil(t, err)
+				assert.Nil(t, cachedErr)
+				assert.Equal(t, factory1.pipeReader, reader)
+				assert.Equal(t, factory1.pipeWriter, writer)
+				assert.Equal(t, factory1.pipeReader, cachedReader)
+				assert.Equal(t, factory1.pipeWriter, cachedWriter)
 			}
 		})
 	}

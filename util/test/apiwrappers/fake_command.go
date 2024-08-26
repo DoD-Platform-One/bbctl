@@ -1,6 +1,7 @@
 package apiwrappers
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -9,19 +10,21 @@ import (
 
 // FakeCommandRunner - a fake command runner
 type FakeCommandRunner struct {
-	stdout io.Writer
-	stderr io.Writer
-	stdin  io.Reader
-	name   string
-	args   []string
+	stdout          io.Writer
+	stderr          io.Writer
+	stdin           io.Reader
+	name            string
+	args            []string
+	shouldFailToRun bool
 }
 
 // NewFakeCommand - create a new fake command
-func NewFakeCommand(name string, args ...string) *bbUtilApiWrappers.Command {
+func NewFakeCommand(name string, shouldFailToRun bool, args ...string) *bbUtilApiWrappers.Command {
 	return bbUtilApiWrappers.NewCommand(
 		&FakeCommandRunner{
-			name: name,
-			args: args,
+			name:            name,
+			args:            args,
+			shouldFailToRun: shouldFailToRun,
 		},
 		name,
 		args...,
@@ -44,6 +47,9 @@ func (c *FakeCommandRunner) SetStdin(reader io.Reader) {
 }
 
 func (c *FakeCommandRunner) Run() error {
+	if c.shouldFailToRun {
+		return fmt.Errorf("Failed to run command")
+	}
 	var argsStr strings.Builder
 	for _, arg := range c.args {
 		argsStr.WriteString(arg)
