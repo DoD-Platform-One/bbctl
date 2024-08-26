@@ -330,18 +330,6 @@ func (pf *PooledFactory) GetViper() (*viper.Viper, error) {
 	return client, err
 }
 
-// SetViper sets the Viper
-func (pf *PooledFactory) SetViper(v *viper.Viper) error {
-	if v == pf.viper {
-		return nil
-	}
-	if pf.underlyingFactory == nil {
-		return &ErrFactoryNotInitialized{}
-	}
-	pf.viper = v
-	return pf.underlyingFactory.SetViper(v)
-}
-
 // GetIOStream returns the IO stream
 //
 // Pooled by instance (singleton)
@@ -360,39 +348,15 @@ func (pf *PooledFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 }
 
 // CreatePipe initializes the pipe if not already created
-func (pf *PooledFactory) CreatePipe() error {
-	if pf.pipeReader != nil && pf.pipeWriter != nil {
-		return nil
-	}
-
-	if pf.underlyingFactory == nil {
-		return &ErrFactoryNotInitialized{}
-	}
-
-	return pf.underlyingFactory.CreatePipe()
-}
-
-// SetPipe allows manually setting the pipe reader and writer
-func (pf *PooledFactory) SetPipe(r *os.File, w *os.File) error {
-	if r == pf.pipeReader && w == pf.pipeWriter {
-		return nil
-	}
-	if pf.underlyingFactory == nil {
-		return &ErrFactoryNotInitialized{}
-	}
-	pf.pipeReader = r
-	pf.pipeWriter = w
-	return pf.underlyingFactory.SetPipe(r, w)
-}
-
-// GetPipe returns the reader and writer of the pipe
 func (pf *PooledFactory) GetPipe() (*os.File, *os.File, error) {
 	if pf.pipeReader != nil && pf.pipeWriter != nil {
 		return pf.pipeReader, pf.pipeWriter, nil
 	}
+
 	if pf.underlyingFactory == nil {
 		return nil, nil, &ErrFactoryNotInitialized{}
 	}
+
 	r, w, err := pf.underlyingFactory.GetPipe()
 	if err != nil {
 		return nil, nil, err

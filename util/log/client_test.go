@@ -3,10 +3,7 @@ package log
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +19,6 @@ func TestNewClientNilLoggerPass(t *testing.T) {
 		enabled,
 		errorOut,
 		errorContext,
-		handleError,
 		handlerFunc,
 		info,
 		infoContext,
@@ -143,9 +139,7 @@ func TestClientErrorPass(t *testing.T) {
 	leveler := slog.Leveler(slog.LevelError.Level())
 	client := *createTestClient(t, &stringBuilder, leveler)
 	// Act
-	assert.PanicsWithValue(t, "test", func() {
-		client.Error("test")
-	})
+	client.Error("test")
 	// Assert
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
@@ -165,9 +159,7 @@ func TestClientErrorContextPass(t *testing.T) {
 	client := *createTestClient(t, &stringBuilder, leveler)
 	context := context.TODO()
 	// Act
-	assert.PanicsWithValue(t, "test", func() {
-		client.ErrorContext(context, "test")
-	})
+	client.ErrorContext(context, "test")
 	// Assert
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
@@ -178,43 +170,6 @@ func TestClientErrorContextPass(t *testing.T) {
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
 	assert.Greater(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
-}
-
-func TestClientHandleErrorPass(t *testing.T) {
-	// Arrange
-	var stringBuilder strings.Builder
-	leveler := slog.Leveler(slog.LevelError.Level())
-	client := *createTestClient(t, &stringBuilder, leveler)
-	err := errors.New("test error")
-	exitFunc := func(code int) {
-		panic(fmt.Sprintf("test: %v", err))
-	}
-	// Act
-	assert.PanicsWithValue(t, "test: test error", func() {
-		client.HandleError("test: %v", err, exitFunc)
-	})
-	// Assert
-	jsonResult := stringBuilder.String()
-	var jsonObject TestLog
-	err = json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
-	assert.Equal(t, "ERROR", jsonObject.Level)
-	assert.Contains(t, jsonObject.Source.Function, "util/log.handleError")
-	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
-	assert.Equal(t, "test: test error", jsonObject.Message)
-}
-
-func TestClientHandleErrorNil(t *testing.T) {
-	// Arrange
-	var stringBuilder strings.Builder
-	leveler := slog.Leveler(slog.LevelError.Level())
-	client := *createTestClient(t, &stringBuilder, leveler)
-	// Act
-	client.HandleError("test: %v", nil, os.Exit)
-	// Assert
-	jsonResult := stringBuilder.String()
-	assert.Empty(t, jsonResult)
 }
 
 func TestClientHandlerPass(t *testing.T) {

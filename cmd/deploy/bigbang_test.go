@@ -9,8 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -83,9 +81,6 @@ func TestBigBang_NewDeployBigBangCmd_WithK3d(t *testing.T) {
 	factory.ResetPipe()
 
 	// Create the pipe using the factory
-	err := factory.CreatePipe()
-	assert.Nil(t, err)
-
 	// Get the pipe reader and writer
 	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
@@ -126,7 +121,8 @@ func TestBigBang_NewDeployBigBangCmd_WithK3d(t *testing.T) {
 	}()
 
 	// Read the output from the pipe in the main goroutine
-	io.Copy(out, r)
+	_, err = io.Copy(out, r)
+	assert.Nil(t, err)
 
 	// Wait for the goroutine to finish
 	wg.Wait()
@@ -149,9 +145,6 @@ func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	factory.ResetPipe()
 
 	// Create the pipe using the factory
-	err := factory.CreatePipe()
-	assert.Nil(t, err)
-
 	// Get the pipe reader and writer
 	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
@@ -192,7 +185,8 @@ func TestBigBang_NewDeployBigBangCmd_WithComponents(t *testing.T) {
 	}()
 
 	// Read the output from the pipe in the main goroutine
-	io.Copy(out, r)
+	_, err = io.Copy(out, r)
+	assert.Nil(t, err)
 
 	// Wait for the goroutine to finish
 	wg.Wait()
@@ -247,31 +241,6 @@ func TestDeployBigBangConfigClientError(t *testing.T) {
 	}
 }
 
-func TestBigBangFailToGetConfig(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	loggingClient, _ := factory.GetLoggingClient()
-	cmd, _ := NewDeployBigBangCmd(factory)
-	viper, _ := factory.GetViper()
-	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
-		return &schemas.GlobalConfiguration{
-			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
-	}
-	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
-	factory.SetConfigClient(client)
-
-	// Act
-	err := deployBigBangToCluster(cmd, factory, []string{})
-
-	// Assert
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "error getting config:") {
-		t.Errorf("unexpected output: %s", err.Error())
-	}
-}
-
 func TestDeployBigBangToClusterErrors(t *testing.T) {
 	testCases := []struct {
 		name                    string
@@ -284,7 +253,6 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 		errorOnUsername         bool
 		errorOnPassword         bool
 		errorOnCommandWrapper   bool
-		errorOnCreatePipe       bool
 		errorOnGetPipe          bool
 		errorOnCmdRun           bool
 		errorOnOutput           bool
@@ -335,11 +303,6 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 			name:                  "Error on command wrapper",
 			errorOnCommandWrapper: true,
 			expectedError:         "failed to get command wrapper",
-		},
-		{
-			name:              "Error on create pipe",
-			errorOnCreatePipe: true,
-			expectedError:     "failed to create pipe",
 		},
 		{
 			name:           "Error on get pipe",
@@ -406,9 +369,6 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 			}
 			if tc.errorOnCommandWrapper {
 				factory.SetFail.GetCommandWrapper = true
-			}
-			if tc.errorOnCreatePipe {
-				factory.SetFail.CreatePipe = true
 			}
 			if tc.errorOnGetPipe {
 				factory.SetFail.GetPipe = true

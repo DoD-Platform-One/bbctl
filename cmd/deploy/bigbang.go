@@ -196,15 +196,10 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 		return fmt.Errorf("unable to get command wrapper: %w", err)
 	}
 
-	// Use the factory to create the pipe
-	err = factory.CreatePipe()
-	if err != nil {
-		return fmt.Errorf("unable to create pipe: %w", err)
-	}
-
+	// Use the factory to get the pipe
 	r, w, err := factory.GetPipe()
 	if err != nil {
-		return fmt.Errorf("Unable to get pipe: %w", err)
+		return fmt.Errorf("unable to get pipe: %w", err)
 	}
 
 	streams.In = r

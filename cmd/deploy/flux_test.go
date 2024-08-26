@@ -96,9 +96,6 @@ func TestFlux_NewDeployFluxCmd_Run_Text(t *testing.T) {
 	factory.ResetPipe()
 
 	// Create the pipe using the factory
-	err := factory.CreatePipe()
-	assert.Nil(t, err)
-
 	// Get the pipe reader and writer
 	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
@@ -160,9 +157,6 @@ func TestFlux_NewDeployFluxCmd_Run_Json(t *testing.T) {
 	factory.ResetPipe()
 
 	// Create the pipe using the factory
-	err := factory.CreatePipe()
-	assert.Nil(t, err)
-
 	// Get the pipe reader and writer
 	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
@@ -224,9 +218,6 @@ func TestFlux_NewDeployFluxCmd_Run_Yaml(t *testing.T) {
 	factory.ResetPipe()
 
 	// Create the pipe using the factory
-	err := factory.CreatePipe()
-	assert.Nil(t, err)
-
 	// Get the pipe reader and writer
 	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
@@ -337,7 +328,6 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 		failOnUsername          bool
 		failOnPassword          bool
 		failOnGetCommandWrapper bool
-		failOnCreatePipe        bool
 		failOnGetPipe           bool
 		failOnCmdRun            bool
 		failOnOutput            bool
@@ -385,14 +375,9 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			expectedError:           "unable to get command wrapper",
 		},
 		{
-			name:             "Fail on Create Pipe",
-			failOnCreatePipe: true,
-			expectedError:    "unable to create pipe",
-		},
-		{
 			name:          "Fail on Get Pipe",
 			failOnGetPipe: true,
-			expectedError: "Unable to get pipe",
+			expectedError: "unable to get pipe",
 		},
 		{
 			name:          "Fail on Command Run",
@@ -451,9 +436,6 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			}
 			if tc.failOnGetCommandWrapper {
 				factory.SetFail.GetCommandWrapper = true
-			}
-			if tc.failOnCreatePipe {
-				factory.SetFail.CreatePipe = true
 			}
 			if tc.failOnGetPipe {
 				factory.SetFail.GetPipe = true
