@@ -165,11 +165,19 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	}
 
 	// Bind the flags to viper
-	logger.HandleError("error binding flags to viper: %v", viperInstance.BindPFlags(flags), os.Exit)
+	err = viperInstance.BindPFlags(flags)
+	if err != nil {
+		initLogger.Error(fmt.Sprintf("Error binding flags to viper: %v", err.Error()))
+		os.Exit(1)
+	}
 
 	// echo the flags
 	logger.Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
-	logger.HandleError("error encountered during execution: %v", bbctlCmd.Execute(), os.Exit)
+	err = bbctlCmd.Execute()
+	if err != nil {
+		initLogger.Error(fmt.Sprintf("Error executing command: %v", err.Error()))
+		os.Exit(1)
+	}
 }
 
 // setupSlog - setup the slog logger

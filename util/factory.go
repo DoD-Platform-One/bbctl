@@ -62,33 +62,26 @@ type Factory interface {
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
 	GetViper() (*viper.Viper, error)
-	SetViper(*viper.Viper) error
 	GetIOStream() (*genericIOOptions.IOStreams, error)
-	CreatePipe() error
 	GetPipe() (*os.File, *os.File, error)
-	SetPipe(reader *os.File, writer *os.File) error
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
 func NewFactory(referenceFactory Factory) *UtilityFactory {
 	factory := &UtilityFactory{
 		referenceFactory: referenceFactory,
-		viperInstance:    viper.New(),
-		pipeReader:       nil, // Explicitly initializing to nil (optional, as they default to nil)
-		pipeWriter:       nil,
 	}
 	if factory.referenceFactory == nil {
 		factory.referenceFactory = factory
 	}
+	factory.getViperFunction = getViper
 	return factory
 }
 
 // UtilityFactory is a concrete implementation of the Factory interface containing a pre-initialized Viper instance
 type UtilityFactory struct {
 	referenceFactory Factory
-	viperInstance    *viper.Viper
-	pipeReader       *os.File
-	pipeWriter       *os.File
+	getViperFunction func() (*viper.Viper, error)
 }
 
 // CredentialsFile struct represents credentials YAML files with a top level field called `credentials`
@@ -356,8 +349,7 @@ func (f *UtilityFactory) GetLoggingClient() (bbLog.Client, error) {
 // Errors when there are issues initializing the logger
 func (f *UtilityFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error) {
 	clientGetter := bbLog.ClientGetter{}
-	client := clientGetter.GetClient(logger)
-	return client, nil
+	return clientGetter.GetClient(logger), nil
 }
 
 // GetRuntimeClient initializes and returns a new k8s runtime client by calling the client.New() function
@@ -522,16 +514,12 @@ func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 
 // GetViper returns the viper instance
 func (f *UtilityFactory) GetViper() (*viper.Viper, error) {
-	return f.viperInstance, nil
+	return f.getViperFunction()
 }
 
-// SetViper sets the viper instance
-func (f *UtilityFactory) SetViper(v *viper.Viper) error {
-	if v == f.viperInstance {
-		return nil
-	}
-	f.viperInstance = v
-	return f.referenceFactory.SetViper(v)
+// getViper initializes and returns a new viper instance
+func getViper() (*viper.Viper, error) {
+	return viper.New(), nil
 }
 
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
@@ -543,30 +531,11 @@ func (f *UtilityFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 	}, nil
 }
 
-// CreatePipe creates a new os.Pipe and stores the reader and writer
-func (f *UtilityFactory) CreatePipe() error {
-	return f.createPipe(os.Pipe)
-}
-
-// See CreatePipe
-func (f *UtilityFactory) createPipe(p func() (*os.File, *os.File, error)) error {
-	r, w, err := p()
-	if err != nil {
-		return fmt.Errorf("Unable to create pipe: %w", err)
-	}
-	f.pipeReader = r
-	f.pipeWriter = w
-	return nil
-}
-
 // GetPipe returns the currently set pipe reader and writer
 func (f *UtilityFactory) GetPipe() (*os.File, *os.File, error) {
-	return f.pipeReader, f.pipeWriter, nil
-}
-
-// SetPipe sets the pipe reader and writer
-func (f *UtilityFactory) SetPipe(reader *os.File, writer *os.File) error {
-	f.pipeReader = reader
-	f.pipeWriter = writer
-	return nil
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Unable to create pipe: %w", err)
+	}
+	return r, w, nil
 }

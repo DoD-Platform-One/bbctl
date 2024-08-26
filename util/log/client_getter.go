@@ -13,7 +13,6 @@ func (clientGetter *ClientGetter) GetClient(logger *slog.Logger) Client {
 		enabled,
 		errorOut,
 		errorContext,
-		handleError,
 		handlerFunc,
 		info,
 		infoContext,

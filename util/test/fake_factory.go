@@ -192,7 +192,6 @@ type FakeFactory struct {
 		GetIOStreams                 int // the number of times to pass before returning an error every time, 0 is never fail
 		getIOStreamsCount            int // the number of times the GetIOStreams function has been called
 		GetLoggingClient             bool
-		CreatePipe                   bool
 		GetPipe                      bool
 		GetRuntimeClient             bool
 
@@ -547,30 +546,22 @@ func (f *FakeFactory) SetIOStream(stream *genericIOOptions.IOStreams) {
 	streams = stream
 }
 
-// CreatePipe - create a pipe
-func (f *FakeFactory) CreatePipe() error {
-	if f.SetFail.CreatePipe {
-		return fmt.Errorf("failed to create pipe")
-	}
-	if f.OverWritePipe {
-		f.SetPipe(f.pipeReader, f.pipeWriter)
-		return nil
-	}
-	r, w, err := os.Pipe()
-	if err != nil {
-		return fmt.Errorf("Unable to create pipe: %w", err)
-	}
-	f.pipeReader = r
-	f.pipeWriter = w
-	return nil
-}
-
 // GetPipe - get the pipe reader and writer
 func (f *FakeFactory) GetPipe() (*os.File, *os.File, error) {
 	if f.SetFail.GetPipe {
 		return nil, nil, fmt.Errorf("failed to get pipe")
 	}
-	return f.pipeReader, f.pipeWriter, nil
+	if f.OverWritePipe {
+		err := f.SetPipe(f.pipeReader, f.pipeWriter)
+		return f.pipeReader, f.pipeWriter, err
+	}
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Unable to get pipe: %w", err)
+	}
+	f.pipeReader = r
+	f.pipeWriter = w
+	return r, w, nil
 }
 
 // SetPipe - set the pipe reader and writer

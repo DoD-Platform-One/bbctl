@@ -32,7 +32,6 @@ func (c *fakeClient) CloneWithUpdates(
 	enabledFunc bbUtilLog.EnabledFunc,
 	errorFunc bbUtilLog.ErrorFunc,
 	errorContextFunc bbUtilLog.ErrorContextFunc,
-	handleErrorFunc bbUtilLog.HandleErrorFunc,
 	handlerFunc bbUtilLog.HandlerFunc,
 	infoFunc bbUtilLog.InfoFunc,
 	infoContextFunc bbUtilLog.InfoContextFunc,
@@ -86,23 +85,6 @@ func (c *fakeClient) Error(format string, args ...interface{}) {
 // Panics when called
 func (c *fakeClient) ErrorContext(context context.Context, format string, args ...interface{}) {
 	panic("unimplemented")
-}
-
-// HandleError formats the message using the provided format then calls the configured log function and panics
-//
-// Format string must not be empty
-func (c *fakeClient) HandleError(format string, err error, exitFunc bbUtilLog.ExitFunc, args ...interface{}) {
-	if format == "" {
-		msg := "format string cannot be empty for HandleError"
-		c.logFunction(msg)
-		panic(msg)
-	}
-	if err != nil {
-		newArgs := append(args, err)
-		msg := fmt.Sprintf("HANDLE_ERROR: "+format, newArgs...)
-		c.logFunction(msg)
-		exitFunc(1)
-	}
 }
 
 // Handler not implemented

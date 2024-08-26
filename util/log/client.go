@@ -16,7 +16,6 @@ type Client interface {
 		enabledFunc EnabledFunc,
 		errorFunc ErrorFunc,
 		errorContextFunc ErrorContextFunc,
-		handleErrorFunc HandleErrorFunc,
 		handlerFunc HandlerFunc,
 		infoFunc InfoFunc,
 		infoContextFunc InfoContextFunc,
@@ -34,12 +33,10 @@ type Client interface {
 	DebugContext(context context.Context, format string, args ...interface{})
 	// Enabled - check if logs will emit with given context and level
 	Enabled(context context.Context, level slog.Level) bool
-	// Error - log an error and panic
+	// Error - log an error
 	Error(format string, args ...interface{})
-	// ErrorContext - log an error with context and panic
+	// ErrorContext - log an error
 	ErrorContext(context context.Context, format string, args ...interface{})
-	// HandleError - check for an error, log and cleanly exit if there is one, else return. err gets appended to args before formatting
-	HandleError(format string, err error, exitFunc ExitFunc, args ...interface{})
 	// Handler - return a slog.Handler in use by the client
 	Handler() slog.Handler
 	// Info - log an info message
@@ -77,12 +74,6 @@ type ErrorFunc func(Client, string, ...interface{})
 // ErrorContextFunc type
 type ErrorContextFunc func(context.Context, Client, string, ...interface{})
 
-// exitFunc is a function that exits the program with the given exit code
-type ExitFunc func(int)
-
-// HandleErrorFunc type
-type HandleErrorFunc func(Client, string, error, ExitFunc, ...interface{})
-
 // HandlerFunc type
 type HandlerFunc func(Client) slog.Handler
 
@@ -117,7 +108,6 @@ type loggingClient struct {
 	enabledFunc      EnabledFunc
 	errorFunc        ErrorFunc
 	errorContextFunc ErrorContextFunc
-	handleErrorFunc  HandleErrorFunc
 	handlerFunc      HandlerFunc
 	infoFunc         InfoFunc
 	infoContextFunc  InfoContextFunc
@@ -137,7 +127,6 @@ func NewClient(
 	enabledFunc EnabledFunc,
 	errorFunc ErrorFunc,
 	errorContextFunc ErrorContextFunc,
-	handleErrorFunc HandleErrorFunc,
 	handlerFunc HandlerFunc,
 	infoFunc InfoFunc,
 	infoContextFunc InfoContextFunc,
@@ -159,7 +148,6 @@ func NewClient(
 		enabledFunc:      enabledFunc,
 		errorFunc:        errorFunc,
 		errorContextFunc: errorContextFunc,
-		handleErrorFunc:  handleErrorFunc,
 		handlerFunc:      handlerFunc,
 		infoFunc:         infoFunc,
 		infoContextFunc:  infoContextFunc,
@@ -180,7 +168,6 @@ func (c *loggingClient) CloneWithUpdates(
 	enabledFunc EnabledFunc,
 	errorFunc ErrorFunc,
 	errorContextFunc ErrorContextFunc,
-	handleErrorFunc HandleErrorFunc,
 	handlerFunc HandlerFunc,
 	infoFunc InfoFunc,
 	infoContextFunc InfoContextFunc,
@@ -197,7 +184,6 @@ func (c *loggingClient) CloneWithUpdates(
 	enabledFuncToUse := coalesce.Coalesce(&enabledFunc, &c.enabledFunc)
 	errorFuncToUse := coalesce.Coalesce(&errorFunc, &c.errorFunc)
 	errorContextFuncToUse := coalesce.Coalesce(&errorContextFunc, &c.errorContextFunc)
-	handleErrorFuncToUse := coalesce.Coalesce(&handleErrorFunc, &c.handleErrorFunc)
 	handlerFuncToUse := coalesce.Coalesce(&handlerFunc, &c.handlerFunc)
 	infoFuncToUse := coalesce.Coalesce(&infoFunc, &c.infoFunc)
 	infoContextFuncToUse := coalesce.Coalesce(&infoContextFunc, &c.infoContextFunc)
@@ -214,7 +200,6 @@ func (c *loggingClient) CloneWithUpdates(
 		*enabledFuncToUse,
 		*errorFuncToUse,
 		*errorContextFuncToUse,
-		*handleErrorFuncToUse,
 		*handlerFuncToUse,
 		*infoFuncToUse,
 		*infoContextFuncToUse,
@@ -248,14 +233,9 @@ func (c *loggingClient) Error(format string, args ...interface{}) {
 	c.errorFunc(c, format)
 }
 
-// ErrorContext - log an error with context and panic
+// ErrorContext - log an error with context
 func (c *loggingClient) ErrorContext(context context.Context, format string, args ...interface{}) {
 	c.errorContextFunc(context, c, format, args...)
-}
-
-// HandleError - handle an error, execute the exitFunc with the given exit code if present
-func (c *loggingClient) HandleError(format string, err error, exitFunc ExitFunc, args ...interface{}) {
-	c.handleErrorFunc(c, format, err, exitFunc, args...)
 }
 
 // Handler - return a slog.Handler in use by the client

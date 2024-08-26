@@ -2,7 +2,6 @@ package util
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	gitlab "github.com/xanzy/go-gitlab"
 	coreV1 "k8s.io/api/core/v1"
@@ -169,6 +169,9 @@ func TestReadCredentialsFile(t *testing.T) {
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
@@ -190,7 +193,9 @@ func TestReadCredentialsFile(t *testing.T) {
 				}
 			}
 			if tc.shouldErrorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.shouldErrorOnConfig {
 				viperInstance.Set("big-bang-repo", "")
@@ -324,6 +329,9 @@ func TestGetCredentialHelper(t *testing.T) {
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
@@ -337,7 +345,9 @@ func TestGetCredentialHelper(t *testing.T) {
 			}
 			// Force the viper instance to be nil to cause this to error downstream
 			if test.name == "GetConfigClientError" {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if test.name == "GetConfigError" {
 				viperInstance.Set("big-bang-repo", "")
@@ -407,6 +417,9 @@ func TestGetHelmConfig(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("bbctl-log-level", "debug")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
@@ -431,7 +444,9 @@ func TestGetHelmConfig(t *testing.T) {
 func TestGetHelmConfigBadConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-	assert.Nil(t, factory.SetViper(nil))
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return nil, nil
+	}
 	// Act
 	config, err := factory.getHelmConfig(nil, "helmconfigtest")
 	// Assert
@@ -445,7 +460,7 @@ func TestGetCommandWrapper(t *testing.T) {
 	factory := NewFactory(nil)
 	wrapper, err := factory.GetCommandWrapper("go", "help")
 	assert.Nil(t, err)
-	// Act
+	// Act				factory.getViperFunction = func() (*viper.Viper, error) {
 	err = wrapper.Run()
 	// Assert
 	assert.Nil(t, err)
@@ -456,6 +471,9 @@ func TestGetIstioClientSet(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 	// Act
@@ -499,7 +517,9 @@ func TestGetConfigClient(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			if tc.errorOnGetClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			// Act
 			client, err := factory.GetConfigClient(nil)
@@ -559,16 +579,21 @@ func TestGetGitLabClient(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
-			viper, _ := factory.GetViper()
-			viper.Set("big-bang-repo", "test")
-			viper.Set("base-url", "https://gitlab.com")
-			viper.Set("access-token", "test")
+			v, _ := factory.GetViper()
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return v, nil
+			}
+			v.Set("big-bang-repo", "test")
+			v.Set("base-url", "https://gitlab.com")
+			v.Set("access-token", "test")
 			var clientOptionsFuncs []gitlab.ClientOptionFunc
 			if tc.errorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.errorOnGetConfig {
-				viper.Set("big-bang-repo", "")
+				v.Set("big-bang-repo", "")
 			}
 			if tc.errorOnGetGitLab {
 				clientOptionsFuncs = append(clientOptionsFuncs, func(c *gitlab.Client) error {
@@ -650,10 +675,15 @@ func TestGetHelmClient(t *testing.T) {
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			if tc.errorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.errorOnConfig {
 				viperInstance.Set("big-bang-repo", "")
@@ -683,6 +713,9 @@ func TestGetK8sClientset(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 	// Act
@@ -697,6 +730,9 @@ func TestGetK8sClientsetBadConfig(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "no-kube-config.yaml")
 	// Act
@@ -770,10 +806,15 @@ func TestGetK8sDynamicClient(t *testing.T) {
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			if tc.errorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.errorOnConfig {
 				viperInstance.Set("big-bang-repo", "")
@@ -874,10 +915,15 @@ func TestGetOutputClient(t *testing.T) {
 			// Set the "output" format using Viper
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("output", tc.outputFormat)
 			if tc.shouldErrorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.shouldErrorOnConfig {
 				viperInstance.Set("big-bang-repo", "")
@@ -961,10 +1007,15 @@ func TestGetRestConfig(t *testing.T) {
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
+			factory.getViperFunction = func() (*viper.Viper, error) {
+				return viperInstance, nil
+			}
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			if tc.errorOnConfigClient {
-				assert.Nil(t, factory.SetViper(nil))
+				factory.getViperFunction = func() (*viper.Viper, error) {
+					return nil, nil
+				}
 			}
 			if tc.errorOnConfig {
 				viperInstance.Set("big-bang-repo", "")
@@ -995,6 +1046,9 @@ func TestGetCommandExecutor(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 	pod := &coreV1.Pod{
@@ -1023,6 +1077,9 @@ func TestGetCommandExecutorMissingConfig(t *testing.T) {
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
 	assert.Nil(t, err)
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return viperInstance, nil
+	}
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "no-kube-config.yaml")
 	// Act
@@ -1036,7 +1093,9 @@ func TestGetCommandExecutorMissingConfig(t *testing.T) {
 func TestGetCommandExecutorBadConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-	assert.Nil(t, factory.SetViper(nil))
+	factory.getViperFunction = func() (*viper.Viper, error) {
+		return nil, nil
+	}
 	// Act
 	executor, err := factory.GetCommandExecutor(nil, nil, "", nil, nil, nil)
 	// Assert
@@ -1105,17 +1164,14 @@ func TestGetIOStreams(t *testing.T) {
 	assert.Equal(t, os.Stderr, ios.ErrOut)
 }
 
-func TestCreatePipe(t *testing.T) {
+func TestGetPipe(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 
 	// Act
-	err := factory.CreatePipe()
+	r, w, err := factory.GetPipe()
 
 	// Assert
-	assert.Nil(t, err)
-
-	r, w, err := factory.GetPipe()
 	assert.Nil(t, err)
 	assert.NotNil(t, r)
 	assert.NotNil(t, w)
@@ -1130,59 +1186,4 @@ func TestCreatePipe(t *testing.T) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(r)
 	assert.Equal(t, testMessage, buf.String())
-}
-
-func TestCreatePipeFailure(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-
-	// Act
-	err := factory.createPipe(func() (*os.File, *os.File, error) {
-		return nil, nil, errors.New("unable to create pipe")
-	})
-
-	// Assert
-	assert.NotNil(t, err)
-	assert.Equal(t, "Unable to create pipe: unable to create pipe", err.Error())
-}
-
-func TestSetPipe(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	r1, w1, err := os.Pipe()
-	assert.Nil(t, err)
-
-	// Act
-	factory.SetPipe(r1, w1)
-
-	r2, w2, err := factory.GetPipe()
-
-	// Assert
-	assert.Nil(t, err)
-	assert.Equal(t, r1, r2)
-	assert.Equal(t, w1, w2)
-
-	// Verify that the pipe set works correctly by writing and reading
-	testMessage := "Testing SetPipe"
-	go func() {
-		w2.Write([]byte(testMessage))
-		w2.Close()
-	}()
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(r2)
-	assert.Equal(t, testMessage, buf.String())
-}
-
-func TestGetPipeWithoutCreate(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-
-	// Act
-	r, w, err := factory.GetPipe()
-
-	// Assert
-	assert.Nil(t, err)
-	assert.Nil(t, r)
-	assert.Nil(t, w)
 }
