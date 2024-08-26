@@ -27,6 +27,18 @@ func TestUpdate_RootUsage(t *testing.T) {
 	assert.Contains(t, commandUseNamesList, "check")
 }
 
+func TestUpdate_RootErr(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetFail.GetIOStreams = 1
+	// Act
+	cmd, err := NewUpdateCmd(factory)
+	// Assert
+	assert.NotNil(t, err)
+	assert.Nil(t, cmd)
+	assert.Contains(t, err.Error(), "Unable to create IO streams")
+}
+
 func TestUpdate_RootNoSubcommand(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()

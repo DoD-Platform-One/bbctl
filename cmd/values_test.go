@@ -271,7 +271,7 @@ func TestValuesOutputClientError(t *testing.T) {
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 	viper.Set("output-config.format", "yaml")
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	cmd := NewValuesCmd(factory)
 	assert.NotNil(t, cmd)
 
@@ -291,7 +291,7 @@ func TestValuesGetIOStreamsError(t *testing.T) {
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 	viper.Set("output-config.format", "yaml")
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 	cmd := NewValuesCmd(factory)
 	assert.NotNil(t, cmd)
 

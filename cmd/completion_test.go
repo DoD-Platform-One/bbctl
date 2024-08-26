@@ -69,3 +69,16 @@ func TestInvalidShellCompletion(t *testing.T) {
 	assert.Empty(t, buf.String())
 	assert.Equal(t, err.Error(), "unknown shell: foo")
 }
+
+func TestNewCompletionCmdErrorOnIOStreams(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.ResetIOStream()
+	factory.SetFail.GetIOStreams = 1
+	// Act
+	cmd, err := NewCompletionCmd(factory)
+	// Assert
+	assert.Nil(t, cmd)
+	assert.NotNil(t, err)
+	assert.Equal(t, "unable to get IO streams: failed to get streams", err.Error())
+}

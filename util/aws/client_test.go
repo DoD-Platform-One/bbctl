@@ -84,8 +84,7 @@ func createTestClient(t *testing.T, stringBuilder strings.Builder) testClientObj
 		}
 	}
 	loggingClient := bbUtilTestLog.NewFakeClient(logFunc)
-	client, err := NewClient(configFunc, getClusterIPsFunc, getSortedClusterIPs, getEc2ClientFunc, getIdentityFunc, getStsClientFunc)
-	assert.Nil(t, err)
+	client := NewClient(configFunc, getClusterIPsFunc, getSortedClusterIPs, getEc2ClientFunc, getIdentityFunc, getStsClientFunc)
 	assert.NotNil(t, client)
 	return testClientObjects{
 		T:                 t,
@@ -125,10 +124,9 @@ func TestNewClient(t *testing.T) {
 		return &sts.Client{}, nil
 	}
 	// Act
-	client, err := NewClient(config, getClusterIPs, getSortedClusterIPs, getEc2Client, getIdentity, getStsClient)
+	client := NewClient(config, getClusterIPs, getSortedClusterIPs, getEc2Client, getIdentity, getStsClient)
 
 	// Assert
-	assert.Nil(t, err)
 	assert.NotNil(t, client)
 }
 

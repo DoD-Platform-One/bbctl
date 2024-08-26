@@ -87,7 +87,10 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 		return fmt.Errorf("unable to create pipe: %w", err)
 	}
 
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	if err != nil {
+		return fmt.Errorf("Unable to get pipe: %w", err)
+	}
 
 	streams.In = r
 	streams.Out = w

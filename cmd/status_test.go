@@ -684,7 +684,7 @@ func TestGetStatus_NoOutputClient(t *testing.T) {
 
 	cmd := NewStatusCmd(factory)
 	assert.NotNil(t, cmd)
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 	err := cmd.RunE(cmd, []string{})
 
 	assert.Error(t, err)

@@ -9,6 +9,7 @@ import (
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
+	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
@@ -182,7 +183,7 @@ func TestGetVersionWithConfigError(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 
 	// Act
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	cmd, err := NewVersionCmd(factory)
 
 	// Assert
@@ -266,7 +267,7 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 func TestVersionOutputClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 
@@ -288,16 +289,20 @@ func TestClientVersionMarshalError(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("client", true)
 	v.Set("output-config.format", "")
+	streams, err := factory.GetIOStream()
+	assert.Nil(t, err)
+	fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+	streams.Out = fakeWriter
+	factory.SetIOStream(streams)
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
-	err := bbVersion(cmd, factory)
+	err = bbVersion(cmd, factory)
 
 	// Assert
-	expectedError := "error marshaling bbctl client version: unsupported format: "
-	if err == nil || err.Error() != expectedError {
-		t.Errorf("Expected error: %s, got %v", expectedError, err)
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error marshaling bbctl client version: unable to write human-readable output: FakeWriter intentionally errored")
+	assert.Empty(t, fakeWriter.ActualBuffer.(*bytes.Buffer).String())
 }
 
 func TestClientandBBVersionMarshalError(t *testing.T) {
@@ -327,14 +332,18 @@ func TestClientandBBVersionMarshalError(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	v.Set("output-config.format", "")
+	streams, err := factory.GetIOStream()
+	assert.Nil(t, err)
+	fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+	streams.Out = fakeWriter
+	factory.SetIOStream(streams)
 
 	// Act
 	cmd, _ := NewVersionCmd(factory)
-	err := bbVersion(cmd, factory)
+	err = bbVersion(cmd, factory)
 
 	// Assert
-	expectedError := "error marshaling bbctl client version and bigbang release version: unsupported format: "
-	if err == nil || err.Error() != expectedError {
-		t.Errorf("Expected error: %s, got %v", expectedError, err)
-	}
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error marshaling bbctl client version and bigbang release version: unable to write human-readable output: FakeWriter intentionally errored")
+	assert.Empty(t, fakeWriter.ActualBuffer.(*bytes.Buffer).String())
 }

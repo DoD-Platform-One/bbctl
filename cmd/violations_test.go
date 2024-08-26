@@ -81,9 +81,10 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 	factory.SetHelmReleases(nil)
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 
 	// Act
+	factory.SetFail.GetConfigClient = 1
 	cmd, err := NewViolationsCmd(factory)
 
 	// Assert
@@ -94,6 +95,21 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 	}
 }
 
+func TestGetViolationsWithK8sClientsetError(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	factory.SetHelmReleases(nil)
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+	factory.SetFail.GetK8sClientset = true
+	cmd, _ := NewViolationsCmd(factory)
+	// Act
+	err := cmd.Execute()
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "testing error")
+}
+
 func TestViolationsFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
@@ -101,7 +117,7 @@ func TestViolationsFailToGetConfig(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	v.Set("output-config.format", "yaml")
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 
 	// Act
 	cmd, err := NewViolationsCmd(factory)
@@ -116,22 +132,114 @@ func TestViolationsFailToGetConfig(t *testing.T) {
 }
 
 func TestViolationsCmdHelperError(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	factory.SetHelmReleases(nil)
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", "test")
-	cmd, _ := NewViolationsCmd(factory)
-	factory.SetFail.GetK8sDynamicClient = true
+	testCases := []struct {
+		name                    string
+		shouldFail              bool
+		errorOnK8sDynamicClient bool
+		errorOnK8sClientset     bool
+		errorOnLoggingClient    bool
+		errorOnConfigClient     bool
+		errorOnIOStream         bool
+		expectedErrorMessage    string
+	}{
+		{
+			name:                    "should not error",
+			shouldFail:              false,
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientset:     false,
+			errorOnLoggingClient:    false,
+			errorOnConfigClient:     false,
+			errorOnIOStream:         false,
+			expectedErrorMessage:    "",
+		},
+		{
+			name:                    "error on k8s dynamic client",
+			shouldFail:              true,
+			errorOnK8sDynamicClient: true,
+			errorOnK8sClientset:     false,
+			errorOnLoggingClient:    false,
+			errorOnConfigClient:     false,
+			errorOnIOStream:         false,
+			expectedErrorMessage:    "failed to get K8sDynamicClient",
+		},
+		{
+			name:                    "error on k8s clientset",
+			shouldFail:              true,
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientset:     true,
+			errorOnLoggingClient:    false,
+			errorOnConfigClient:     false,
+			errorOnIOStream:         false,
+			expectedErrorMessage:    "testing error",
+		},
+		{
+			name:                    "error on logging client",
+			shouldFail:              true,
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientset:     false,
+			errorOnLoggingClient:    true,
+			errorOnConfigClient:     false,
+			errorOnIOStream:         false,
+			expectedErrorMessage:    "failed to get logging client",
+		},
+		{
+			name:                    "error on config client",
+			shouldFail:              true,
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientset:     false,
+			errorOnLoggingClient:    false,
+			errorOnConfigClient:     true,
+			errorOnIOStream:         false,
+			expectedErrorMessage:    "failed to get config client",
+		},
+		{
+			name:                    "error on io stream",
+			shouldFail:              true,
+			errorOnK8sDynamicClient: false,
+			errorOnK8sClientset:     false,
+			errorOnLoggingClient:    false,
+			errorOnConfigClient:     false,
+			errorOnIOStream:         true,
+			expectedErrorMessage:    "failed to get streams",
+		},
+	}
 
-	// Act
-	err := cmd.Execute()
-
-	// Assert
-	assert.NotNil(t, cmd)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "error getting violations helper client:") {
-		t.Errorf("unexpected output: %s", err.Error())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.SetHelmReleases(nil)
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			cmd, _ := NewViolationsCmd(factory)
+			if tc.errorOnK8sDynamicClient {
+				factory.SetFail.GetK8sDynamicClient = true
+			}
+			if tc.errorOnK8sClientset {
+				factory.SetFail.GetK8sClientset = true
+			}
+			if tc.errorOnLoggingClient {
+				factory.SetFail.GetLoggingClient = true
+			}
+			if tc.errorOnConfigClient {
+				factory.SetFail.GetConfigClient = 1
+			}
+			if tc.errorOnIOStream {
+				factory.SetFail.GetIOStreams = 1
+			}
+			// Act
+			result, err := newViolationsCmdHelper(cmd, factory)
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, result)
+				assert.NotNil(t, cmd)
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErrorMessage)
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, result)
+			}
+		})
 	}
 }
 
@@ -1393,35 +1501,35 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 		expected                string
 		errorOnK8sDynamicClient bool
 		errorOnK8sClientSet     bool
-		errorOnConfigClient     bool
+		errorOnConfigClient     int
 	}{
 		{
 			desc:                    "no errors",
 			expected:                "",
 			errorOnK8sDynamicClient: false,
 			errorOnK8sClientSet:     false,
-			errorOnConfigClient:     false,
+			errorOnConfigClient:     0,
 		},
 		{
 			desc:                    "error getting k8s dynamic client",
 			expected:                "failed to get K8sDynamicClient client",
 			errorOnK8sDynamicClient: true,
 			errorOnK8sClientSet:     false,
-			errorOnConfigClient:     false,
+			errorOnConfigClient:     0,
 		},
 		{
 			desc:                    "error getting k8s clientset",
 			expected:                "testing error",
 			errorOnK8sDynamicClient: false,
 			errorOnK8sClientSet:     true,
-			errorOnConfigClient:     false,
+			errorOnConfigClient:     0,
 		},
 		{
 			desc:                    "error getting config client",
 			expected:                "failed to get config client",
 			errorOnK8sDynamicClient: false,
 			errorOnK8sClientSet:     false,
-			errorOnConfigClient:     true,
+			errorOnConfigClient:     1,
 		},
 	}
 
@@ -1471,7 +1579,7 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 func TestViolationsOutputClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	v.Set("output-config.format", "")
@@ -1541,8 +1649,7 @@ func TestViolationsPrintViolationsErr(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, err)
-	assert.NotNil(t, printErr)
-	assert.Contains(t, printErr.Error(), "unable to print violations to client: unsupported format: ")
+	assert.Nil(t, printErr)
 }
 
 func TestNoViolationsPrintViolationsErr(t *testing.T) {

@@ -10,8 +10,9 @@ type Client interface {
 }
 
 // NewClient returns a new GitLab client with the provided configuration
-func NewClient(baseURL string, accessToken string, getFileFunc GetFileFunc) (Client, error) {
-	client, err := gitlab.NewClient(accessToken, gitlab.WithBaseURL(baseURL))
+func NewClient(baseURL string, accessToken string, getFileFunc GetFileFunc, options ...gitlab.ClientOptionFunc) (Client, error) {
+	options = append(options, gitlab.WithBaseURL(baseURL))
+	client, err := gitlab.NewClient(accessToken, options...)
 	if err != nil {
 		return nil, err
 	}

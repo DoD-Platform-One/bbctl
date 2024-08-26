@@ -369,25 +369,35 @@ func (pf *PooledFactory) CreatePipe() error {
 		return &ErrFactoryNotInitialized{}
 	}
 
-	err := pf.underlyingFactory.CreatePipe()
-	if err != nil {
-		return err
-	}
-
-	r, w := pf.underlyingFactory.GetPipe()
-
-	pf.pipeReader = r
-	pf.pipeWriter = w
-	return nil
+	return pf.underlyingFactory.CreatePipe()
 }
 
 // SetPipe allows manually setting the pipe reader and writer
-func (pf *PooledFactory) SetPipe(r *os.File, w *os.File) {
+func (pf *PooledFactory) SetPipe(r *os.File, w *os.File) error {
+	if r == pf.pipeReader && w == pf.pipeWriter {
+		return nil
+	}
+	if pf.underlyingFactory == nil {
+		return &ErrFactoryNotInitialized{}
+	}
 	pf.pipeReader = r
 	pf.pipeWriter = w
+	return pf.underlyingFactory.SetPipe(r, w)
 }
 
 // GetPipe returns the reader and writer of the pipe
-func (pf *PooledFactory) GetPipe() (*os.File, *os.File) {
-	return pf.pipeReader, pf.pipeWriter
+func (pf *PooledFactory) GetPipe() (*os.File, *os.File, error) {
+	if pf.pipeReader != nil && pf.pipeWriter != nil {
+		return pf.pipeReader, pf.pipeWriter, nil
+	}
+	if pf.underlyingFactory == nil {
+		return nil, nil, &ErrFactoryNotInitialized{}
+	}
+	r, w, err := pf.underlyingFactory.GetPipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	pf.pipeReader = r
+	pf.pipeWriter = w
+	return pf.pipeReader, pf.pipeWriter, nil
 }

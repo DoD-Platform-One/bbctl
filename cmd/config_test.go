@@ -228,7 +228,7 @@ func TestConfigTooManyKeys(t *testing.T) {
 
 func TestConfigOutputClientError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-	factory.SetFail.GetIOStreams = true
+	factory.SetFail.GetIOStreams = 1
 
 	cmd := NewConfigCmd(factory)
 	viper, _ := factory.GetViper()
@@ -243,36 +243,39 @@ func TestConfigOutputClientError(t *testing.T) {
 	}
 }
 
-func TestGlobalConfigFormatError(t *testing.T) {
+func TestGlobalConfigFormat(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
 	viper, _ := factory.GetViper()
+	streams, err := factory.GetIOStream()
+	assert.Nil(t, err)
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
-	err := getBBConfig(cmd, factory, []string{})
-	expectedError := "error marshaling global config: unsupported format: "
-	if err == nil || err.Error() != expectedError {
-		t.Errorf("Expected error: %s, got %v", expectedError, err)
-	}
+	err = getBBConfig(cmd, factory, []string{})
+	assert.Nil(t, err)
+	expectedStdOut := "BigBangRepo:\"/path/to/repo\","
+	assert.Contains(t, streams.Out.(*bytes.Buffer).String(), expectedStdOut)
 }
 
-func TestSingleConfigFormatError(t *testing.T) {
+func TestSingleConfigFormat(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
 	cmd := NewConfigCmd(factory)
 	viper, _ := factory.GetViper()
+	streams, err := factory.GetIOStream()
+	assert.Nil(t, err)
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
+	viper.Set("bbctl-log-level", "testLogLevel")
 
-	err := getBBConfig(cmd, factory, []string{"bbctl-log-level"})
-	expectedError := "error creating output for specific config: unsupported format: "
-	if err == nil || err.Error() != expectedError {
-		t.Errorf("Expected error: %s, got %v", expectedError, err)
-	}
+	err = getBBConfig(cmd, factory, []string{"bbctl-log-level"})
+	assert.Nil(t, err)
+	expectedStdOut := "bbctl-log-level:testLogLevel"
+	assert.Contains(t, streams.Out.(*bytes.Buffer).String(), expectedStdOut)
 }
 
 func TestConfigGetInvalidKey(t *testing.T) {
@@ -301,7 +304,7 @@ func TestConfigFailToGetConfigClient(t *testing.T) {
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	err := cmd.RunE(cmd, []string{"invalid.key"})
 
 	// The code splits keys at the dot, so it should look for a parent object "invalid" her

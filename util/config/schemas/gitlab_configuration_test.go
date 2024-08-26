@@ -72,3 +72,12 @@ func TestGetGitLabConfigurations(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSubConfigurations_GitlabConfiguration(t *testing.T) {
+	// Arrange
+	g := &GitLabConfiguration{}
+	// Act
+	subConfigurations := g.getSubConfigurations()
+	// Assert
+	assert.Empty(t, subConfigurations)
+}

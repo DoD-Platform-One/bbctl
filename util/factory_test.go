@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -11,105 +12,241 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	gitlab "github.com/xanzy/go-gitlab"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
+	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
+	bbGitlab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 )
 
-// TestReadDefaultCredentialsFileMissing tests that a missing credentials file returns an error
-func TestReadDefaultCredentialsFileMissing(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	// Set the big-bang-repo and kubeconfig to local test files to avoid reading the default credentials file
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-
-	homeDir, _ := os.UserHomeDir()
-	credsDir := path.Join(homeDir, ".bbctl")
-	os.Rename(path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "old-credentials.yaml"))
-
-	// Act & Assert
-	value, err := factory.ReadCredentialsFile("", "")
-	assert.Equal(t, "", value)
-	assert.NotNil(t, err)
-	expectedError := fmt.Sprintf(
-		"unable to read credentials file %s: open %s: no such file or directory",
-		path.Join(credsDir, "credentials.yaml"),
-		path.Join(credsDir, "credentials.yaml"),
-	)
-	assert.Equal(t, expectedError, err.Error())
-
-	// Cleanup
-	os.Rename(path.Join(credsDir, "old-credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
-}
-
 func TestReadCredentialsFile(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	viperInstance.Set(
-		"big-bang-credential-helper-credentials-file-path",
-		"./test/data/test-credentials.yaml",
-	)
-
-	// Act
-	// Test reading valid components
-	username, err := factory.ReadCredentialsFile("username", "https://test.com:6443")
-	if err != nil {
-		t.Errorf("unexpected error getting username: %v", err)
+	testCases := []struct {
+		name                      string
+		useDefaultPath            bool
+		shouldFail                bool
+		shouldErrorOnConfigClient bool
+		shouldErrorOnConfig       bool
+		shouldErrorOnHomeDir      bool
+		shouldErrorOnFindFile     bool
+		shouldErrorOnUnmarshal    bool
+		shouldErrorOnBadURI       bool
+		shouldErrorOnBadComponent bool
+		usernameErrorMessage      string
+		passwordErrorMessage      string
+	}{
+		{
+			name:                      "should return username and password with custom path",
+			useDefaultPath:            false,
+			shouldFail:                false,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "",
+			passwordErrorMessage:      "",
+		},
+		{
+			name:                      "should return empty with default path and no creds",
+			useDefaultPath:            true,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "no credentials found for https://test.com:6443 in",
+			passwordErrorMessage:      "no credentials found for https://test.com:6443 in",
+		},
+		{
+			name:                      "should return empty string for invalid component",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: true,
+			usernameErrorMessage:      "invalid component invalidFieldName",
+			passwordErrorMessage:      "invalid component invalidFieldName",
+		},
+		{
+			name:                      "should return empty string for invalid URI",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       true,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "no credentials found for invalidURI in ./test/data/test-credentials.yaml",
+			passwordErrorMessage:      "no credentials found for invalidURI in ./test/data/test-credentials.yaml",
+		},
+		{
+			name:                      "should error on config client",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: true,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "unable to get config client: viper instance is required",
+			passwordErrorMessage:      "unable to get config client: viper instance is required",
+		},
+		{
+			name:                      "should error on config",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       true,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			passwordErrorMessage:      "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+		{
+			name:                      "should error on home dir",
+			useDefaultPath:            true,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      true,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "unable to get home directory: $HOME is not defined",
+			passwordErrorMessage:      "unable to get home directory: $HOME is not defined",
+		},
+		{
+			name:                      "should error on find file",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     true,
+			shouldErrorOnUnmarshal:    false,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "unable to read credentials file ./test/data/missing-credentials.yaml: open ./test/data/missing-credentials.yaml: no such file or directory",
+			passwordErrorMessage:      "unable to read credentials file ./test/data/missing-credentials.yaml: open ./test/data/missing-credentials.yaml: no such file or directory",
+		},
+		{
+			name:                      "should error on unmarshal",
+			useDefaultPath:            false,
+			shouldFail:                true,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			shouldErrorOnHomeDir:      false,
+			shouldErrorOnFindFile:     false,
+			shouldErrorOnUnmarshal:    true,
+			shouldErrorOnBadURI:       false,
+			shouldErrorOnBadComponent: false,
+			usernameErrorMessage:      "unable to unmarshal credentials file ./test/data/test-credentials.yaml: test failure",
+			passwordErrorMessage:      "unable to unmarshal credentials file ./test/data/test-credentials.yaml: test failure",
+		},
 	}
-	password, err := factory.ReadCredentialsFile("password", "https://test.com:6443")
-	if err != nil {
-		t.Errorf("unexpected error getting password: %v", err)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			viperInstance, err := factory.GetViper()
+			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+			viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
+			if tc.useDefaultPath {
+				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "")
+				homeDir, err := os.UserHomeDir()
+				assert.Nil(t, err)
+				credentialsDir := path.Join(homeDir, ".bbctl")
+				credentialsPath := path.Join(credentialsDir, "credentials.yaml")
+				if _, err := os.Stat(credentialsPath); err != nil {
+					err := os.MkdirAll(credentialsDir, os.ModePerm)
+					assert.Nil(t, err)
+					_, err = os.Create(credentialsPath)
+					assert.Nil(t, err)
+					defer func() {
+						err := os.Remove(credentialsPath)
+						assert.Nil(t, err)
+					}()
+				}
+			}
+			if tc.shouldErrorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.shouldErrorOnConfig {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			if tc.shouldErrorOnHomeDir {
+				assert.Nil(t, os.Setenv("HOME", ""))
+			}
+			if tc.shouldErrorOnFindFile {
+				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/missing-credentials.yaml")
+			}
+			var unmarshallFunc func(in []byte, out interface{}) (err error)
+			if tc.shouldErrorOnUnmarshal {
+				unmarshallFunc = func(in []byte, out interface{}) (err error) {
+					return fmt.Errorf("test failure")
+				}
+			}
+			host := "https://test.com:6443"
+			if tc.shouldErrorOnBadURI {
+				host = "invalidURI"
+			}
+			usernameComponent := "username"
+			passwordComponent := "password"
+			if tc.shouldErrorOnBadComponent {
+				usernameComponent = "invalidFieldName"
+				passwordComponent = "invalidFieldName"
+			}
+			// Act
+			var username, password string
+			var usernameErr, passwordErr error
+			if tc.shouldErrorOnUnmarshal {
+				username, usernameErr = factory.readCredentialsFile(usernameComponent, host, unmarshallFunc)
+				password, passwordErr = factory.readCredentialsFile(passwordComponent, host, unmarshallFunc)
+			} else {
+				username, usernameErr = factory.ReadCredentialsFile(usernameComponent, host)
+				password, passwordErr = factory.ReadCredentialsFile(passwordComponent, host)
+			}
+			// Assert
+			if tc.shouldFail {
+				assert.Empty(t, username)
+				assert.Empty(t, password)
+				assert.NotNil(t, usernameErr)
+				assert.NotNil(t, passwordErr)
+				assert.Contains(t, usernameErr.Error(), tc.usernameErrorMessage)
+				assert.Contains(t, passwordErr.Error(), tc.passwordErrorMessage)
+			} else {
+				assert.Nil(t, usernameErr)
+				assert.Nil(t, passwordErr)
+				assert.Equal(t, username, "username")
+				assert.Equal(t, password, "password")
+			}
+		})
 	}
-
-	// Assert
-	assert.Equal(t, username, "username")
-	assert.Equal(t, password, "password")
-
-	// Test reading an invalid component
-	invalid, err := factory.ReadCredentialsFile("invalidFieldName", "https://test.com:6443")
-	assert.Equal(t, "", invalid)
-	assert.NotNil(t, err)
-	assert.Equal(t, "invalid component invalidFieldName", err.Error())
-
-	// Test reading an invalid URI
-	invalidURI, err := factory.ReadCredentialsFile("username", "invalidURI")
-	assert.Equal(t, "", invalidURI)
-	assert.NotNil(t, err)
-	assert.Equal(
-		t,
-		"no credentials found for invalidURI in ./test/data/test-credentials.yaml",
-		err.Error(),
-	)
-
-	// Force the viper instance to be nil to cause this to error downstream
-	factory.SetViper(nil)
-	username, err = factory.ReadCredentialsFile("username", "https://test.com:6443")
-	assert.Empty(t, username)
-	assert.NotNil(t, err)
-	assert.Equal(t, "unable to get config client: viper instance is required", err.Error())
 }
 
 func TestGetCredentialHelper(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	viperInstance.Set(
-		"big-bang-credential-helper-credentials-file-path",
-		"./test/data/test-credentials.yaml",
-	)
-
-	tests := []struct {
+	var tests = []struct {
 		name             string
 		credentialHelper string
 		field            string
@@ -165,27 +302,50 @@ func TestGetCredentialHelper(t *testing.T) {
 			expected:         "",
 			error:            "unable to get config client: viper instance is required",
 		},
+		{
+			name:             "GetConfigError",
+			credentialHelper: "credentials-file",
+			field:            "username",
+			expected:         "",
+			error:            "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+		{
+			name:             "BadCredentialsFilePath",
+			credentialHelper: "credentials-file",
+			field:            "username",
+			expected:         "",
+			error:            "unable to read credentials file: unable to read credentials file ./test/data/missing-credentials.yaml: open ./test/data/missing-credentials.yaml: no such file or directory",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Act
-			viperInstance.Set("big-bang-credential-helper", test.credentialHelper)
-			helper, err := factory.GetCredentialHelper()
+			// Arrange
+			factory := NewFactory(nil)
+			viperInstance, err := factory.GetViper()
 			assert.Nil(t, err)
-
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+			viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
+			if test.name == "BadCredentialsFilePath" {
+				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/missing-credentials.yaml")
+			}
+			viperInstance.Set("big-bang-credential-helper", test.credentialHelper)
 			uri := "https://test.com:6443"
 			if test.error != "" {
 				uri = "https://invalidUri.com:6443"
 			}
-
 			// Force the viper instance to be nil to cause this to error downstream
 			if test.name == "GetConfigClientError" {
-				factory.SetViper(nil)
+				assert.Nil(t, factory.SetViper(nil))
 			}
-
+			if test.name == "GetConfigError" {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			// Act
+			helper, err := factory.GetCredentialHelper()
+			assert.Nil(t, err)
 			value, err := helper(test.field, uri)
-
 			// Assert
 			if test.error != "" {
 				assert.Equal(t, test.error, err.Error())
@@ -198,52 +358,15 @@ func TestGetCredentialHelper(t *testing.T) {
 	}
 }
 
-func TestGetCredentialHelperMissingFilePath(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	viperInstance.Set("big-bang-credential-helper", "credentials-file")
-
-	homeDir, _ := os.UserHomeDir()
-	credsDir := path.Join(homeDir, ".bbctl")
-	credsPath := path.Join(credsDir, "credentials.yaml")
-	os.Rename(path.Join(credsDir, "credentials.yaml"), path.Join(credsDir, "old-credentials.yaml"))
-
-	// Act
-	helper, err := factory.GetCredentialHelper()
-	assert.Nil(t, err)
-	username, err := helper("username", "https://test.com:6443")
-
-	// Assert
-	assert.NotNil(t, helper)
-	assert.Empty(t, username)
-	assert.NotNil(t, err)
-	assert.Equal(
-		t,
-		fmt.Sprintf(
-			"unable to read credentials file: unable to read credentials file %s: open %s: no such file or directory",
-			credsPath,
-			credsPath,
-		),
-		err.Error(),
-	)
-
-	// Cleanup
-	os.Rename(path.Join(credsDir, "old-credentials.yaml"), path.Join(credsDir, "credentials.yaml"))
-}
-
 func TestGetAWSClient(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	// Act
-	client, err := factory.GetAWSClient()
-	if err != nil {
-		t.Errorf("unexpected error getting AWS client: %v", err)
-	}
+	var client interface{}
+	var err error
+	client, err = factory.GetAWSClient()
 	// Assert
+	assert.Nil(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -308,7 +431,7 @@ func TestGetHelmConfig(t *testing.T) {
 func TestGetHelmConfigBadConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-	factory.SetViper(nil)
+	assert.Nil(t, factory.SetViper(nil))
 	// Act
 	config, err := factory.getHelmConfig(nil, "helmconfigtest")
 	// Assert
@@ -345,44 +468,214 @@ func TestGetIstioClientSet(t *testing.T) {
 }
 
 func TestGetConfigClient(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	// Act
-	client, err := factory.GetConfigClient(nil)
-	// Assert
-	// Actual contents of config are checked in the Client tests
-	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	testCases := []struct {
+		name                 string
+		shouldFail           bool
+		errorOnLoggingClient bool
+		errorOnGetViper      bool
+		errorOnGetClient     bool
+		expectedErrorMessage string
+	}{
+		{
+			name:                 "should not error",
+			shouldFail:           false,
+			errorOnLoggingClient: false,
+			errorOnGetViper:      false,
+			errorOnGetClient:     false,
+			expectedErrorMessage: "",
+		},
+		{
+			name:                 "should error on get client",
+			shouldFail:           true,
+			errorOnLoggingClient: false,
+			errorOnGetViper:      false,
+			errorOnGetClient:     true,
+			expectedErrorMessage: "viper instance is required",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			if tc.errorOnGetClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			// Act
+			client, err := factory.GetConfigClient(nil)
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, client)
+				assert.NotNil(t, err)
+				assert.Equal(t, tc.expectedErrorMessage, err.Error())
+			} else {
+				// Actual contents of config are checked in the Client tests
+				assert.Nil(t, err)
+				assert.NotNil(t, client)
+			}
+		})
+	}
+}
+
+func TestGetGitLabClient(t *testing.T) {
+	testCases := []struct {
+		name                string
+		errorOnConfigClient bool
+		errorOnGetConfig    bool
+		errorOnGetGitLab    bool
+		callTopLevel        bool
+	}{
+		{
+			name:                "should not error",
+			errorOnConfigClient: false,
+			errorOnGetConfig:    false,
+			errorOnGetGitLab:    false,
+			callTopLevel:        true,
+		},
+		{
+			name:                "should error on config client",
+			errorOnConfigClient: true,
+			errorOnGetConfig:    false,
+			errorOnGetGitLab:    false,
+			callTopLevel:        true,
+		},
+		{
+			name:                "should error on get config",
+			errorOnConfigClient: false,
+			errorOnGetConfig:    true,
+			errorOnGetGitLab:    false,
+			callTopLevel:        true,
+		},
+		{
+			name:                "should error on get gitlab",
+			errorOnConfigClient: false,
+			errorOnGetConfig:    false,
+			errorOnGetGitLab:    true,
+			callTopLevel:        false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			viper, _ := factory.GetViper()
+			viper.Set("big-bang-repo", "test")
+			viper.Set("base-url", "https://gitlab.com")
+			viper.Set("access-token", "test")
+			var clientOptionsFuncs []gitlab.ClientOptionFunc
+			if tc.errorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.errorOnGetConfig {
+				viper.Set("big-bang-repo", "")
+			}
+			if tc.errorOnGetGitLab {
+				clientOptionsFuncs = append(clientOptionsFuncs, func(c *gitlab.Client) error {
+					return fmt.Errorf("error")
+				})
+			}
+			var client bbGitlab.Client
+			var err error
+			// Act
+			if tc.callTopLevel {
+				client, err = factory.GetGitLabClient()
+			} else {
+				client, err = factory.getGitLabClient(clientOptionsFuncs...)
+			}
+
+			// Assert
+			if tc.errorOnConfigClient || tc.errorOnGetConfig || tc.errorOnGetGitLab {
+				assert.Nil(t, client)
+				assert.NotNil(t, err)
+			} else {
+				assert.NotNil(t, client)
+				assert.Nil(t, err)
+			}
+		})
+	}
 }
 
 func TestGetHelmClient(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	// Act
-	client, err := factory.GetHelmClient(nil, "foo")
-	// Assert
-	assert.Nil(t, err)
-	assert.NotNil(t, client.GetList)
-	assert.NotNil(t, client.GetRelease)
-	assert.NotNil(t, client.GetValues)
-}
+	testCases := []struct {
+		name                 string
+		shouldFail           bool
+		errorOnConfigClient  bool
+		errorOnConfig        bool
+		errorOnLoggingClient bool
+		errorOnKubeConfig    bool
+		expectedErrorMessage string
+	}{
+		{
+			name:                 "should not error",
+			shouldFail:           false,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnLoggingClient: false,
+			errorOnKubeConfig:    false,
+			expectedErrorMessage: "",
+		},
+		{
+			name:                 "should error on config client",
+			shouldFail:           true,
+			errorOnConfigClient:  true,
+			errorOnConfig:        false,
+			errorOnLoggingClient: false,
+			errorOnKubeConfig:    false,
+			expectedErrorMessage: "viper instance is required",
+		},
+		{
+			name:                 "should error on config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        true,
+			errorOnLoggingClient: false,
+			errorOnKubeConfig:    false,
+			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+		{
+			name:                 "should error on kube config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnLoggingClient: false,
+			errorOnKubeConfig:    true,
+			expectedErrorMessage: "stat no-kube-config.yaml: no such file or directory",
+		},
+	}
 
-func TestGetHelmClientBadConfig(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "no-kube-config.yaml")
-	// Act
-	client, err := factory.GetHelmClient(nil, "foo")
-	// Assert
-	assert.NotNil(t, err)
-	assert.Nil(t, client)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			viperInstance, err := factory.GetViper()
+			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+			if tc.errorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.errorOnConfig {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			if tc.errorOnKubeConfig {
+				viperInstance.Set("kubeconfig", "no-kube-config.yaml")
+			}
+			// Act
+			client, err := factory.GetHelmClient(nil, "foo")
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, client)
+				assert.NotNil(t, err)
+				assert.Equal(t, tc.expectedErrorMessage, err.Error())
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, client.GetList)
+				assert.NotNil(t, client.GetRelease)
+				assert.NotNil(t, client.GetValues)
+			}
+		})
+	}
 }
 
 func TestGetK8sClientset(t *testing.T) {
@@ -415,73 +708,286 @@ func TestGetK8sClientsetBadConfig(t *testing.T) {
 }
 
 func TestGetK8sDynamicClient(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	// Act
-	client, err := factory.GetK8sDynamicClient(nil)
-	// Assert
-	assert.Nil(t, err)
-	assert.NotNil(t, client)
+	testCases := []struct {
+		name                 string
+		shouldFail           bool
+		errorOnConfigClient  bool
+		errorOnConfig        bool
+		errorOnMissingConfig bool
+		errorOnBadConfig     bool
+		expectedErrorMessage string
+	}{
+		{
+			name:                 "should not error",
+			shouldFail:           false,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "",
+		},
+		{
+			name:                 "should error on config client",
+			shouldFail:           true,
+			errorOnConfigClient:  true,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "viper instance is required",
+		},
+		{
+			name:                 "should error on config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        true,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+		{
+			name:                 "should error on missing config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: true,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "stat no-kube-config.yaml: no such file or directory",
+		},
+		{
+			name:                 "should error on bad config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     true,
+			expectedErrorMessage: "no Auth Provider found for name \"oidc\"",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			viperInstance, err := factory.GetViper()
+			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+			if tc.errorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.errorOnConfig {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			if tc.errorOnMissingConfig {
+				viperInstance.Set("kubeconfig", "no-kube-config.yaml")
+			}
+			if tc.errorOnBadConfig {
+				viperInstance.Set("kubeconfig", "./test/data/rest-error-kube-config.yaml")
+			}
+			// Act
+			client, err := factory.GetK8sDynamicClient(nil)
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, client)
+				assert.NotNil(t, err)
+				assert.Equal(t, tc.expectedErrorMessage, err.Error())
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, client)
+			}
+		})
+	}
 }
 
-func TestGetK8sDynamicClientMissingConfig(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "no-kube-config.yaml")
-	// Act
-	client, err := factory.GetK8sDynamicClient(nil)
-	// Assert
-	assert.Nil(t, client)
-	assert.NotNil(t, err)
-	assert.Equal(t, "stat no-kube-config.yaml: no such file or directory", err.Error())
-}
+func TestGetOutputClient(t *testing.T) {
+	// Define test cases using a table-driven approach
+	tests := []struct {
+		name                      string
+		outputFormat              string
+		shouldFail                bool
+		shouldErrorOnIOStreams    bool
+		shouldErrorOnConfigClient bool
+		shouldErrorOnConfig       bool
+		expectedErrorMessage      string
+	}{
+		{
+			name:                      "Test JSON output",
+			outputFormat:              "json",
+			shouldFail:                false,
+			shouldErrorOnIOStreams:    false,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			expectedErrorMessage:      "",
+		},
+		{
+			name:                      "Test text output",
+			outputFormat:              "text",
+			shouldFail:                false,
+			shouldErrorOnIOStreams:    false,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			expectedErrorMessage:      "",
+		},
+		{
+			name:                      "Test YAML output",
+			outputFormat:              "yaml",
+			shouldFail:                false,
+			shouldErrorOnIOStreams:    false,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       false,
+			expectedErrorMessage:      "",
+		},
+		{
+			name:                      "Should error on config client",
+			outputFormat:              "json",
+			shouldFail:                true,
+			shouldErrorOnIOStreams:    false,
+			shouldErrorOnConfigClient: true,
+			shouldErrorOnConfig:       false,
+			expectedErrorMessage:      "viper instance is required",
+		},
+		{
+			name:                      "Should error on config",
+			outputFormat:              "json",
+			shouldFail:                true,
+			shouldErrorOnIOStreams:    false,
+			shouldErrorOnConfigClient: false,
+			shouldErrorOnConfig:       true,
+			expectedErrorMessage:      "Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+	}
 
-func TestGetK8sDynamicClientBadConfig(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	factory.SetViper(nil)
-	// Act
-	client, err := factory.GetK8sDynamicClient(nil)
-	// Assert
-	assert.Nil(t, client)
-	assert.NotNil(t, err)
-	assert.Equal(t, "viper instance is required", err.Error())
+	// Iterate through test cases
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			fakeCommand := &cobra.Command{
+				Use:     "testUse",
+				Short:   "testShort",
+				Long:    "testLong",
+				Example: "testExample",
+				RunE: func(cmd *cobra.Command, args []string) error {
+					return nil
+				},
+			}
+			// Set the "output" format using Viper
+			viperInstance, err := factory.GetViper()
+			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("output", tc.outputFormat)
+			if tc.shouldErrorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.shouldErrorOnConfig {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			// Act
+			client, err := factory.GetOutputClient(fakeCommand)
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, client)
+				assert.NotNil(t, err)
+				assert.Equal(t, tc.expectedErrorMessage, err.Error())
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, client)
+				assert.NotNil(t, client.Output)
+			}
+		})
+	}
 }
 
 func TestGetRestConfig(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
-	// Act
-	config, err := factory.GetRestConfig(nil)
-	// Assert
-	assert.Nil(t, err)
-	assert.NotNil(t, config)
-}
+	testCases := []struct {
+		name                 string
+		shouldFail           bool
+		errorOnConfigClient  bool
+		errorOnConfig        bool
+		errorOnMissingConfig bool
+		errorOnBadConfig     bool
+		expectedErrorMessage string
+	}{
+		{
+			name:                 "should not error",
+			shouldFail:           false,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "",
+		},
+		{
+			name:                 "should error on config client",
+			shouldFail:           true,
+			errorOnConfigClient:  true,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "viper instance is required",
+		},
+		{
+			name:                 "should error on config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        true,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+		},
+		{
+			name:                 "should error on missing config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: true,
+			errorOnBadConfig:     false,
+			expectedErrorMessage: "stat no-kube-config.yaml: no such file or directory",
+		},
+		{
+			name:                 "should error on bad config",
+			shouldFail:           true,
+			errorOnConfigClient:  false,
+			errorOnConfig:        false,
+			errorOnMissingConfig: false,
+			errorOnBadConfig:     true,
+			expectedErrorMessage: "invalid configuration: [context was not found for specified context: bad, cluster has no server defined]",
+		},
+	}
 
-func TestGetRestConfigMissingConfig(t *testing.T) {
-	// Arrange
-	factory := NewFactory(nil)
-	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
-	viperInstance.Set("big-bang-repo", "test")
-	viperInstance.Set("kubeconfig", "no-kube-config.yaml")
-	// Act
-	config, err := factory.GetRestConfig(nil)
-	// Assert
-	assert.Nil(t, config)
-	assert.NotNil(t, err)
-	assert.Equal(t, "stat no-kube-config.yaml: no such file or directory", err.Error())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := NewFactory(nil)
+			viperInstance, err := factory.GetViper()
+			assert.Nil(t, err)
+			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
+			if tc.errorOnConfigClient {
+				assert.Nil(t, factory.SetViper(nil))
+			}
+			if tc.errorOnConfig {
+				viperInstance.Set("big-bang-repo", "")
+			}
+			if tc.errorOnMissingConfig {
+				viperInstance.Set("kubeconfig", "no-kube-config.yaml")
+			}
+			if tc.errorOnBadConfig {
+				viperInstance.Set("kubeconfig", "./test/data/bad-kube-config.yaml")
+			}
+			// Act
+			config, err := factory.GetRestConfig(nil)
+			// Assert
+			if tc.shouldFail {
+				assert.Nil(t, config)
+				assert.NotNil(t, err)
+				assert.Equal(t, tc.expectedErrorMessage, err.Error())
+			} else {
+				assert.Nil(t, err)
+				assert.NotNil(t, config)
+			}
+		})
+	}
 }
 
 func TestGetCommandExecutor(t *testing.T) {
@@ -530,7 +1036,7 @@ func TestGetCommandExecutorMissingConfig(t *testing.T) {
 func TestGetCommandExecutorBadConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-	factory.SetViper(nil)
+	assert.Nil(t, factory.SetViper(nil))
 	// Act
 	executor, err := factory.GetCommandExecutor(nil, nil, "", nil, nil, nil)
 	// Assert
@@ -589,72 +1095,14 @@ func TestGetRuntimeClient(t *testing.T) {
 func TestGetIOStreams(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
-
-	// Act
-	ios, err := factory.GetIOStream()
-
+	var err error
+	var ios *genericIOOptions.IOStreams
+	ios, err = factory.GetIOStream()
 	// Assert
 	assert.Nil(t, err)
 	assert.Equal(t, os.Stdin, ios.In)
 	assert.Equal(t, os.Stdout, ios.Out)
 	assert.Equal(t, os.Stderr, ios.ErrOut)
-}
-
-// TestGetOuputClient tests the GetOutputClient function using table-driven tests.
-func TestGetOutputClient(t *testing.T) {
-	// Define test cases using a table-driven approach
-	tests := []struct {
-		name         string
-		outputFormat string
-	}{
-		{
-			name:         "Test JSON output",
-			outputFormat: "json",
-		},
-		{
-			name:         "Test text output",
-			outputFormat: "text",
-		},
-		{
-			name:         "Test YAML output",
-			outputFormat: "yaml",
-		},
-	}
-
-	// Arrange
-	factory := NewFactory(nil)
-	fakeCommand := &cobra.Command{
-		Use:     "testUse",
-		Short:   "testShort",
-		Long:    "testLong",
-		Example: "testExample",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-
-	// Iterate through test cases
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Set the "output" format using Viper
-			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
-			viperInstance.Set("big-bang-repo", "test")
-			viperInstance.Set("output", tc.outputFormat)
-
-			// Act
-			client, err := factory.GetOutputClient(fakeCommand)
-
-			// Assert
-			assert.Nil(t, err)
-			assert.NotNil(t, client)
-
-			// Check client output
-			outputClient, ok := client.(output.Client)
-			assert.True(t, ok, "Expected client to be of type output.Client")
-			assert.NotNil(t, outputClient.Output)
-		})
-	}
 }
 
 func TestCreatePipe(t *testing.T) {
@@ -667,7 +1115,8 @@ func TestCreatePipe(t *testing.T) {
 	// Assert
 	assert.Nil(t, err)
 
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
+	assert.Nil(t, err)
 	assert.NotNil(t, r)
 	assert.NotNil(t, w)
 
@@ -683,6 +1132,20 @@ func TestCreatePipe(t *testing.T) {
 	assert.Equal(t, testMessage, buf.String())
 }
 
+func TestCreatePipeFailure(t *testing.T) {
+	// Arrange
+	factory := NewFactory(nil)
+
+	// Act
+	err := factory.createPipe(func() (*os.File, *os.File, error) {
+		return nil, nil, errors.New("unable to create pipe")
+	})
+
+	// Assert
+	assert.NotNil(t, err)
+	assert.Equal(t, "Unable to create pipe: unable to create pipe", err.Error())
+}
+
 func TestSetPipe(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
@@ -692,9 +1155,10 @@ func TestSetPipe(t *testing.T) {
 	// Act
 	factory.SetPipe(r1, w1)
 
-	r2, w2 := factory.GetPipe()
+	r2, w2, err := factory.GetPipe()
 
 	// Assert
+	assert.Nil(t, err)
 	assert.Equal(t, r1, r2)
 	assert.Equal(t, w1, w2)
 
@@ -715,9 +1179,10 @@ func TestGetPipeWithoutCreate(t *testing.T) {
 	factory := NewFactory(nil)
 
 	// Act
-	r, w := factory.GetPipe()
+	r, w, err := factory.GetPipe()
 
 	// Assert
+	assert.Nil(t, err)
 	assert.Nil(t, r)
 	assert.Nil(t, w)
 }

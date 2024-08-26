@@ -24,6 +24,8 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				ExampleConfiguration:              ExampleConfiguration{},
 				GitLabConfiguration:               GitLabConfiguration{},
 				K3dSshConfiguration:               K3dSshConfiguration{},
+				OutputConfiguration:               OutputConfiguration{},
+				PolicyConfiguration:               PolicyConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 				UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
 				UtilK8sConfiguration:              UtilK8sConfiguration{},
@@ -40,6 +42,8 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				ExampleConfiguration:              ExampleConfiguration{},
 				GitLabConfiguration:               GitLabConfiguration{},
 				K3dSshConfiguration:               K3dSshConfiguration{},
+				OutputConfiguration:               OutputConfiguration{},
+				PolicyConfiguration:               PolicyConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 				UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
 				UtilK8sConfiguration:              UtilK8sConfiguration{},
@@ -58,6 +62,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 			instance.Set("k3d", true)                                                 // DeployBigBangConfiguration
 			instance.Set("gitlab-access-token", "token")                              // GitLabConfiguration
 			instance.Set("ssh-username", "test2")                                     // K3dSshConfiguration
+			instance.Set("format", "json")                                            // OutputConfiguration
 			instance.Set("gatekeeper", true)                                          // PolicyConfiguration
 			instance.Set("registryserver", "test3")                                   // PreflightCheckConfiguration
 			instance.Set("big-bang-credential-helper-credentials-file-path", "test4") // UtilCredentialHelperConfiguration
@@ -80,6 +85,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				assert.Equal(t, true, tt.arg.DeployBigBangConfiguration.K3d)
 				assert.Equal(t, "test2", tt.arg.K3dSshConfiguration.User)
 				assert.Equal(t, "token", tt.arg.GitLabConfiguration.Token)
+				assert.Equal(t, "json", string(tt.arg.OutputConfiguration.Format))
 				assert.Equal(t, true, tt.arg.PolicyConfiguration.Gatekeeper)
 				assert.Equal(t, "test3", tt.arg.PreflightCheckConfiguration.RegistryServer)
 				assert.Equal(t, "test4", tt.arg.UtilCredentialHelperConfiguration.FilePath)
@@ -98,6 +104,7 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
 		K3dSshConfiguration:               K3dSshConfiguration{},
+		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
@@ -108,17 +115,18 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 	// Act
 	result := arg.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 10, len(result))
+	assert.Equal(t, 11, len(result))
 	assert.Equal(t, &arg.DeployBigBangConfiguration, result[0])
 	assert.Equal(t, &arg.ExampleConfiguration, result[1])
-	assert.Equal(t, &arg.K3dSshConfiguration, result[2])
-	assert.Equal(t, &arg.GitLabConfiguration, result[3])
-	assert.Equal(t, &arg.PolicyConfiguration, result[4])
-	assert.Equal(t, &arg.PreflightCheckConfiguration, result[5])
-	assert.Equal(t, &arg.UtilCredentialHelperConfiguration, result[6])
-	assert.Equal(t, &arg.UtilK8sConfiguration, result[7])
-	assert.Equal(t, &arg.VersionConfiguration, result[8])
-	assert.Equal(t, &arg.ViolationsConfiguration, result[9])
+	assert.Equal(t, &arg.GitLabConfiguration, result[2])
+	assert.Equal(t, &arg.K3dSshConfiguration, result[3])
+	assert.Equal(t, &arg.OutputConfiguration, result[4])
+	assert.Equal(t, &arg.PolicyConfiguration, result[5])
+	assert.Equal(t, &arg.PreflightCheckConfiguration, result[6])
+	assert.Equal(t, &arg.UtilCredentialHelperConfiguration, result[7])
+	assert.Equal(t, &arg.UtilK8sConfiguration, result[8])
+	assert.Equal(t, &arg.VersionConfiguration, result[9])
+	assert.Equal(t, &arg.ViolationsConfiguration, result[10])
 }
 
 func TestGetYamlMarshalling(t *testing.T) {
@@ -133,6 +141,7 @@ func TestGetYamlMarshalling(t *testing.T) {
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
 		K3dSshConfiguration:               K3dSshConfiguration{},
+		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
@@ -163,6 +172,7 @@ func TestGetJsonMarshalling(t *testing.T) {
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
 		K3dSshConfiguration:               K3dSshConfiguration{},
+		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},
@@ -193,6 +203,7 @@ func TestGetTextMarshalling(t *testing.T) {
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
 		K3dSshConfiguration:               K3dSshConfiguration{},
+		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
 		UtilCredentialHelperConfiguration: UtilCredentialHelperConfiguration{},

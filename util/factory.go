@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/xanzy/go-gitlab"
 	"gopkg.in/yaml.v2"
 	"helm.sh/helm/v3/pkg/action"
 	"istio.io/client-go/pkg/clientset/versioned"
@@ -64,8 +65,8 @@ type Factory interface {
 	SetViper(*viper.Viper) error
 	GetIOStream() (*genericIOOptions.IOStreams, error)
 	CreatePipe() error
-	GetPipe() (*os.File, *os.File)
-	SetPipe(reader *os.File, writer *os.File)
+	GetPipe() (*os.File, *os.File, error)
+	SetPipe(reader *os.File, writer *os.File) error
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
@@ -115,6 +116,11 @@ type Credentials struct {
 // Errors when the credentials file cannot be accessed or parsed, component value is invalid,
 // and when uri is not found in credentials list
 func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (string, error) {
+	return f.readCredentialsFile(component, uri, yaml.Unmarshal)
+}
+
+// See ReadCredentialsFile
+func (f *UtilityFactory) readCredentialsFile(component string, uri string, unmarshallFunc func(in []byte, out interface{}) (err error)) (string, error) {
 	configClient, err := f.referenceFactory.GetConfigClient(nil)
 	if err != nil {
 		return "", fmt.Errorf("unable to get config client: %w", err)
@@ -141,7 +147,7 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (stri
 
 	// Unmarshal the credentials file
 	var credentialsFile CredentialsFile
-	err = yaml.Unmarshal(credentialsYaml, &credentialsFile)
+	err = unmarshallFunc(credentialsYaml, &credentialsFile)
 	if err != nil {
 		return "", fmt.Errorf("unable to unmarshal credentials file %v: %w", credentialsPath, err)
 	}
@@ -226,15 +232,17 @@ func (f *UtilityFactory) GetCredentialHelper() (CredentialHelper, error) {
 // GetAWSClient initializes and returns a new AWS API client
 func (f *UtilityFactory) GetAWSClient() (bbAws.Client, error) {
 	clientGetter := bbAws.ClientGetter{}
-	client, err := clientGetter.GetClient()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get AWS client: %w", err)
-	}
+	client := clientGetter.GetClient()
 	return client, nil
 }
 
 // GetGitLabClient initializes and returns a new GitLab API client
 func (f *UtilityFactory) GetGitLabClient() (bbGitLab.Client, error) {
+	return f.getGitLabClient()
+}
+
+// GetGitLabClient initializes and returns a new GitLab API client
+func (f *UtilityFactory) getGitLabClient(options ...gitlab.ClientOptionFunc) (bbGitLab.Client, error) {
 	configClient, err := f.referenceFactory.GetConfigClient(nil)
 	if err != nil {
 		return nil, err
@@ -247,6 +255,7 @@ func (f *UtilityFactory) GetGitLabClient() (bbGitLab.Client, error) {
 	client, err := clientGetter.GetClient(
 		config.GitLabConfiguration.BaseURL,
 		config.GitLabConfiguration.Token,
+		options...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get GitLab client: %w", err)
@@ -318,6 +327,7 @@ func (f *UtilityFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
 	streams, err := f.referenceFactory.GetIOStream()
 	if err != nil {
+		// NOTE: This branch is impossible to test because the GetIOStream method is hardcoded to return nil
 		return nil, err
 	}
 	configClient, err := f.referenceFactory.GetConfigClient(cmd)
@@ -440,6 +450,7 @@ func (f *UtilityFactory) getHelmConfig(
 
 	loggingClient, err := f.referenceFactory.GetLoggingClient()
 	if err != nil {
+		// NOTE: this branch is impossible to test because a failure to get logger would have already errored at getconfigclient
 		return nil, err
 	}
 	config, err := bbK8sUtil.BuildKubeConfig(bbctlConfig)
@@ -457,14 +468,14 @@ func (f *UtilityFactory) getHelmConfig(
 	// The actionConfig.Init method will either panic or return nil
 	// It cannot return an error value like the return type says
 	actionConfig := new(action.Configuration)
-	actionConfig.Init(
+	err = actionConfig.Init(
 		clientGetter,
 		namespace,
 		os.Getenv("HELM_DRIVER"),
 		debugLog,
 	)
 
-	return actionConfig, nil
+	return actionConfig, err
 }
 
 // GetCommandWrapper initializes and returns a new Command instance which encapsulates the functionality needed to run a CLI command
@@ -493,10 +504,12 @@ func (f *UtilityFactory) GetIstioClientSet(
 func (f *UtilityFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
 	loggingClient, err := f.referenceFactory.GetLoggingClient()
 	if err != nil {
+		// NOTE: This branch is impossible to test because the GetLoggingClient method is hardcoded to return nil
 		return nil, err
 	}
 	v, err := f.referenceFactory.GetViper()
 	if err != nil {
+		// NOTE: This branch is impossible to test because the GetViper method is hardcoded to return nil
 		return nil, err
 	}
 	clientGetter := bbConfig.ClientGetter{}
@@ -518,8 +531,7 @@ func (f *UtilityFactory) SetViper(v *viper.Viper) error {
 		return nil
 	}
 	f.viperInstance = v
-	f.referenceFactory.SetViper(v)
-	return nil
+	return f.referenceFactory.SetViper(v)
 }
 
 // GetIOStream initializes and returns a new IOStreams object used to interact with console input, output, and error output
@@ -533,7 +545,12 @@ func (f *UtilityFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 
 // CreatePipe creates a new os.Pipe and stores the reader and writer
 func (f *UtilityFactory) CreatePipe() error {
-	r, w, err := os.Pipe()
+	return f.createPipe(os.Pipe)
+}
+
+// See CreatePipe
+func (f *UtilityFactory) createPipe(p func() (*os.File, *os.File, error)) error {
+	r, w, err := p()
 	if err != nil {
 		return fmt.Errorf("Unable to create pipe: %w", err)
 	}
@@ -543,12 +560,13 @@ func (f *UtilityFactory) CreatePipe() error {
 }
 
 // GetPipe returns the currently set pipe reader and writer
-func (f *UtilityFactory) GetPipe() (*os.File, *os.File) {
-	return f.pipeReader, f.pipeWriter
+func (f *UtilityFactory) GetPipe() (*os.File, *os.File, error) {
+	return f.pipeReader, f.pipeWriter, nil
 }
 
 // SetPipe sets the pipe reader and writer
-func (f *UtilityFactory) SetPipe(reader *os.File, writer *os.File) {
+func (f *UtilityFactory) SetPipe(reader *os.File, writer *os.File) error {
 	f.pipeReader = reader
 	f.pipeWriter = writer
+	return nil
 }

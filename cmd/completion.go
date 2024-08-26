@@ -102,12 +102,7 @@ func NewCompletionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 				return fmt.Errorf("unknown shell: %s", args[0])
 			}
 
-			if err != nil {
-				return fmt.Errorf("Unable to generate completion script: %v", err)
-			}
-
-			return nil
-
+			return err
 		},
 	}
 	return cmd, nil

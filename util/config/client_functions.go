@@ -6,6 +6,8 @@ import (
 	"time"
 
 	validator "github.com/go-playground/validator/v10"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 )
@@ -60,14 +62,19 @@ func SetAndBindFlag(client *ConfigClient, name string, shorthand string, value a
 
 // getConfig returns the global configuration.
 func getConfig(client *ConfigClient) (*schemas.GlobalConfiguration, error) {
+	return getConfigWithFunc(client, client.viperInstance.Unmarshal, client.viperInstance.BindPFlags)
+}
+
+// see getConfig
+func getConfigWithFunc(client *ConfigClient, u func(rawVal any, opts ...viper.DecoderConfigOption) error, b func(flags *pflag.FlagSet) error) (*schemas.GlobalConfiguration, error) {
 	var config schemas.GlobalConfiguration
-	unmarshalError := client.viperInstance.Unmarshal(&config)
+	unmarshalError := u(&config)
 	if unmarshalError != nil {
 		return nil, fmt.Errorf("Error unmarshalling configuration: %w", unmarshalError)
 	}
 
 	if client.command != nil {
-		bindingError := client.viperInstance.BindPFlags(client.command.PersistentFlags())
+		bindingError := b(client.command.PersistentFlags())
 		if bindingError != nil {
 			return nil, fmt.Errorf("Error binding flags: %w", bindingError)
 		}

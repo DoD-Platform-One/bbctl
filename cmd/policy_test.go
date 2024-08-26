@@ -28,7 +28,7 @@ func policiesCmd(factory bbUtil.Factory, args []string) *cobra.Command {
 func TestGetPolicyCmdConfigClientError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	// Act
 	cmd, err := NewPoliciesCmd(factory)
 	// Assert
@@ -227,7 +227,7 @@ func TestMatchingPolicyConfigClientError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
 	cmd, _ := NewPoliciesCmd(factory)
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	res, _ := cmd.ValidArgsFunction(cmd, []string{}, "")
 	// Assert
 	assert.NotNil(t, cmd)
@@ -279,7 +279,7 @@ func TestGetConfigClientError(t *testing.T) {
 	viperInstance.Set("big-bang-repo", "test")
 	cmd := policiesCmd(factory, []string{})
 	// Act
-	factory.SetFail.GetConfigClient = true
+	factory.SetFail.GetConfigClient = 1
 	err1 := cmd.RunE(cmd, []string{})
 	err2 := cmd.RunE(cmd, []string{""})
 	// Assert
