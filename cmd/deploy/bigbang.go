@@ -122,7 +122,7 @@ func insertHelmOptForRelativeChart(
 	)
 }
 
-func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) error {
+func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) (err error) {
 	loggingClient, err := factory.GetLoggingClient()
 	if err != nil {
 		return err
@@ -133,27 +133,33 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %w", configErr)
+		err = fmt.Errorf("error getting config: %w", configErr)
+		return err
 	}
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return fmt.Errorf("unable to create IO streams: %w", err)
+		err = fmt.Errorf("unable to create IO streams: %w", err)
+		return err
 	}
 	outputClient, err := factory.GetOutputClient(command)
 	if err != nil {
-		return fmt.Errorf("unable to create output client: %w", err)
+		err = fmt.Errorf("unable to create output client: %w", err)
+		return err
 	}
 	credentialHelper, err := factory.GetCredentialHelper()
 	if err != nil {
-		return fmt.Errorf("unable to get credential helper: %w", err)
+		err = fmt.Errorf("unable to get credential helper: %w", err)
+		return err
 	}
 	username, err := credentialHelper("username", "registry1.dso.mil")
 	if err != nil {
-		return fmt.Errorf("unable to get username: %w", err)
+		err = fmt.Errorf("unable to get username: %w", err)
+		return err
 	}
 	password, err := credentialHelper("password", "registry1.dso.mil")
 	if err != nil {
-		return fmt.Errorf("unable to get password: %w", err)
+		err = fmt.Errorf("unable to get password: %w", err)
+		return err
 	}
 
 	chartPath := getChartRelativePath(config, "chart")
@@ -193,20 +199,19 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 
 	cmd, err := factory.GetCommandWrapper("helm", helmOpts...)
 	if err != nil {
-		return fmt.Errorf("unable to get command wrapper: %w", err)
+		err = fmt.Errorf("unable to get command wrapper: %w", err)
+		return err
 	}
 
 	// Use the factory to get the pipe
 	r, w, err := factory.GetPipe()
 	if err != nil {
-		return fmt.Errorf("unable to get pipe: %w", err)
+		err = fmt.Errorf("unable to get pipe: %w", err)
+		return err
 	}
 
-	streams.In = r
-	streams.Out = w
-
 	// Redirect command's stdout to the pipe's writer
-	cmd.SetStdout(streams.Out)
+	cmd.SetStdout(w)
 	cmd.SetStderr(streams.ErrOut) // Set stderr to original
 
 	// Use a buffer to capture the output
@@ -218,7 +223,13 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 
 	go func() {
 		defer wg.Done() // Decrement the WaitGroup counter when the goroutine completes
-		io.Copy(&buf, streams.In)
+		if _, newErr := io.Copy(&buf, r); newErr != nil {
+			if err == nil {
+				err = fmt.Errorf("(sole deferred error: %w)", newErr)
+			} else {
+				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+			}
+		}
 	}()
 
 	// Run the command
@@ -226,14 +237,18 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	if err != nil {
 		w.Close()
 		wg.Wait() // Wait for the goroutine to finish before returning
+		err = fmt.Errorf("error running command: %w", err)
 		return err
 	}
 
 	// Close the writer to finish the reading process
 	w.Close()
-
 	// Wait for the goroutine to finish
 	wg.Wait()
+	if err != nil {
+		err = fmt.Errorf("error waiting for goroutine: %w", err)
+		return err
+	}
 
 	// Process captured output
 	data := &outputSchema.BigbangOutput{
@@ -241,10 +256,11 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 	}
 	err = outputClient.Output(data)
 	if err != nil {
+		err = fmt.Errorf("error outputting data: %w", err)
 		return err
 	}
 
-	return nil
+	return err
 }
 
 func encodeHelmOpts(data string) outputSchema.HelmOutput {

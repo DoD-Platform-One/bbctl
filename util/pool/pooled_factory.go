@@ -3,7 +3,6 @@ package pool
 import (
 	"io"
 	"log/slog"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,6 +16,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -49,9 +49,8 @@ type PooledFactory struct {
 	istioClientSets   istioClientsetPool
 	viper             *viper.Viper
 	ioStream          *genericIOOptions.IOStreams
-
-	pipeReader *os.File
-	pipeWriter *os.File
+	pipeReader        commonInterfaces.FileLike
+	pipeWriter        commonInterfaces.FileLike
 }
 
 // NewPooledFactory returns a new pooled factory
@@ -348,7 +347,7 @@ func (pf *PooledFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 }
 
 // CreatePipe initializes the pipe if not already created
-func (pf *PooledFactory) GetPipe() (*os.File, *os.File, error) {
+func (pf *PooledFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error) {
 	if pf.pipeReader != nil && pf.pipeWriter != nil {
 		return pf.pipeReader, pf.pipeWriter, nil
 	}

@@ -18,6 +18,7 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -63,7 +64,7 @@ type Factory interface {
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
 	GetViper() (*viper.Viper, error)
 	GetIOStream() (*genericIOOptions.IOStreams, error)
-	GetPipe() (*os.File, *os.File, error)
+	GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error)
 }
 
 // NewFactory initializes and returns a new instance of UtilityFactory
@@ -532,7 +533,7 @@ func (f *UtilityFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 }
 
 // GetPipe returns the currently set pipe reader and writer
-func (f *UtilityFactory) GetPipe() (*os.File, *os.File, error) {
+func (f *UtilityFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Unable to create pipe: %w", err)

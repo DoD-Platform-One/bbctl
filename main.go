@@ -123,7 +123,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 			initLogger.Error(fmt.Sprintf("Error getting config: %v", configErr.Error()))
 			os.Exit(1)
 		}
-		logger := setupSlog(initLogger,
+		logger, err := setupSlog(initLogger,
 			streams,
 			config.LogAddSource,
 			config.LogFile,
@@ -131,6 +131,10 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 			config.LogLevel,
 			config.LogOutput,
 		)
+		if err != nil {
+			initLogger.Error(fmt.Sprintf("Error setting up logger: %v", err.Error()))
+			os.Exit(1)
+		}
 		logger.Debug("Logger setup complete")
 		allSettings, err := json.Marshal(viperInstance.AllSettings())
 		if err != nil {
@@ -189,7 +193,7 @@ func setupSlog(
 	logFormatString string,
 	logLevelString string,
 	logOutputString string,
-) *slog.Logger {
+) (logger *slog.Logger, err error) {
 	// log level
 	var logLevel slog.Level
 	switch ll := logLevelString; ll {
@@ -221,14 +225,22 @@ func setupSlog(
 	case "file":
 		if logFileString == "" {
 			initLogger.Error("Log file not defined")
-			os.Exit(1)
+			return nil, fmt.Errorf("log file not defined")
 		}
 		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			initLogger.Error(fmt.Sprintf("Error opening log file: %v", err.Error()))
-			os.Exit(1)
+			return nil, err
 		}
-		defer file.Close()
+		defer func() {
+			if newErr := file.Close(); newErr != nil {
+				if err == nil {
+					err = fmt.Errorf("(sole deferred error: %w)", newErr)
+				} else {
+					err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+				}
+			}
+		}()
 		writer = file
 	case "stdout":
 		writer = streams.Out
@@ -238,12 +250,12 @@ func setupSlog(
 		writer = streams.ErrOut
 		initLogger.Warn("No log output defined, defaulting to stderr")
 	default:
-		initLogger.Error(fmt.Sprintf("Invalid log output: %v", logOutputString))
-		os.Exit(1)
+		err = fmt.Errorf("Invalid log output: %v", logOutputString)
+		initLogger.Error(err.Error())
+		return nil, err
 	}
 
 	// logger
-	var logger *slog.Logger
 	switch lf := logFormatString; lf {
 	case "json":
 		logger = slog.New(slog.NewJSONHandler(writer, &slogHandlerOptions))
@@ -253,10 +265,11 @@ func setupSlog(
 		logger = slog.New(slog.NewTextHandler(writer, &slogHandlerOptions))
 		initLogger.Warn("No log format defined, defaulting to text")
 	default:
-		initLogger.Error(fmt.Sprintf("Invalid log format: %v", logFormatString))
-		os.Exit(1)
+		err = fmt.Errorf("Invalid log format: %v", logFormatString)
+		initLogger.Error(err.Error())
+		return nil, err
 	}
 
 	slog.SetDefault(logger)
-	return logger
+	return logger, nil
 }

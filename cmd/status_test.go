@@ -722,7 +722,7 @@ func TestGetStatus_FailOutput(t *testing.T) {
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
-	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 
 	cmd := NewStatusCmd(factory)
 	assert.NotNil(t, cmd)

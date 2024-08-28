@@ -107,7 +107,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
 			if tc.shouldErr {
-				streams.Out = apiWrappers.CreateFakeWriterFromStream(t, tc.shouldErr, streams.Out)
+				streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, tc.shouldErr, out)
 			}
 			privateIP := privateIPConst
 
@@ -271,8 +271,9 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	streams, streamsErr := factory.GetIOStream()
+	out := streams.Out.(*bytes.Buffer)
 	assert.Nil(t, streamsErr)
-	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
 	callerIdentity := bbAwsUtil.CallerIdentity{

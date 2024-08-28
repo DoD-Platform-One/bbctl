@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,187 +88,54 @@ Deployment complete`
 	assert.Equal(t, expectedOutput, parsedOutput)
 }
 
-func TestFlux_NewDeployFluxCmd_Run_Text(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	factory.ResetIOStream()
-	factory.ResetPipe()
+func TestFlux_NewDeployFluxCmd_Output(t *testing.T) {
+	testCases := []struct {
+		name           string
+		format         string
+		expectedOutput string
+	}{
+		{
+			name:           "JSON",
+			format:         "json",
+			expectedOutput: `{"general_info":{},"actions":["Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p"],"warnings":[]}`,
+		},
+		{
+			name:           "YAML",
+			format:         "yaml",
+			expectedOutput: "general_info: {}\nactions:\n- 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n",
+		},
+		{
+			name:           "TEXT",
+			format:         "text",
+			expectedOutput: "General Info:\n\nActions:\n  Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p\n\n",
+		},
+	}
 
-	// Create the pipe using the factory
-	// Get the pipe reader and writer
-	r, w, err := factory.GetPipe()
-	assert.Nil(t, err)
-
-	streams, _ := factory.GetIOStream()
-	streams.In = r
-	streams.Out = w
-
-	out := new(bytes.Buffer)
-	errOut := streams.ErrOut.(*bytes.Buffer)
-
-	// Set up the environment and configuration
-	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", bigBangRepoLocation)
-	v.Set("output-config.format", "text")
-
-	// Expected output from the command
-	expectedOutput := "General Info:\n\nActions:\n  Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p\n\n" // Replace with the actual expected output
-
-	// Act
-	cmd := NewDeployFluxCmd(factory)
-	assert.Nil(t, err)
-
-	// Use a WaitGroup to synchronize the goroutine
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		err = cmd.Execute()
-		assert.Nil(t, err)
-
-		// Close the writer to signal the end of input
-		w.Close()
-	}()
-
-	// Read the output from the pipe in the main goroutine
-	io.Copy(out, r)
-
-	// Wait for the goroutine to finish
-	wg.Wait()
-
-	// Assert
-	assert.NotNil(t, cmd)
-	assert.Equal(t, "flux", cmd.Use)
-	assert.Empty(t, errOut.String())
-
-	// Check the output
-	output := out.String()
-	assert.Equal(t, expectedOutput, output) // Ensure this matches your actual expected output
-}
-
-func TestFlux_NewDeployFluxCmd_Run_Json(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	factory.ResetIOStream()
-	factory.ResetPipe()
-
-	// Create the pipe using the factory
-	// Get the pipe reader and writer
-	r, w, err := factory.GetPipe()
-	assert.Nil(t, err)
-
-	streams, _ := factory.GetIOStream()
-	streams.In = r
-	streams.Out = w
-
-	out := new(bytes.Buffer)
-	errOut := streams.ErrOut.(*bytes.Buffer)
-
-	// Set up the environment and configuration
-	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", bigBangRepoLocation)
-	v.Set("output-config.format", "json")
-
-	// Expected output from the command
-	expectedOutput := `{"general_info":{},"actions":["Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p"],"warnings":[]}`
-
-	// Act
-	cmd := NewDeployFluxCmd(factory)
-	assert.Nil(t, err)
-
-	// Use a WaitGroup to synchronize the goroutine
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		err = cmd.Execute()
-		assert.Nil(t, err)
-
-		// Close the writer to signal the end of input
-		w.Close()
-	}()
-
-	// Read the output from the pipe in the main goroutine
-	io.Copy(out, r)
-
-	// Wait for the goroutine to finish
-	wg.Wait()
-
-	// Assert
-	assert.NotNil(t, cmd)
-	assert.Equal(t, "flux", cmd.Use)
-	assert.Empty(t, errOut.String())
-
-	// Check the output
-	output := out.String()
-	assert.Equal(t, expectedOutput, output) // Ensure this matches your actual expected output
-}
-
-func TestFlux_NewDeployFluxCmd_Run_Yaml(t *testing.T) {
-	// Arrange
-	factory := bbTestUtil.GetFakeFactory()
-	factory.ResetIOStream()
-	factory.ResetPipe()
-
-	// Create the pipe using the factory
-	// Get the pipe reader and writer
-	r, w, err := factory.GetPipe()
-	assert.Nil(t, err)
-
-	streams, _ := factory.GetIOStream()
-	streams.In = r
-	streams.Out = w
-
-	out := new(bytes.Buffer)
-	errOut := streams.ErrOut.(*bytes.Buffer)
-
-	// Set up the environment and configuration
-	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
-	v, _ := factory.GetViper()
-	v.Set("big-bang-repo", bigBangRepoLocation)
-	v.Set("output-config.format", "yaml")
-
-	// Expected output from the command
-	expectedOutput := "general_info: {}\nactions:\n- 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n" // Replace with the actual expected output
-
-	// Act
-	cmd := NewDeployFluxCmd(factory)
-	assert.Nil(t, err)
-
-	// Use a WaitGroup to synchronize the goroutine
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		err = cmd.Execute()
-		assert.Nil(t, err)
-
-		// Close the writer to signal the end of input
-		w.Close()
-	}()
-
-	// Read the output from the pipe in the main goroutine
-	io.Copy(out, r)
-
-	// Wait for the goroutine to finish
-	wg.Wait()
-
-	// Assert
-	assert.NotNil(t, cmd)
-	assert.Equal(t, "flux", cmd.Use)
-	assert.Empty(t, errOut.String())
-
-	// Check the output
-	output := out.String()
-	assert.Equal(t, expectedOutput, output) // Ensure this matches your actual expected output
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			streams, _ := factory.GetIOStream()
+			// Set up the environment and configuration
+			bigBangRepoLocation := "/tmp/big-bang"
+			assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", bigBangRepoLocation)
+			v.Set("output-config.format", tc.format)
+			// Expected output from the command
+			cmd := NewDeployFluxCmd(factory)
+			// Act
+			err := cmd.Execute()
+			// Assert
+			assert.NotNil(t, cmd)
+			assert.Nil(t, err)
+			assert.Equal(t, "flux", cmd.Use)
+			assert.Empty(t, streams.ErrOut.(*bytes.Buffer).String())
+			// Check the output
+			assert.Equal(t, tc.expectedOutput, streams.Out.(*bytes.Buffer).String()) // Ensure this matches your actual expected output
+		})
+	}
 }
 
 func TestDeployFluxConfigClientError(t *testing.T) {
@@ -319,74 +185,86 @@ func TestFluxFailToGetConfig(t *testing.T) {
 
 func TestDeployFluxToClusterErrors(t *testing.T) {
 	testCases := []struct {
-		name                    string
-		failOnConfigClient      bool
-		failOnConfig            bool
-		failOnIOStreams         bool
-		failOnOutputClient      bool
-		failOnCredential        bool
-		failOnUsername          bool
-		failOnPassword          bool
-		failOnGetCommandWrapper bool
-		failOnGetPipe           bool
-		failOnCmdRun            bool
-		failOnOutput            bool
-		expectedError           string
-		expectedOutput          string
+		name                     string
+		errorOnConfigClient      bool
+		errorOnConfig            bool
+		errorOnIOStreams         bool
+		errorOnOutputClient      bool
+		errorOnCredential        bool
+		errorOnUsername          bool
+		errorOnPassword          bool
+		errorOnGetCommandWrapper bool
+		errorOnGetPipe           bool
+		errorOnCopyBuffer        bool
+		errorOnCmdRun            bool
+		errorOnOutput            bool
+		expectedError            string
+		expectedOutput           string
 	}{
 		{
-			name:               "Fail on Config Client",
-			failOnConfigClient: true,
-			expectedError:      "failed to get config client",
+			name:                "Fail on Config Client",
+			errorOnConfigClient: true,
+			expectedError:       "failed to get config client",
 		},
 		{
 			name:          "Fail on Config",
-			failOnConfig:  true,
+			errorOnConfig: true,
 			expectedError: "error getting config",
 		},
 		{
-			name:            "Fail on IO Streams",
-			failOnIOStreams: true,
-			expectedError:   "unable to create IO streams",
+			name:             "Fail on IO Streams",
+			errorOnIOStreams: true,
+			expectedError:    "unable to create IO streams",
 		},
 		{
-			name:               "Fail on Output Client",
-			failOnOutputClient: true,
-			expectedError:      "unable to create output client",
+			name:                "Fail on Output Client",
+			errorOnOutputClient: true,
+			expectedError:       "unable to create output client",
 		},
 		{
-			name:             "Fail on Credential",
-			failOnCredential: true,
-			expectedError:    "unable to get credential helper",
+			name:              "Fail on Credential",
+			errorOnCredential: true,
+			expectedError:     "unable to get credential helper",
 		},
 		{
-			name:           "Fail on Username",
-			failOnUsername: true,
-			expectedError:  "unable to get username",
+			name:            "Fail on Username",
+			errorOnUsername: true,
+			expectedError:   "unable to get username",
 		},
 		{
-			name:           "Fail on Password",
-			failOnPassword: true,
-			expectedError:  "unable to get password",
+			name:            "Fail on Password",
+			errorOnPassword: true,
+			expectedError:   "unable to get password",
 		},
 		{
-			name:                    "Fail on Get Command Wrapper",
-			failOnGetCommandWrapper: true,
-			expectedError:           "unable to get command wrapper",
+			name:                     "Fail on Get Command Wrapper",
+			errorOnGetCommandWrapper: true,
+			expectedError:            "unable to get command wrapper",
 		},
 		{
-			name:          "Fail on Get Pipe",
-			failOnGetPipe: true,
-			expectedError: "unable to get pipe",
+			name:           "Fail on Get Pipe",
+			errorOnGetPipe: true,
+			expectedError:  "unable to get pipe",
+		},
+		{
+			name:              "Error on copy buffer alone",
+			errorOnCopyBuffer: true,
+			expectedError:     "(sole deferred error: FakeFile intentionally errored)",
+		},
+		{
+			name:              "Error on copy buffer and output",
+			errorOnCopyBuffer: true,
+			errorOnCmdRun:     true,
+			expectedError:     "(additional deferred error: FakeFile intentionally errored)",
 		},
 		{
 			name:          "Fail on Command Run",
-			failOnCmdRun:  true,
+			errorOnCmdRun: true,
 			expectedError: "Failed to run command",
 		},
 		{
 			name:           "Fail on Output",
-			failOnOutput:   true,
+			errorOnOutput:  true,
 			expectedError:  "FakeWriter intentionally errored",
 			expectedOutput: "error: must specify one of: flux",
 		},
@@ -403,22 +281,22 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "/tmp/big-bang")
 			v.Set("format", "yaml")
-			if tc.failOnConfigClient {
+			if tc.errorOnConfigClient {
 				factory.SetFail.GetConfigClient = 1
 			}
-			if tc.failOnConfig {
+			if tc.errorOnConfig {
 				v.Set("big-bang-repo", "")
 			}
-			if tc.failOnIOStreams {
+			if tc.errorOnIOStreams {
 				factory.SetFail.GetIOStreams = 1
 			}
-			if tc.failOnOutputClient {
+			if tc.errorOnOutputClient {
 				factory.SetFail.GetOutputClient = true
 			}
-			if tc.failOnCredential {
+			if tc.errorOnCredential {
 				factory.SetFail.GetCredentialHelper = true
 			}
-			if tc.failOnUsername {
+			if tc.errorOnUsername {
 				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
 					if s1 == "username" {
 						return "", fmt.Errorf("Dummy Error")
@@ -426,7 +304,7 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 					return "dummy", nil
 				})
 			}
-			if tc.failOnPassword {
+			if tc.errorOnPassword {
 				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
 					if s1 == "password" {
 						return "", fmt.Errorf("Dummy Error")
@@ -434,17 +312,22 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 					return "dummy", nil
 				})
 			}
-			if tc.failOnGetCommandWrapper {
+			if tc.errorOnGetCommandWrapper {
 				factory.SetFail.GetCommandWrapper = true
 			}
-			if tc.failOnGetPipe {
+			if tc.errorOnGetPipe {
 				factory.SetFail.GetPipe = true
 			}
-			if tc.failOnCmdRun {
+			if tc.errorOnCopyBuffer {
+				r, w, _ := bbTestApiWrappers.CreateFakeFileFromOSPipe(t, false, false)
+				r.SetFail.WriteTo = true
+				assert.Nil(t, factory.SetPipe(r, w))
+			}
+			if tc.errorOnCmdRun {
 				factory.SetFail.SetCommandWrapperRunError = true
 			}
-			if tc.failOnOutput {
-				fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+			if tc.errorOnOutput {
+				fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 				streams.Out = fakeWriter
 				factory.SetIOStream(streams)
 				originalOut = fakeWriter
@@ -454,13 +337,18 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			err = deployFluxToCluster(factory, cmd, []string{})
 			// Assert
 			assert.Error(t, err)
-			if !assert.Contains(t, err.Error(), tc.expectedError) {
-				t.Errorf("unexpected output: %s", err.Error())
-			}
-			if tc.failOnOutput {
-				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeWriter).ActualBuffer.(*bytes.Buffer).String())
+			assert.Contains(t, err.Error(), tc.expectedError)
+			if tc.errorOnOutput {
+				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeReaderWriter).ActualBuffer.(*bytes.Buffer).String())
 			} else {
-				result := originalOut.(*bytes.Buffer).String()
+				var result string
+				if ff, ok := originalOut.(*bbTestApiWrappers.FakeReaderWriter); ok {
+					buf := &bytes.Buffer{}
+					_, _ = io.Copy(buf, ff.ActualBuffer)
+					result = buf.String()
+				} else {
+					result = originalOut.(*bytes.Buffer).String()
+				}
 				assert.Contains(t, result, tc.expectedOutput)
 			}
 		})
