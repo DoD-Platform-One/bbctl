@@ -14,6 +14,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -165,10 +166,8 @@ type FakeFactory struct {
 	viperInstance       *viper.Viper
 	configClient        *bbConfig.ConfigClient
 	fakeCommandExecutor *FakeCommandExecutor
-
-	pipeReader    *os.File
-	pipeWriter    *os.File
-	OverWritePipe bool
+	pipeReader          commonInterfaces.FileLike
+	pipeWriter          commonInterfaces.FileLike
 
 	SetFail struct {
 		GetCredentialHelper          bool
@@ -547,25 +546,26 @@ func (f *FakeFactory) SetIOStream(stream *genericIOOptions.IOStreams) {
 }
 
 // GetPipe - get the pipe reader and writer
-func (f *FakeFactory) GetPipe() (*os.File, *os.File, error) {
+func (f *FakeFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error) {
 	if f.SetFail.GetPipe {
 		return nil, nil, fmt.Errorf("failed to get pipe")
 	}
-	if f.OverWritePipe {
-		err := f.SetPipe(f.pipeReader, f.pipeWriter)
-		return f.pipeReader, f.pipeWriter, err
+	if f.pipeReader != nil && f.pipeWriter != nil {
+		return f.pipeReader, f.pipeWriter, nil
 	}
 	r, w, err := os.Pipe()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Unable to get pipe: %w", err)
 	}
-	f.pipeReader = r
-	f.pipeWriter = w
-	return r, w, nil
+	err = f.SetPipe(r, w)
+	return r, w, err
 }
 
 // SetPipe - set the pipe reader and writer
-func (f *FakeFactory) SetPipe(reader *os.File, writer *os.File) error {
+func (f *FakeFactory) SetPipe(reader commonInterfaces.FileLike, writer commonInterfaces.FileLike) error {
+	if reader == nil || writer == nil {
+		return fmt.Errorf("reader and writer must not be nil")
+	}
 	f.pipeReader = reader
 	f.pipeWriter = writer
 	return nil

@@ -96,7 +96,7 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 				factory.SetFail.GetIOStreams = 1
 			}
 			if tc.errorOnWrite {
-				fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+				fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 				streams, _ := factory.GetIOStream()
 				streams.Out = fakeWriter
 				factory.SetIOStream(streams)

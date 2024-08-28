@@ -1122,7 +1122,7 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			errOut := streams.ErrOut.(*bytes.Buffer)
 
 			if test.failWritingOutput {
-				streams.Out = apiWrappers.CreateFakeWriterFromStream(t, test.failWritingOutput, streams.Out)
+				streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, test.failWritingOutput, out)
 			}
 
 			// Act

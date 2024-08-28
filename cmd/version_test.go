@@ -291,7 +291,7 @@ func TestClientVersionMarshalError(t *testing.T) {
 	v.Set("output-config.format", "")
 	streams, err := factory.GetIOStream()
 	assert.Nil(t, err)
-	fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 
@@ -334,7 +334,7 @@ func TestClientandBBVersionMarshalError(t *testing.T) {
 	v.Set("output-config.format", "")
 	streams, err := factory.GetIOStream()
 	assert.Nil(t, err)
-	fakeWriter := bbTestApiWrappers.CreateFakeWriter(t, true)
+	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 

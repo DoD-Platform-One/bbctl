@@ -267,7 +267,8 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	streams, _ := factory.GetIOStream()
-	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	out := streams.Out.(*bytes.Buffer)
+	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
 	callerIdentity := bbAwsUtil.CallerIdentity{

@@ -91,7 +91,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
-	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
 	callerIdentity := bbAwsUtil.CallerIdentity{
@@ -113,7 +113,6 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, err)
 	assert.IsType(t, &apiWrappers.FakeWriterError{}, err)
-	assert.True(t, streams.Out.(*apiWrappers.FakeWriter).ShouldError)
 	assert.Equal(t, "shellprofile", cmd.Use)
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
@@ -176,7 +175,8 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	streams, _ := factory.GetIOStream()
-	streams.Out = apiWrappers.CreateFakeWriterFromStream(t, true, streams.Out)
+	out := streams.Out.(*bytes.Buffer)
+	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
 	callerIdentity := bbAwsUtil.CallerIdentity{

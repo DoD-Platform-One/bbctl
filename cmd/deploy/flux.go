@@ -43,34 +43,40 @@ func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
 	return cmd
 }
 
-func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
+func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) (err error) {
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
 		return err
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %w", configErr)
+		err = fmt.Errorf("error getting config: %w", configErr)
+		return err
 	}
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		return fmt.Errorf("unable to create IO streams: %w", err)
+		err = fmt.Errorf("unable to create IO streams: %w", err)
+		return err
 	}
 	outputClient, err := factory.GetOutputClient(command)
 	if err != nil {
-		return fmt.Errorf("unable to create output client: %w", err)
+		err = fmt.Errorf("unable to create output client: %w", err)
+		return err
 	}
 	credentialHelper, err := factory.GetCredentialHelper()
 	if err != nil {
-		return fmt.Errorf("unable to get credential helper: %w", err)
+		err = fmt.Errorf("unable to get credential helper: %w", err)
+		return err
 	}
 	username, err := credentialHelper("username", "registry1.dso.mil")
 	if err != nil {
-		return fmt.Errorf("unable to get username: %w", err)
+		err = fmt.Errorf("unable to get username: %w", err)
+		return err
 	}
 	password, err := credentialHelper("password", "registry1.dso.mil")
 	if err != nil {
-		return fmt.Errorf("unable to get password: %w", err)
+		err = fmt.Errorf("unable to get password: %w", err)
+		return err
 	}
 
 	installFluxPath := path.Join(config.BigBangRepo, "scripts", "install_flux.sh")
@@ -84,14 +90,12 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 	// Use the factory to create the pipe
 	r, w, err := factory.GetPipe()
 	if err != nil {
-		return fmt.Errorf("unable to get pipe: %w", err)
+		err = fmt.Errorf("unable to get pipe: %w", err)
+		return err
 	}
 
-	streams.In = r
-	streams.Out = w
-
 	// Redirect command's stdout to the pipe's writer
-	cmd.SetStdout(streams.Out)
+	cmd.SetStdout(w)
 	cmd.SetStderr(streams.ErrOut) // Set stderr to original
 
 	// Use a buffer to capture the output
@@ -103,7 +107,13 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 
 	go func() {
 		defer wg.Done() // Decrement the WaitGroup counter when the goroutine completes
-		io.Copy(&buf, streams.In)
+		if _, newErr := io.Copy(&buf, r); newErr != nil {
+			if err == nil {
+				err = fmt.Errorf("(sole deferred error: %w)", newErr)
+			} else {
+				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+			}
+		}
 	}()
 
 	// Run the command
@@ -111,14 +121,18 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 	if err != nil {
 		w.Close()
 		wg.Wait() // Wait for the goroutine to finish before returning
+		err = fmt.Errorf("error running command: %w", err)
 		return err
 	}
 
 	// Close the writer to finish the reading process
 	w.Close()
-
 	// Wait for the goroutine to finish
 	wg.Wait()
+	if err != nil {
+		err = fmt.Errorf("error waiting for goroutine: %w", err)
+		return err
+	}
 
 	// Process captured output
 	data := &outputSchema.FluxOutput{
@@ -129,7 +143,7 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 		return err
 	}
 
-	return nil
+	return err
 }
 
 func parseOutput(data string) outputSchema.Output {
