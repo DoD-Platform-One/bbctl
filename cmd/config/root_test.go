@@ -1,4 +1,4 @@
-package update
+package config
 
 import (
 	"bytes"
@@ -9,24 +9,24 @@ import (
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
-func TestUpdate_RootUsage(t *testing.T) {
+func TestRoot_NewConfigCmd(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewUpdateCmd(factory)
+	cmd := NewConfigCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Equal(t, "update", cmd.Use)
+	assert.Equal(t, "config", cmd.Use)
 	commandsList := cmd.Commands()
 	assert.Len(t, commandsList, 1)
 	var commandUseNamesList []string
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
-	assert.Contains(t, commandUseNamesList, "check")
+	assert.Contains(t, commandUseNamesList, "view [key]")
 }
 
-func TestUpdate_RootNoSubcommand(t *testing.T) {
+func TestRoot_NewConfigCmd_NoSubcommand(t *testing.T) {
 	testCases := []struct {
 		name             string
 		errorOnGetClient bool
@@ -46,9 +46,9 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
+			streams, _ := factory.GetIOStream()
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "/path/to/repo")
-			streams, _ := factory.GetIOStream()
 			in := streams.In.(*bytes.Buffer)
 			out := streams.Out.(*bytes.Buffer)
 			errOut := streams.ErrOut.(*bytes.Buffer)
@@ -56,7 +56,7 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 				factory.SetFail.GetOutputClient = true
 			}
 			// Act
-			cmd := NewUpdateCmd(factory)
+			cmd := NewConfigCmd(factory)
 			err := cmd.Execute()
 			// Assert
 			assert.Empty(t, errOut.String())

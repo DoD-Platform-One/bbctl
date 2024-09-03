@@ -1,4 +1,4 @@
-package cmd
+package config
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
-func TestGetConfig(t *testing.T) {
+func TestGetConfigView(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	streams, _ := factory.GetIOStream()
@@ -26,7 +26,7 @@ func TestGetConfig(t *testing.T) {
 	viper.Set("big-bang-repo", "/path/to/repo")
 	viper.Set("output-config.format", "yaml")
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -42,7 +42,7 @@ func TestGetConfig(t *testing.T) {
 func TestConfigGetAll(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 
 	viper, _ := factory.GetViper()
 
@@ -89,11 +89,11 @@ func TestConfigGetAll(t *testing.T) {
 	}
 }
 
-// TestConfigGetOne sets tests values and attempts to fetch only a single value.
+// TestConfigViewGetOne sets tests values and attempts to fetch only a single value.
 // The expectation is that
-func TestConfigGetOne(t *testing.T) {
+func TestConfigViewGetOne(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 
 	viper, _ := factory.GetViper()
 
@@ -175,12 +175,12 @@ func TestFindRecursiveNoKeys(t *testing.T) {
 
 // TestConfigMarshalError tests that when an invalid, unmarshalable configuration is created
 // the code correctly panics.
-func TestConfigMarshalError(t *testing.T) {
+func TestConfigViewMarshalError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	loggingClient, _ := factory.GetLoggingClient()
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 
 	expected := ""
@@ -213,7 +213,7 @@ func TestConfigMarshalError(t *testing.T) {
 
 func TestConfigTooManyKeys(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -230,7 +230,7 @@ func TestConfigOutputClientError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetFail.GetIOStreams = 1
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -246,7 +246,7 @@ func TestConfigOutputClientError(t *testing.T) {
 func TestGlobalConfigFormat(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	streams, err := factory.GetIOStream()
 	assert.Nil(t, err)
@@ -263,7 +263,7 @@ func TestGlobalConfigFormat(t *testing.T) {
 func TestSingleConfigFormat(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	streams, err := factory.GetIOStream()
 	assert.Nil(t, err)
@@ -281,7 +281,7 @@ func TestSingleConfigFormat(t *testing.T) {
 func TestConfigGetInvalidKey(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -298,7 +298,7 @@ func TestConfigGetInvalidKey(t *testing.T) {
 func TestConfigFailToGetConfigClient(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 
 	// Required value or the execution will fail
@@ -318,7 +318,7 @@ func TestConfigFailToGetConfig(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	loggingClient, _ := factory.GetLoggingClient()
-	cmd := NewConfigCmd(factory)
+	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
 	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {

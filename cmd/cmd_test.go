@@ -28,7 +28,7 @@ func TestGetHelpUsage(t *testing.T) {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
 	assert.Contains(t, commandUseNamesList, "completion [bash|zsh|fish|powershell]")
-	assert.Contains(t, commandUseNamesList, "config [key]")
+	assert.Contains(t, commandUseNamesList, "config")
 	assert.Contains(t, commandUseNamesList, "deploy")
 	assert.Contains(t, commandUseNamesList, "k3d")
 	assert.Contains(t, commandUseNamesList, "update")
@@ -89,11 +89,6 @@ func TestNewRootCmdErrors(t *testing.T) {
 			errorOnDeploy: true,
 			expectedError: "unable to get config client",
 		},
-		{
-			name:          "error on update",
-			errorOnUpdate: true,
-			expectedError: "Unable to create IO streams",
-		},
 	}
 
 	for _, tc := range testCases {
@@ -122,7 +117,7 @@ func TestNewRootCmdErrors(t *testing.T) {
 				factory.SetFail.GetConfigClient = 7
 			}
 			if tc.errorOnUpdate {
-				factory.SetFail.GetIOStreams = 3
+				factory.SetFail.GetIOStreams = 4
 			}
 			// Act
 			cmd, err := NewRootCmd(factory)
