@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
+	config "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/config"
 	deploy "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/deploy"
 	k3d "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/k3d"
 	update "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/update"
@@ -44,7 +45,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving Completion Command: %w", completionCmdError)
 	}
 	cmd.AddCommand(completionCmd)
-	cmd.AddCommand(NewConfigCmd(factory))
+	cmd.AddCommand(config.NewConfigCmd(factory))
 	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Version Command: %w", versionCmdError)
@@ -78,11 +79,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving Deploy Command: %w", deployCmdError)
 	}
 	cmd.AddCommand(deployCmd)
-	updateCmd, updateCmdError := update.NewUpdateCmd(factory)
-	if updateCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving Update Command: %w", updateCmdError)
-	}
-	cmd.AddCommand(updateCmd)
+	cmd.AddCommand(update.NewUpdateCmd(factory))
 
 	return cmd, nil
 }

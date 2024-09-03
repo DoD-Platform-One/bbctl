@@ -1,4 +1,4 @@
-package cmd
+package config
 
 import (
 	"errors"
@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	configUse = `config [key]`
+	viewUse = `view [key]`
 
-	configShort = i18n.T(`Print bbctl configuration information.`)
+	viewShort = i18n.T(`Print bbctl configuration information.`)
 
-	configLong = templates.LongDesc(i18n.T(`
+	viewLong = templates.LongDesc(i18n.T(`
 		Output the current bbctl configurations set in the bbctl configuration file.
 		
 		Configurations are printed in the format:
@@ -31,12 +31,12 @@ var (
 	`))
 )
 
-// NewConfigCmd - create a new Cobra config command
-func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
+// NewConfigViewCmd - create a new Cobra config view command
+func NewConfigViewCmd(factory bbUtil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:                   configUse,
-		Short:                 configShort,
-		Long:                  configLong,
+		Use:                   viewUse,
+		Short:                 viewShort,
+		Long:                  viewLong,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return getBBConfig(cmd, factory, args)
