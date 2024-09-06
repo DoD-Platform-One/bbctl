@@ -139,10 +139,6 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 		Data: parseOutput(buf.String()),
 	}
 	err = outputClient.Output(data)
-	if err != nil {
-		return err
-	}
-
 	return err
 }
 

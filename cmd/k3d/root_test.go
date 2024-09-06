@@ -3,6 +3,7 @@ package k3d
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,11 +37,14 @@ func TestK3d_RootIOStreamError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
-	bigBangRepoLocation := "test"
+
 	viperInstance, _ := factory.GetViper()
+	bigBangRepoLocation := "/tmp/big-bang"
+	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	factory.SetFail.GetIOStreams = 1
+	viperInstance.Set("output-config.format", "text")
 
 	// Act
 	cmd, err := NewK3dCmd(factory)
@@ -57,6 +61,14 @@ func TestK3d_RootNoSubcommand(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
+
+	viperInstance, _ := factory.GetViper()
+	bigBangRepoLocation := "/tmp/big-bang"
+	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
+	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+	viperInstance.Set("output-config.format", "text")
+
 	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
@@ -77,6 +89,7 @@ func TestK3d_RootSshError(t *testing.T) {
 	assert.Nil(t, viperErr)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
+	viperInstance.Set("output-config.format", "text")
 
 	expectedError := fmt.Errorf("failed to set and bind flag")
 	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
@@ -108,6 +121,7 @@ func TestK3d_RootHostsError(t *testing.T) {
 	viperInstance, viperErr := factory.GetViper()
 	assert.Nil(t, viperErr)
 	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("output-config.format", "text")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	expectedError := fmt.Errorf("failed to set and bind flag")

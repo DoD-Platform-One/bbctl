@@ -13,6 +13,7 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
 var (
@@ -45,11 +46,21 @@ func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("unable to get config client: %w", err)
 	}
 	// make sure to sync this default with the one in the configuration schema
-	err = configClient.SetAndBindFlag("ssh-username", "", "ubuntu", "Username to use for SSH connection")
+	err = configClient.SetAndBindFlag(
+		"ssh-username",
+		"",
+		"ubuntu",
+		"Username to use for SSH connection",
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to bind flags: %w", err)
 	}
-	err = configClient.SetAndBindFlag("dry-run", "", false, "Print command but don't actually establish an SSH connection")
+	err = configClient.SetAndBindFlag(
+		"dry-run",
+		"",
+		false,
+		"Print command but don't actually establish an SSH connection",
+	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to bind flags: %w", err)
 	}
@@ -59,10 +70,6 @@ func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 // sshToK3dCluster - Returns an error (nil if no error) when opening an SSH session to your cluster
 func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return fmt.Errorf("unable to get IO stream: %w", err)
-	}
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
 		return fmt.Errorf("unable to get config client: %w", err)
@@ -87,6 +94,10 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 	if err != nil {
 		return fmt.Errorf("unable to get STS client: %w", err)
 	}
+	outputClient, err := factory.GetOutputClient(command)
+	if err != nil {
+		return fmt.Errorf("unable to get output client: %w", err)
+	}
 	userInfo, err := awsClient.GetIdentity(context.TODO(), stsClient)
 	if err != nil {
 		return fmt.Errorf("unable to get AWS identity: %w", err)
@@ -95,7 +106,12 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 	if err != nil {
 		return fmt.Errorf("unable to get EC2 client: %w", err)
 	}
-	ips, err := awsClient.GetClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposurePublic)
+	ips, err := awsClient.GetClusterIPs(
+		context.TODO(),
+		ec2Client,
+		userInfo.Username,
+		bbAws.FilterExposurePublic,
+	)
 	if err != nil {
 		return fmt.Errorf("unable to get cluster IPs: %w", err)
 	}
@@ -118,12 +134,15 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 
-	err = nil
 	dryRun, _ := command.Flags().GetBool("dry-run")
 	if !dryRun {
 		err = cmd.Run()
 	} else {
-		fmt.Fprint(streams.Out, cmd.String())
+		outputMap := map[string]interface{}{
+			"Message": cmd.String(),
+		}
+
+		err = outputClient.Output(&output.BasicOutput{Vals: outputMap})
 	}
 	return err
 }

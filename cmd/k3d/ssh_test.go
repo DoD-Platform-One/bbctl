@@ -71,6 +71,7 @@ func TestK3d_SshDryRun(t *testing.T) {
 	factory.SetClusterIPs(&clusterIPs)
 	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
+	viperInstance.Set("output-config.format", "text")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	// Act
@@ -82,7 +83,15 @@ func TestK3d_SshDryRun(t *testing.T) {
 	assert.Nil(t, sshCmdError)
 	assert.Empty(t, in.String())
 	assert.Empty(t, errOut.String())
-	assert.Contains(t, out.String(), fmt.Sprintf("/usr/bin/ssh -o IdentitiesOnly=yes -i ~/.ssh/%v-dev.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ubuntu@%s", callerIdentity.Username, privateIP))
+	assert.Contains(
+		t,
+		out.String(),
+		fmt.Sprintf(
+			"/usr/bin/ssh -o IdentitiesOnly=yes -i ~/.ssh/%v-dev.pem -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ubuntu@%s",
+			callerIdentity.Username,
+			privateIP,
+		),
+	)
 }
 
 func TestK3d_SshBadArgs(t *testing.T) {
@@ -173,7 +182,11 @@ func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.NotNil(t, sshCmdError)
-	assert.Equal(t, fmt.Sprintf("unable to bind flags: %s", expectedError.Error()), sshCmdError.Error())
+	assert.Equal(
+		t,
+		fmt.Sprintf("unable to bind flags: %s", expectedError.Error()),
+		sshCmdError.Error(),
+	)
 }
 
 func TestK3d_SshErrorSettingDryRun(t *testing.T) {
@@ -202,11 +215,15 @@ func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.NotNil(t, sshCmdError)
-	assert.Equal(t, fmt.Sprintf("unable to bind flags: %s", expectedError.Error()), sshCmdError.Error())
+	assert.Equal(
+		t,
+		fmt.Sprintf("unable to bind flags: %s", expectedError.Error()),
+		sshCmdError.Error(),
+	)
 }
 
 func TestK3d_sshToK3dClusterErrors(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		name string
 		// errorFunc is a function that will be called with the awsClient and factory
 		// at the start of a test case to allow setting flags to force errors
