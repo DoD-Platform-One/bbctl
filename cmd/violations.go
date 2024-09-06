@@ -270,6 +270,11 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 			timestamp: event.CreationTimestamp.UTC().Format(time.RFC3339),
 		}
 
+		parseErr := parseViolation(true, &violation)
+		if parseErr != nil {
+			// could return error, currently logging error at warn level as it does not cause other issues
+			v.logger.Warn("error parsing policy name from kyverno violations")
+		}
 		v.violations = append(v.violations, violation)
 	}
 
@@ -327,6 +332,11 @@ func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
 			timestamp:  event.CreationTimestamp.UTC().Format(time.RFC3339),
 		}
 
+		parseErr := parseViolation(false, &violation)
+		if parseErr != nil {
+			// could return error, currently logging error at warn level as it does not cause other issues
+			v.logger.Warn("error parsing constraint name from gatekeeper deny violations")
+		}
 		v.violations = append(v.violations, violation)
 	}
 
@@ -413,7 +423,7 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 	return &violations, nil
 }
 
-// processGkViolations filters the violations based on the namespace and prints them out
+// processGkViolations filters the violations based on the namespace and parses the message into constraint name
 func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) error {
 	if len(*violations) != 0 {
 		v.logger.Debug("Custom resource definitions: %s", crdName)
@@ -423,6 +433,11 @@ func (v *violationsCmdHelper) processGkViolations(namespace string, violations *
 				continue
 			}
 			violationsFound = true
+			parseErr := parseViolation(false, &violation)
+			if parseErr != nil {
+				// could return error, currently logging error at warn level as it does not cause other issues
+				v.logger.Warn("error parsing constraint name from gatekeeper violations")
+			}
 			v.violations = append(v.violations, violation)
 		}
 		if !violationsFound {
@@ -430,6 +445,23 @@ func (v *violationsCmdHelper) processGkViolations(namespace string, violations *
 		}
 	}
 	return nil
+}
+
+// parses the violation policy or constraint from the message
+// could move all calls to parseViolation to printViolation
+func parseViolation(isPolicy bool, violation *policyViolation) error {
+	if isPolicy {
+		if i := strings.Index(violation.message, "validation error:"); i >= 0 {
+			violation.policy, violation.message = violation.message[:i-2], violation.message[i:]
+			return nil
+		}
+		return fmt.Errorf("error parsing policy name from violations")
+	}
+	if i := strings.Index(violation.message, "validation error:"); i >= 0 {
+		violation.constraint, violation.message = violation.message[:i-2], violation.message[i:]
+		return nil
+	}
+	return fmt.Errorf("error parsing constraint name from violations")
 }
 
 // printViolation prints the violation information to the defined client io.Writer
