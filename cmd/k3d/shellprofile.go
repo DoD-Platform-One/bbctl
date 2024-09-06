@@ -9,6 +9,7 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
 var (
@@ -16,7 +17,11 @@ var (
 
 	shellProfileShort = i18n.T(`Generates a shell profile for k3d cluster`)
 
-	shellProfileLong = templates.LongDesc(i18n.T(`Generates a shell profile (BASH compatible) to set up your environment for a k3d cluster`))
+	shellProfileLong = templates.LongDesc(
+		i18n.T(
+			`Generates a shell profile (BASH compatible) to set up your environment for a k3d cluster`,
+		),
+	)
 
 	shellProfileExample = templates.Examples(i18n.T(`
 	    # Generate a profile suitable for inclusion in your ~/.profile
@@ -31,7 +36,7 @@ func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
 		Long:    shellProfileLong,
 		Example: shellProfileExample,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return shellProfileCluster(factory)
+			return shellProfileCluster(factory, cmd)
 		},
 	}
 
@@ -39,10 +44,10 @@ func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
 }
 
 // shellProfileCluster - Returns the error (nil if no error) when generating a BASH compatible shell profile for your cluster
-func shellProfileCluster(factory bbUtil.Factory) error {
-	streams, err := factory.GetIOStream()
+func shellProfileCluster(factory bbUtil.Factory, cobraCmd *cobra.Command) error {
+	outputClient, err := factory.GetOutputClient(cobraCmd)
 	if err != nil {
-		return fmt.Errorf("unable to get IO streams: %w", err)
+		return fmt.Errorf("Unable to  create output client: %w", err)
 	}
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
@@ -64,7 +69,12 @@ func shellProfileCluster(factory bbUtil.Factory) error {
 	if err != nil {
 		return fmt.Errorf("unable to get EC2 client: %w", err)
 	}
-	ips, err := awsClient.GetSortedClusterIPs(context.TODO(), ec2Client, userInfo.Username, bbAws.FilterExposureAll)
+	ips, err := awsClient.GetSortedClusterIPs(
+		context.TODO(),
+		ec2Client,
+		userInfo.Username,
+		bbAws.FilterExposureAll,
+	)
 	if err != nil {
 		return fmt.Errorf("unable to get cluster IPs: %w", err)
 	}
@@ -76,16 +86,16 @@ func shellProfileCluster(factory bbUtil.Factory) error {
 		privateIP = *ips.PrivateIPs[0].IP
 	}
 
-	output := [3]string{
-		fmt.Sprintf("export KUBECONFIG=~/.kube/%v-dev-config\n", userInfo.Username),
-		fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP),
-		fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP),
+	// Prepare the shell profile output
+	shellProfileOutput := &outputSchema.ShellProfileOutput{
+		KubeConfig:       fmt.Sprintf("~/.kube/%v-dev-config", userInfo.Username),
+		BB_K3D_PUBLICIP:  publicIP,
+		BB_K3D_PRIVATEIP: privateIP,
 	}
-	for _, str := range output {
-		_, err = streams.Out.Write([]byte(str))
-		if err != nil {
-			return err
-		}
+
+	// Output the data using the outputClient
+	if err := outputClient.Output(shellProfileOutput); err != nil {
+		return fmt.Errorf("error outputting shell profile: %w", err)
 	}
 
 	return nil

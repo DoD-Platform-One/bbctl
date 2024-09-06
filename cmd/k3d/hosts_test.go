@@ -155,6 +155,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			factory.SetVirtualServices(&vsList)
 			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("output-config.format", "yaml")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 			cmd, cmdErr := NewHostsCmd(factory)
 			assert.Nil(t, cmdErr)
@@ -191,7 +192,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 					assert.Contains(t, errOut.String(), (&apiWrappers.FakeWriterError{}).Error())
 				} else {
 					assert.Nil(t, err)
-					assert.Empty(t, out.String())
+					assert.Equal(t, "hosts: {}\n", out.String())
 					assert.Empty(t, errOut.String())
 				}
 				assert.Empty(t, in.String())
@@ -199,7 +200,8 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 				assert.Nil(t, err)
 				assert.Empty(t, errOut.String())
 				assert.Empty(t, in.String())
-				assert.Equal(t, fmt.Sprintf("%v\t%v\t%v\n", privateIP, vs.Spec.Hosts[0], vs.Spec.Hosts[1]), out.String())
+				// hosts:\n  192.192.192.192:\n  - test1\n  - test2\n
+				assert.Equal(t, fmt.Sprintf("hosts:\n  %v:\n  - %v\n  - %v\n", privateIP, vs.Spec.Hosts[0], vs.Spec.Hosts[1]), out.String())
 			}
 		})
 	}
@@ -208,7 +210,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 func TestK3d_hostsListClusterErrors(t *testing.T) {
 	goodkubeconfig := "../../util/test/data/kube-config.yaml"
 	badkubeconfig := "../test/data/bad-kube-config.yaml"
-	var tests = []struct {
+	tests := []struct {
 		name string
 		// errorFunc is a function that will be called with the awsClient and factory
 		// at the start of a test case to allow setting flags to force errors
@@ -220,7 +222,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
 				factory.SetFail.GetIOStreams = 1
 			},
-			errmsg: "unable to get IOStreams: failed to get streams",
+			errmsg: "unable to get output client: failed to get streams",
 		},
 		{
 			name: "ErrorGettingLoggingClient",
@@ -243,7 +245,10 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 				assert.Nil(t, viperErr)
 				viperInstance.Set("kubeconfig", badkubeconfig)
 			},
-			errmsg: fmt.Sprintf("unable to build k8s configuration: stat %s: no such file or directory", badkubeconfig),
+			errmsg: fmt.Sprintf(
+				"unable to build k8s configuration: stat %s: no such file or directory",
+				badkubeconfig,
+			),
 		},
 		{
 			name: "ErrorCreatingIstioClient",

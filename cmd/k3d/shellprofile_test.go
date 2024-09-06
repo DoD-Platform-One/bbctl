@@ -2,6 +2,7 @@ package k3d
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -68,7 +69,11 @@ func TestK3d_ShellProfiile(t *testing.T) {
 	viperInstance, _ := factory.GetViper()
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
-	kubeConfExport := fmt.Sprintf("export KUBECONFIG=~/.kube/%v-dev-config\n", callerIdentity.Username)
+	viperInstance.Set("output-config.format", "text")
+	kubeConfExport := fmt.Sprintf(
+		"export KUBECONFIG=~/.kube/%v-dev-config\n",
+		callerIdentity.Username,
+	)
 	privateIpExport := fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP)
 	publicIpExport := fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP)
 	// Act
@@ -105,6 +110,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	factory.SetCallerIdentity(&callerIdentity)
 	factory.SetClusterIPs(&clusterIPs)
 	viperInstance, _ := factory.GetViper()
+	viperInstance.Set("output-config.format", "text")
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	cmd := NewShellProfileCmd(factory)
@@ -112,7 +118,14 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, err)
-	assert.IsType(t, &apiWrappers.FakeWriterError{}, err)
+	unwrappedErr := err
+	for unwrappedErr != nil {
+		if _, ok := unwrappedErr.(*apiWrappers.FakeWriterError); ok {
+			break
+		}
+		unwrappedErr = errors.Unwrap(unwrappedErr)
+	}
+	assert.IsType(t, &apiWrappers.FakeWriterError{}, unwrappedErr)
 	assert.Equal(t, "shellprofile", cmd.Use)
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
@@ -120,8 +133,7 @@ func TestK3d_ShellProfileError(t *testing.T) {
 }
 
 func TestK3d_ShellProfileErrors(t *testing.T) {
-
-	var tests = []struct {
+	tests := []struct {
 		name string
 		// errorFunc is a function that will be called with the awsClient and factory
 		// at the start of a test case to allow setting flags to force errors
@@ -187,6 +199,7 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 		Username: "developer",
 	}
 	clusterIPs := []bbAwsUtil.ClusterIP{}
+	cmd := NewShellProfileCmd(factory)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -195,12 +208,14 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 			factory.SetClusterIPs(&clusterIPs)
 			viperInstance, _ := factory.GetViper()
 			viperInstance.Set("big-bang-repo", "test")
+			viperInstance.Set("output-config.format", "yaml")
+
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 			// Trigger our errors
 			test.errorFunc(factory)
 
-			err := shellProfileCluster(factory)
+			err := shellProfileCluster(factory, cmd)
 
 			assert.NotNil(t, err)
 			assert.Equal(t, test.errmsg, err.Error())
