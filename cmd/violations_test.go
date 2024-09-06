@@ -1670,3 +1670,68 @@ func TestNoViolationsPrintViolationsErr(t *testing.T) {
 	// Assert
 	assert.Nil(t, printErr)
 }
+
+func TestParseViolationsErr(t *testing.T) {
+	// Arrange
+	tests := []struct {
+		desc        string
+		expectedErr error
+		violation   policyViolation
+		isPolicy    bool
+	}{
+		{
+			"policy violation error",
+			fmt.Errorf("error parsing policy name from violations"),
+			policyViolation{},
+			true,
+		},
+		{
+			"constraint violation error",
+			fmt.Errorf("error parsing constraint name from violations"),
+			policyViolation{},
+			false,
+		},
+		{
+			"policy violation no error",
+			nil,
+			policyViolation{
+				message: "parsing test policy violation: validation error: a long message to parse",
+			},
+			true,
+		},
+		{
+			"constraint violation no error",
+			nil,
+			policyViolation{
+				message: "parsing test constraint violation: validation error: a long message to parse",
+			},
+			false,
+		},
+	}
+
+	// Act
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			parseErr := parseViolation(test.isPolicy, &test.violation)
+
+			// Assert
+			if test.expectedErr != nil {
+				assert.NotNil(t, parseErr)
+				assert.Equal(t, parseErr.Error(), test.expectedErr.Error())
+			}
+
+			if test.expectedErr == nil {
+				assert.Nil(t, parseErr)
+				assert.Equal(t, test.violation.message, "validation error: a long message to parse")
+				if test.isPolicy {
+					assert.Equal(t, test.violation.policy, "parsing test policy violation")
+				}
+				if !test.isPolicy {
+					assert.Equal(t, test.violation.constraint, "parsing test constraint violation")
+				}
+			}
+
+		})
+	}
+}
