@@ -74,7 +74,9 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			ShouldError:  false,
 			ExtraConfigs: []schemas.BaseConfiguration{},
 		},
-		GitLabConfiguration: schemas.GitLabConfiguration{},
+		GitLabConfiguration: schemas.GitLabConfiguration{
+			BaseURL: "https://repo1.dso.mil/api/v4",
+		},
 		K3dSshConfiguration: schemas.K3dSshConfiguration{
 			User: "test",
 		},

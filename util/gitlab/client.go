@@ -6,7 +6,7 @@ import (
 
 // Client holds the method signatures for a GitLab client.
 type Client interface {
-	GetFile(string, string, string) ([]byte, error)
+	GetFile(repository string, path string, branch string) ([]byte, error)
 }
 
 // NewClient returns a new GitLab client with the provided configuration
