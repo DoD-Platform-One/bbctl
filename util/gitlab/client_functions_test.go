@@ -28,6 +28,11 @@ func TestGetValidFile(t *testing.T) {
 		if r.URL.Path != route {
 			t.Errorf("Expected request, got: %s", r.URL.Path)
 		}
+
+		if branch := r.URL.Query().Get("ref"); branch != "main" {
+			t.Errorf("Expected branch to be main, got: %s", branch)
+		}
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(fileResponse))
 	}))
@@ -37,7 +42,7 @@ func TestGetValidFile(t *testing.T) {
 	client, _ := clientGetter.GetClient(server.URL, "")
 
 	// Act
-	file, err := client.GetFile("12345", "main", "FILE")
+	file, err := client.GetFile("12345", "FILE", "main")
 
 	// Assert
 	assert.Nil(t, err)
@@ -61,7 +66,7 @@ func TestGetFileNotFound(t *testing.T) {
 	// Assert
 	assert.Nil(t, file)
 	assert.NotNil(t, err)
-	assert.Equal(t, "GitLab file download request failed with status code 404: 404 Not Found", err.Error())
+	assert.Equal(t, "error downloading file from gitlab: 404 Not Found", err.Error())
 }
 
 func TestGetFileEncodingError(t *testing.T) {
@@ -90,7 +95,7 @@ func TestGetFileEncodingError(t *testing.T) {
 	client, _ := clientGetter.GetClient(server.URL, "")
 
 	// Act
-	file, err := client.GetFile("12345", "main", "FILE")
+	file, err := client.GetFile("12345", "FILE", "main")
 
 	// Assert
 	assert.Nil(t, file)

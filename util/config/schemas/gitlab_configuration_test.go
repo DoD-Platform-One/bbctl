@@ -21,7 +21,7 @@ func TestGetGitLabConfigurations(t *testing.T) {
 			&GitLabConfiguration{},
 			"",
 			false,
-			"",
+			"https://repo1.dso.mil/api/v4",
 			false,
 		},
 		{
@@ -29,7 +29,7 @@ func TestGetGitLabConfigurations(t *testing.T) {
 			&GitLabConfiguration{Token: "qnxuwoei", BaseURL: "https://localhost"},
 			"qnxuwoei",
 			false,
-			"https://localhost",
+			"https://repo1.dso.mil/api/v4",
 			false,
 		},
 		{
@@ -37,7 +37,7 @@ func TestGetGitLabConfigurations(t *testing.T) {
 			&GitLabConfiguration{},
 			"qnxuwoei",
 			true,
-			"https://localhost",
+			"https://repo1.dso.mil/api/v4",
 			true,
 		},
 		{
@@ -45,7 +45,7 @@ func TestGetGitLabConfigurations(t *testing.T) {
 			&GitLabConfiguration{Token: "qnxuwoei"},
 			"qnxuwoei",
 			false,
-			"https://localhost",
+			"https://repo1.dso.mil/api/v4",
 			true,
 		},
 	}

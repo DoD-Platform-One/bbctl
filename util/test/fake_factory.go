@@ -193,6 +193,7 @@ type FakeFactory struct {
 		GetLoggingClient             bool
 		GetPipe                      bool
 		GetRuntimeClient             bool
+		GetGitLabClient              bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
@@ -208,6 +209,9 @@ type FakeFactory struct {
 	}
 
 	credentialHelper bbUtil.CredentialHelper
+	gitlab           struct {
+		getFileFunc fakeGitLab.GetFileFunc
+	}
 }
 
 // GetCredentialHelper - get credential helper
@@ -246,9 +250,19 @@ func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
 	return fakeClient, nil
 }
 
+// SetGitLabGetFileFunc sets the GetFile function on the fake GitLab client
+func (f *FakeFactory) SetGitLabGetFileFunc(getFileFunc fakeGitLab.GetFileFunc) {
+	f.gitlab.getFileFunc = getFileFunc
+}
+
 // GetGitLabClient constructs a fake GitLab client
 func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
-	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com", "")
+	// Fail if the GetGitLabClient function has been called with a set fail
+	if f.SetFail.GetGitLabClient {
+		return nil, fmt.Errorf("failed to get GitLab client")
+	}
+
+	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com", "", f.gitlab.getFileFunc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GitLab client: %w", err)
 	}
@@ -292,8 +306,8 @@ func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, erro
 	if err != nil {
 		return nil, err
 	}
-	outputCLientGetter := bbOutput.ClientGetter{}
-	outputClient := outputCLientGetter.GetClient(config.OutputConfiguration.Format, *streams)
+	outputClientGetter := bbOutput.ClientGetter{}
+	outputClient := outputClientGetter.GetClient(config.OutputConfiguration.Format, *streams)
 
 	return outputClient, nil
 }

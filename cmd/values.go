@@ -93,7 +93,7 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			streams, err := factory.GetIOStream()
 			if err != nil {
-				return fmt.Errorf("error getting IO streams: %s", err.Error())
+				return fmt.Errorf("error getting IO streams: %w", err)
 			}
 			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 			if err != nil {
