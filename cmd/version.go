@@ -18,7 +18,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/spf13/cobra"
-	helmRelease "helm.sh/helm/v3/pkg/release"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sClient "k8s.io/client-go/dynamic"
@@ -212,7 +211,7 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 			}
 		} else {
 
-			outputMap, err = v.getBigBangVersion()
+			outputMap, err = v.outputBigBangVersion()
 			if err != nil {
 				return fmt.Errorf("error getting Big Bang version: %w", err)
 			}
@@ -248,45 +247,96 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 func (v *versionCmdHelper) getAllChartVersions(checkForUpdates bool) (map[string]any, error) {
 	outputMap := map[string]any{}
 
+	customResource := schema.GroupVersionResource{Group: "helm.toolkit.fluxcd.io", Version: "v2", Resource: "helmreleases"}
+	opts := metaV1.ListOptions{}
 	v.logger.Debug("getting all charts' versions")
-	releases, err := v.helmClient.GetList()
+	releases, err := v.kubeClient.Resource(customResource).Namespace(v.constants.BigBangNamespace).List(context.TODO(), opts)
 	if err != nil {
-		return outputMap, fmt.Errorf("error getting helm information for all charts: %w", err)
+		return outputMap, fmt.Errorf("error getting helmreleases: %w", err)
 	}
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	errChan := make(chan error, len(releases))
+	errChan := make(chan error, len(releases.Items)+2)
 
-	for _, release := range releases {
-		key := release.Chart.Metadata.Name
+	// bigbang isn't installed as a helm release in most distributions, so we need to handle it separately
+	// but we want to check first that it's not in the list of releases
+	bigbangFound := false
+	for _, release := range releases.Items {
+		// if a release is named bigbang (like in instances where kustomize is used),
+		// we can assume it will be added to the map with the rest of the releases
+		if release.Object["metadata"].(map[string]any)["name"].(string) == v.constants.BigBangHelmReleaseName {
+			bigbangFound = true
+			break
+		}
+	}
+	if !bigbangFound {
 		wg.Add(1)
-		go func(release *helmRelease.Release, key string) {
+		go func() {
 			defer wg.Done()
+			version, err := v.getBigBangVersion()
+			if err != nil {
+				errChan <- fmt.Errorf("error getting Big Bang version: %w", err)
+				return
+			}
 			if checkForUpdates {
-				latestVersion, err := v.getLatestChartVersion(key)
+				latestVersion, err := v.getLatestChartVersion(v.constants.BigBangHelmReleaseName)
 				if err != nil {
 					errChan <- fmt.Errorf("error getting latest chart version: %w", err)
 					return
 				}
-				update, err := updateIsNewer(release.Chart.Metadata.Version, latestVersion)
+				update, err := updateIsNewer(version, latestVersion)
 				if err != nil {
 					errChan <- fmt.Errorf("error checking for update: %w", err)
 					return
 				}
 				mu.Lock()
-				outputMap[key] = map[string]any{
-					"version":         release.Chart.Metadata.Version,
+				outputMap[v.constants.BigBangHelmReleaseName] = map[string]any{
+					"version":         version,
 					"latest":          latestVersion,
 					"updateAvailable": update,
 				}
 				mu.Unlock()
 			} else {
 				mu.Lock()
-				outputMap[key] = release.Chart.Metadata.Version
+				outputMap[v.constants.BigBangHelmReleaseName] = version
 				mu.Unlock()
 			}
-		}(release, key)
+		}()
+	}
+
+	for _, release := range releases.Items {
+		name := release.Object["metadata"].(map[string]any)["name"].(string)
+		version := release.Object["status"].(map[string]any)["history"].([]any)[0].(map[string]any)["chartVersion"].(string)
+
+		wg.Add(1)
+		go func(name, version string) {
+			defer wg.Done()
+
+			if checkForUpdates {
+				latestVersion, err := v.getLatestChartVersion(name)
+				if err != nil {
+					errChan <- fmt.Errorf("error getting latest chart version: %w", err)
+					return
+				}
+				update, err := updateIsNewer(version, latestVersion)
+				if err != nil {
+					errChan <- fmt.Errorf("error checking for update: %w", err)
+					return
+				}
+				mu.Lock()
+				outputMap[name] = map[string]any{
+					"version":         version,
+					"latest":          latestVersion,
+					"updateAvailable": update,
+				}
+				mu.Unlock()
+			} else {
+				mu.Lock()
+				outputMap[name] = version
+				mu.Unlock()
+			}
+		}(name, version)
 	}
 
 	wg.Wait()
@@ -301,13 +351,22 @@ func (v *versionCmdHelper) getAllChartVersions(checkForUpdates bool) (map[string
 	return outputMap, nil
 }
 
-// getBigBangVersion gets the version of the Big Bang release as well as the version of the bbctl client
-func (v *versionCmdHelper) getBigBangVersion() (map[string]any, error) {
-	outputMap := map[string]any{}
-
+// getBigBangVersion gets the version of the Big Bang release currently deployed
+func (v *versionCmdHelper) getBigBangVersion() (string, error) {
 	bigbangVersion, err := v.getReleaseVersion(v.constants.BigBangHelmReleaseName)
 	if err != nil {
-		return outputMap, fmt.Errorf("error fetching Big Bang release version: %w", err)
+		return "", fmt.Errorf("error fetching Big Bang release version: %w", err)
+	}
+	return bigbangVersion, nil
+}
+
+// outputBigBangVersion outputs the current version of the Big Bang release and the bbctl client
+func (v *versionCmdHelper) outputBigBangVersion() (map[string]any, error) {
+	outputMap := map[string]any{}
+
+	bigbangVersion, err := v.getBigBangVersion()
+	if err != nil {
+		return outputMap, fmt.Errorf("error getting Big Bang version: %w", err)
 	}
 
 	bbctlKey := "bbctl"
@@ -337,24 +396,28 @@ func (v *versionCmdHelper) getReleaseVersion(releaseName string) (string, error)
 
 // getChartVersion gets the version of a chart by the chart name
 func (v *versionCmdHelper) getChartVersion(chartName string) (string, error) {
+
+	if chartName == "bigbang" {
+		return v.getBigBangVersion()
+	}
 	// We want to find the release name from the chart name, since the release name
 	// is less obvious to the end user. To to this, we'll fetch all the releases and iterate over them
 	// looking at the associated chart name until we find the one we're looking for.
-	releases, err := v.helmClient.GetList()
+
+	customResource := schema.GroupVersionResource{Group: "helm.toolkit.fluxcd.io", Version: "v2", Resource: "helmreleases"}
+	opts := metaV1.GetOptions{}
+	resource, err := v.kubeClient.Resource(customResource).Namespace(v.constants.BigBangNamespace).Get(context.TODO(), chartName, opts)
 	if err != nil {
-		return "", fmt.Errorf("error getting helm information for all releases: %w", err)
+		return "", fmt.Errorf("error getting helmreleases: %w", err)
 	}
 
-	// Filter releases by chart name
-	for _, release := range releases {
-		// Chart names have a version in them (e.g. chart-1.2.3-bb.0), so we'll split on the first instance of a number
-		releaseChart := splitChartName(release.Chart.Metadata.Name)
-		if releaseChart == chartName {
-			return release.Chart.Metadata.Version, nil
-		}
+	version := resource.Object["status"].(map[string]any)["history"].([]any)[0].(map[string]any)["chartVersion"].(string)
+
+	if version == "" {
+		return "", fmt.Errorf(`error getting version for release "%s": no version specified for the chart`, chartName)
 	}
 
-	return "", fmt.Errorf("no matching releases found for %s", chartName)
+	return version, nil
 }
 
 // checkForChartUpdate checks the current chart version against the latest version available on repo1
