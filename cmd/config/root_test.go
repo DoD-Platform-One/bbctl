@@ -18,12 +18,13 @@ func TestRoot_NewConfigCmd(t *testing.T) {
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "config", cmd.Use)
 	commandsList := cmd.Commands()
-	assert.Len(t, commandsList, 1)
+	assert.Len(t, commandsList, 2)
 	var commandUseNamesList []string
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
 	assert.Contains(t, commandUseNamesList, "view [key]")
+	assert.Contains(t, commandUseNamesList, "init")
 }
 
 func TestRoot_NewConfigCmd_NoSubcommand(t *testing.T) {

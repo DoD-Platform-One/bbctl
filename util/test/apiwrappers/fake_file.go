@@ -55,17 +55,20 @@ func CreateFakeFileFromOSPipe(t *testing.T, errOnRead bool, errOnWrite bool) (r 
 	if err != nil {
 		return nil, nil, err
 	}
-	return &FakeFile{
-			File:               osR,
-			shouldErrorOnRead:  errOnRead,
-			shouldErrorOnWrite: false,
-			t:                  t,
-		}, &FakeFile{
-			File:               osW,
-			shouldErrorOnRead:  false,
-			shouldErrorOnWrite: errOnWrite,
-			t:                  t,
-		}, nil
+	r, w = &FakeFile{
+		File:               osR,
+		shouldErrorOnRead:  errOnRead,
+		shouldErrorOnWrite: false,
+		t:                  t,
+	}, &FakeFile{
+		File:               osW,
+		shouldErrorOnRead:  false,
+		shouldErrorOnWrite: errOnWrite,
+		t:                  t,
+	}
+	r.updateSetFail()
+	w.updateSetFail()
+	return r, w, nil
 }
 
 // CreateFakeFileFromOSPipeExtended creates a new FakeFile instance from a call to os.Pipe()
@@ -75,17 +78,20 @@ func CreateFakeFileFromOSPipeExtended(t *testing.T, rErrOnRead bool, rErrOnWrite
 	if err != nil {
 		return nil, nil, err
 	}
-	return &FakeFile{
-			File:               osR,
-			shouldErrorOnRead:  rErrOnRead,
-			shouldErrorOnWrite: rErrOnWrite,
-			t:                  t,
-		}, &FakeFile{
-			File:               osW,
-			shouldErrorOnRead:  wErrOnRead,
-			shouldErrorOnWrite: wErrOnWrite,
-			t:                  t,
-		}, nil
+	r, w = &FakeFile{
+		File:               osR,
+		shouldErrorOnRead:  rErrOnRead,
+		shouldErrorOnWrite: rErrOnWrite,
+		t:                  t,
+	}, &FakeFile{
+		File:               osW,
+		shouldErrorOnRead:  wErrOnRead,
+		shouldErrorOnWrite: wErrOnWrite,
+		t:                  t,
+	}
+	r.updateSetFail()
+	w.updateSetFail()
+	return r, w, nil
 }
 
 // CreateFakeFileFromFileLike creates a new FakeFile instance from an existing FileLike (e.g. os.File)
@@ -93,12 +99,32 @@ func CreateFakeFileFromFileLike(t *testing.T, shouldErrorOnRead bool, shouldErro
 	if actualFile == nil {
 		return nil, &FakeFileError{badInitialization: true}
 	}
-	return &FakeFile{
+	f := &FakeFile{
 		File:               actualFile,
 		shouldErrorOnRead:  shouldErrorOnRead,
 		shouldErrorOnWrite: shouldErrorOnWrite,
 		t:                  t,
-	}, nil
+	}
+	f.updateSetFail()
+	return f, nil
+}
+
+// updateSetFail updates the SetFail struct with the given values read and write failures
+func (f *FakeFile) updateSetFail() {
+	if f.shouldErrorOnRead {
+		f.SetFail.Read = true
+		f.SetFail.ReadAt = true
+		f.SetFail.ReadDir = true
+		f.SetFail.ReadFrom = true
+		f.SetFail.Readdir = true
+		f.SetFail.Readdirnames = true
+	}
+	if f.shouldErrorOnWrite {
+		f.SetFail.Write = true
+		f.SetFail.WriteAt = true
+		f.SetFail.WriteString = true
+		f.SetFail.WriteTo = true
+	}
 }
 
 // Write writes the given byte slice to the file
@@ -151,7 +177,7 @@ func (f *FakeFile) Name() string {
 
 // Read reads the given byte slice from the file
 func (f *FakeFile) Read(b []byte) (n int, err error) {
-	if f.shouldErrorOnRead || f.t == nil {
+	if f.SetFail.Read || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
 	return f.File.Read(b)
@@ -263,7 +289,7 @@ func (f *FakeFile) Truncate(size int64) error {
 
 // Write writes the given byte slice to the file
 func (f *FakeFile) Write(b []byte) (n int, err error) {
-	if f.shouldErrorOnWrite || f.t == nil {
+	if f.SetFail.Write || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
 	return f.File.Write(b)

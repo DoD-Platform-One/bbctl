@@ -42,6 +42,7 @@ func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewConfigViewCmd(factory))
+	cmd.AddCommand(NewConfigInitCmd(factory))
 
 	return cmd
 }
