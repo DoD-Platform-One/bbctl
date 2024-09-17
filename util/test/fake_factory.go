@@ -193,6 +193,8 @@ type FakeFactory struct {
 		GetLoggingClient             bool
 		GetPipe                      bool
 		GetRuntimeClient             bool
+		GetViper                     int // the number of times to pass before returning an error every time, 0 is never fail
+		GetViperCount                int // the number of times the GetViper function has been called
 		GetGitLabClient              bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
@@ -518,6 +520,10 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 
 // GetViper - get viper
 func (f *FakeFactory) GetViper() (*viper.Viper, error) {
+	f.SetFail.GetViperCount++
+	if f.SetFail.GetViper > 0 && f.SetFail.GetViperCount >= f.SetFail.GetViper {
+		return nil, fmt.Errorf("failed to get viper")
+	}
 	return f.viperInstance, nil
 }
 
