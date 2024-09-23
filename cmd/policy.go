@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -11,6 +10,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/gatekeeper"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/kyverno"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -66,11 +66,30 @@ func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 			return matchingPolicyNames(cmd, factory, hint)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var output outputSchema.PolicyListOutput
+			var err error
+
 			if len(args) == 1 {
-				return listPoliciesByName(cmd, factory, args[0])
+				output, err = listPoliciesByName(cmd, factory, args[0])
 			} else {
-				return listAllPolicies(cmd, factory)
+				output, err = listAllPolicies(cmd, factory)
 			}
+
+			if err != nil {
+				return err
+			}
+
+			outputClient, outClientErr := factory.GetOutputClient(cmd)
+			if outClientErr != nil {
+				return fmt.Errorf("error getting output client: %w", outClientErr)
+			}
+
+			outputErr := outputClient.Output(&output)
+			if outputErr != nil {
+				return fmt.Errorf("error outputting policies: %w", outputErr)
+			}
+
+			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -180,14 +199,16 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 // Internal helper function to query the cluster for resources matching the given the prefix hint on the following:
 //   - Gatekeeper constraint CRDs
 //   - Kyverno cluster policy CRDs
-func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
+func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) (outputSchema.PolicyListOutput, error) {
+	var policyListOutput outputSchema.PolicyListOutput
+
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return fmt.Errorf("Unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("Unable to get config client: %v", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %w", configErr)
+		return policyListOutput, fmt.Errorf("error getting config: %w", configErr)
 	}
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
@@ -198,58 +219,62 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 		return listKyvernoPoliciesByName(cmd, factory, name)
 	}
 
-	return fmt.Errorf("either --gatekeeper or --kyverno must be specified, but not both")
+	return policyListOutput, fmt.Errorf("either --gatekeeper or --kyverno must be specified, but not both")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs matching the given prefix
-func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
+func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) (outputSchema.PolicyListOutput, error) {
+	policyOutput := outputSchema.PolicyListOutput{}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
 	crdName := fmt.Sprintf("%s.constraints.gatekeeper.sh", name)
 
 	constraints, err := gatekeeper.FetchGatekeeperConstraints(client, crdName)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
-	fmt.Fprintf(streams.Out, "%s\n", crdName)
+	crdPolicyOutput := outputSchema.CrdPolicyOutput{
+		CrdName: crdName,
+	}
 
 	if len(constraints.Items) == 0 {
-		fmt.Fprint(streams.Out, "\nNo constraints found\n")
+		policyOutput.Messages = append(policyOutput.Messages, "No constraints found")
 	}
 
 	for _, c := range constraints.Items {
 		d, err := getGatekeeperPolicyDescriptor(&c)
 		if err != nil {
-			return err
+			return policyOutput, err
 		}
-		printPolicyDescriptor(d, streams.Out)
+		policy := outputSchema.PolicyOutput{
+			Name:        d.name,
+			Namespace:   d.namespace,
+			Kind:        d.kind,
+			Description: d.desc,
+			Action:      d.action,
+		}
+		crdPolicyOutput.Policies = append(crdPolicyOutput.Policies, policy)
 	}
+	policyOutput.CrdPolicies = append(policyOutput.CrdPolicies, crdPolicyOutput)
 
-	return nil
+	return policyOutput, nil
 }
 
 // Internal helper function to query the cluster for Kyverno cluster policy CRDs matching the given name
-func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
+func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string) (outputSchema.PolicyListOutput, error) {
+	policyOutput := outputSchema.PolicyListOutput{}
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
 	kyvernoCrds, err := kyverno.FetchKyvernoCrds(client)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
 	for _, crd := range kyvernoCrds.Items {
@@ -258,40 +283,53 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name 
 		if err != nil {
 			loggingClient, loggingErr := factory.GetLoggingClient()
 			if loggingErr != nil {
-				return fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+				return policyOutput, fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
 			}
 			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
-			return err
+			return policyOutput, err
+		}
+		crdPolicyOutput := outputSchema.CrdPolicyOutput{
+			CrdName: crdName,
 		}
 		for _, c := range policies.Items {
 			policyName, _, _ := unstructured.NestedString(c.Object, "metadata", "name")
 			if policyName == name {
 				d, err := getKyvernoPolicyDescriptor(&c)
 				if err != nil {
-					return err
+					return policyOutput, err
 				}
-				printPolicyDescriptor(d, streams.Out)
-				return nil
+				policy := outputSchema.PolicyOutput{
+					Name:        d.name,
+					Namespace:   d.namespace,
+					Kind:        d.kind,
+					Description: d.desc,
+					Action:      d.action,
+				}
+				crdPolicyOutput.Policies = append(crdPolicyOutput.Policies, policy)
+				policyOutput.CrdPolicies = append(policyOutput.CrdPolicies, crdPolicyOutput)
+				return policyOutput, nil
 			}
 		}
 	}
 
-	fmt.Fprint(streams.Out, "No Matching Policy Found\n")
+	policyOutput.Messages = append(policyOutput.Messages, "No Matching Policy Found")
 
-	return nil
+	return policyOutput, nil
 }
 
 // Internal helper function to query the cluster using the dynamic client to get information on the following:
 //   - All Gatekeeper constraint CRDs
 //   - All Kyverno policy CRDs
-func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
+func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.PolicyListOutput, error) {
+	var policyListOutput outputSchema.PolicyListOutput
+
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return fmt.Errorf("Unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("Unable to get config client: %v", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %w", configErr)
+		return policyListOutput, fmt.Errorf("error getting config: %w", configErr)
 	}
 
 	if config.PolicyConfiguration.Gatekeeper && !config.PolicyConfiguration.Kyverno {
@@ -302,74 +340,82 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 		return listAllKyvernoPolicies(cmd, factory)
 	}
 
-	return fmt.Errorf("either --gatekeeper or --kyverno must be specified")
+	return policyListOutput, fmt.Errorf("either --gatekeeper or --kyverno must be specified")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs
-func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
+func listAllGatekeeperPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.PolicyListOutput, error) {
+	policyOutput := outputSchema.PolicyListOutput{}
+
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
 	gkCrds, err := gatekeeper.FetchGatekeeperCrds(client)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
-	if len(gkCrds.Items) != 0 {
-		fmt.Fprint(streams.Out, "\nGatekeeper Policies:\n\n")
-	} else {
-		fmt.Fprint(streams.Out, "No Gatekeeper Policies Found\n")
+	if len(gkCrds.Items) == 0 {
+		policyOutput.Messages = append(policyOutput.Messages, "No Gatekeeper Policies Found")
+		return policyOutput, nil
 	}
+
+	policyOutput.Messages = append(policyOutput.Messages, "Gatekeeper Policies")
 
 	for _, crd := range gkCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
 		constraints, err := gatekeeper.FetchGatekeeperConstraints(client, crdName)
 		if err != nil {
-			return err
+			return policyOutput, err
 		}
-		fmt.Fprintf(streams.Out, "%s\n", crdName)
+		crdPolicyOutput := outputSchema.CrdPolicyOutput{
+			CrdName: crdName,
+		}
 		if len(constraints.Items) == 0 {
-			fmt.Fprint(streams.Out, "\nNo constraints found\n\n\n")
+			crdPolicyOutput.Message = "No constraints found"
 		}
 		for _, c := range constraints.Items {
 			d, err := getGatekeeperPolicyDescriptor(&c)
 			if err != nil {
-				return err
+				return policyOutput, err
 			}
-			printPolicyDescriptor(d, streams.Out)
+			policy := outputSchema.PolicyOutput{
+				Name:        d.name,
+				Namespace:   d.namespace,
+				Kind:        d.kind,
+				Description: d.desc,
+				Action:      d.action,
+			}
+			crdPolicyOutput.Policies = append(crdPolicyOutput.Policies, policy)
 		}
+		policyOutput.CrdPolicies = append(policyOutput.CrdPolicies, crdPolicyOutput)
 	}
 
-	return nil
+	return policyOutput, nil
 }
 
 // Internal helper function to query the cluster for Kyverno policy CRDs
-func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
-	streams, err := factory.GetIOStream()
-	if err != nil {
-		return err
-	}
+func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.PolicyListOutput, error) {
+	policyOutput := outputSchema.PolicyListOutput{}
+
 	client, err := factory.GetK8sDynamicClient(cmd)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
 	kyvernoCrds, err := kyverno.FetchKyvernoCrds(client)
 	if err != nil {
-		return err
+		return policyOutput, err
 	}
 
-	if len(kyvernoCrds.Items) != 0 {
-		fmt.Fprint(streams.Out, "\nKyverno Policies\n")
-	} else {
-		fmt.Fprint(streams.Out, "No Kyverno Policies Found\n")
+	if len(kyvernoCrds.Items) == 0 {
+		policyOutput.Messages = append(policyOutput.Messages, "No Kyverno Policies Found")
+		return policyOutput, nil
 	}
+
+	policyOutput.Messages = append(policyOutput.Messages, "Kyverno Policies")
 
 	for _, crd := range kyvernoCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
@@ -377,25 +423,35 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) error {
 		if err != nil {
 			loggingClient, loggingErr := factory.GetLoggingClient()
 			if loggingErr != nil {
-				return fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+				return policyOutput, fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
 			}
 			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
-			return err
+			return policyOutput, err
 		}
-		fmt.Fprintf(streams.Out, "\n%s\n\n", crdName)
+		crdPolicyOutput := outputSchema.CrdPolicyOutput{
+			CrdName: crdName,
+		}
 		if len(policies.Items) == 0 {
-			fmt.Fprint(streams.Out, "No policies found\n\n\n")
+			crdPolicyOutput.Message = "No policies found"
 		}
 		for _, c := range policies.Items {
 			d, err := getKyvernoPolicyDescriptor(&c)
 			if err != nil {
-				return err
+				return policyOutput, err
 			}
-			printPolicyDescriptor(d, streams.Out)
+			policy := outputSchema.PolicyOutput{
+				Name:        d.name,
+				Namespace:   d.namespace,
+				Kind:        d.kind,
+				Description: d.desc,
+				Action:      d.action,
+			}
+			crdPolicyOutput.Policies = append(crdPolicyOutput.Policies, policy)
 		}
+		policyOutput.CrdPolicies = append(policyOutput.CrdPolicies, crdPolicyOutput)
 	}
 
-	return nil
+	return policyOutput, nil
 }
 
 // Internal helper function to query the cluster for Gatekeeper policy descriptors
@@ -466,14 +522,4 @@ func getKyvernoPolicyDescriptor(resource *unstructured.Unstructured) (*policyDes
 	}
 
 	return descriptor, nil
-}
-
-// Internal helper function to print policy information to the console
-func printPolicyDescriptor(d *policyDescriptor, w io.Writer) {
-	if d.namespace != "" {
-		fmt.Fprintf(w, "\nKind: %s, Name: %s, Namespace: %s, EnforcementAction: %s\n", d.kind, d.name, d.namespace, d.action)
-	} else {
-		fmt.Fprintf(w, "\nKind: %s, Name: %s, EnforcementAction: %s\n", d.kind, d.name, d.action)
-	}
-	fmt.Fprintf(w, "\n%s\n\n\n", d.desc)
 }

@@ -10,6 +10,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
+	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
 	"github.com/spf13/cobra"
@@ -55,8 +56,8 @@ func TestPolicyFailToGetConfig(t *testing.T) {
 	factory.SetConfigClient(client)
 
 	// Act
-	err1 := listPoliciesByName(cmd, factory, "")
-	err2 := listAllPolicies(cmd, factory)
+	output1, err1 := listPoliciesByName(cmd, factory, "")
+	output2, err2 := listAllPolicies(cmd, factory)
 	result, _ := matchingPolicyNames(cmd, factory, "")
 
 	// Assert
@@ -69,6 +70,11 @@ func TestPolicyFailToGetConfig(t *testing.T) {
 	if !assert.Contains(t, err2.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
+
+	assert.Empty(t, output1.CrdPolicies)
+	assert.Empty(t, output1.Messages)
+	assert.Empty(t, output2.CrdPolicies)
+	assert.Empty(t, output2.Messages)
 }
 
 func TestGetPolicyUsage(t *testing.T) {
@@ -658,7 +664,9 @@ func TestGatekeeperPolicies(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
 			v, _ := factory.GetViper()
-			v.Set("big-bang-repo", "test")
+			v.Set("big-bang-repo", "/path/to/repo")
+			v.Set("gatekeeper", true)
+			v.Set("output-config.format", "text")
 			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
@@ -666,7 +674,7 @@ func TestGatekeeperPolicies(t *testing.T) {
 			assert.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
-					t.Errorf("unexpected output: %s", buf.String())
+					t.Errorf("unexpected output: %s but expected %v", buf.String(), exp)
 				}
 			}
 		})
@@ -871,7 +879,10 @@ func TestKyvernoPolicies(t *testing.T) {
 			factory.SetObjects(test.objects)
 			factory.SetGVRToListKind(gvrToListKindForPolicies())
 			v, _ := factory.GetViper()
+
 			v.Set("big-bang-repo", "test")
+			v.Set("kyverno", true)
+			v.Set("output-config.format", "text")
 			streams, _ := factory.GetIOStream()
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
@@ -1166,6 +1177,254 @@ func TestKyvernoPoliciesCompletion(t *testing.T) {
 			suggestions, _ := cmd.ValidArgsFunction(cmd, []string{}, test.hint)
 			if !reflect.DeepEqual(test.expected, suggestions) {
 				t.Fatalf("expected: %v, got: %v", test.expected, suggestions)
+			}
+		})
+	}
+}
+
+func TestListGateKeeperPolicies_OutputClientError(t *testing.T) {
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+	}{
+		{
+			"list all policies",
+			[]string{"--gatekeeper"},
+			[]string{"foos.constraints.gatekeeper.sh", "deny", "invalid config"},
+		},
+		{
+			"list policy with given name",
+			[]string{"--gatekeeper", "foos.constraints.gatekeeper.sh"},
+			[]string{"foos.constraints.gatekeeper.sh", "foo-1", "foo-2", "deny", "dry", "invalid config"},
+		},
+		{
+			"list non existent policy",
+			[]string{"--gatekeeper", "nop"},
+			[]string{"No constraints found"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			factory.SetFail.GetIOStreams = 1
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("gatekeeper", true)
+			v.Set("output-config.format", "text")
+
+			// Act
+			cmd := policiesCmd(factory, test.args)
+			err := cmd.Execute()
+
+			// Assert
+			expectedError := "error getting output client: failed to get streams"
+			if err == nil || err.Error() != expectedError {
+				t.Errorf("Expected error: %s, got %v", expectedError, err)
+			}
+		})
+	}
+}
+
+func TestListKyvernoPolicies_OutputClientError(t *testing.T) {
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+	}{
+		{
+			"list all policies",
+			[]string{"--kyverno"},
+			[]string{"foos.policies.kyverno.io", "enforce", "invalid config"},
+		},
+		{
+			"list policy with given name",
+			[]string{"--kyverno", "bar-1"},
+			[]string{"bar", "bar-1", "demo", "audit", "invalid config"},
+		},
+		{
+			"list non existent policy",
+			[]string{"--kyverno", "nop"},
+			[]string{"No Matching Policy Found"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			// Arrange
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			factory.SetFail.GetIOStreams = 1
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("kyverno", true)
+			v.Set("output-config.format", "")
+
+			// Act
+			cmd := policiesCmd(factory, test.args)
+			err := cmd.Execute()
+
+			// Assert
+			expectedError := "error getting output client: failed to get streams"
+			if err == nil || err.Error() != expectedError {
+				t.Errorf("Expected error: %s, got %v", expectedError, err)
+			}
+		})
+	}
+}
+
+func TestListGatekeeperPolicies_MarshalError(t *testing.T) {
+	// Arrange
+	policyOutput := &outputSchema.PolicyOutput{
+		Name:        "test-policy",
+		Namespace:   "test-namespace",
+		Kind:        "test-kind",
+		Description: "test-description",
+		Action:      "deny",
+	}
+
+	unstructuredObj := &unstructured.Unstructured{}
+	unstructuredObj.Object = map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "PolicyOutput",
+		"metadata": map[string]interface{}{
+			"name": policyOutput.Name,
+		},
+		"spec": map[string]interface{}{
+			"name":        policyOutput.Name,
+			"namespace":   policyOutput.Namespace,
+			"kind":        policyOutput.Kind,
+			"description": policyOutput.Description,
+			"action":      policyOutput.Action,
+		},
+	}
+
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+		objects  []runtime.Object
+	}{
+		{
+			"list all policies",
+			[]string{"--gatekeeper"},
+			[]string{"foos.constraints.gatekeeper.sh", "deny", "invalid config"},
+			[]runtime.Object{unstructuredObj},
+		},
+		{
+			"list policy with given name",
+			[]string{"--gatekeeper", "foos.constraints.gatekeeper.sh"},
+			[]string{"foos.constraints.gatekeeper.sh", "foo-1", "foo-2", "deny", "dry", "invalid config"},
+			[]runtime.Object{unstructuredObj},
+		},
+		{
+			"list non existent policy",
+			[]string{"--gatekeeper", "nop"},
+			[]string{"No constraints found"},
+			[]runtime.Object{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("gatekeeper", true)
+			v.Set("output-config.format", "test")
+
+			// Act
+			cmd, _ := NewPoliciesCmd(factory)
+			err := cmd.RunE(cmd, []string{})
+
+			// Assert
+			expectedError := "error outputting policies: unsupported format: test"
+			if err == nil || err.Error() != expectedError {
+				t.Errorf("Expected error: %s, got %v", expectedError, err)
+			}
+		})
+	}
+}
+
+func TestListKyvernoPolicies_MarshalError(t *testing.T) {
+	// Arrange
+	policyOutput := &outputSchema.PolicyOutput{
+		Name:        "test-policy",
+		Namespace:   "test-namespace",
+		Kind:        "test-kind",
+		Description: "test-description",
+		Action:      "deny",
+	}
+
+	unstructuredObj := &unstructured.Unstructured{}
+	unstructuredObj.Object = map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "PolicyOutput",
+		"metadata": map[string]interface{}{
+			"name": policyOutput.Name,
+		},
+		"spec": map[string]interface{}{
+			"name":        policyOutput.Name,
+			"namespace":   policyOutput.Namespace,
+			"kind":        policyOutput.Kind,
+			"description": policyOutput.Description,
+			"enforcement": policyOutput.Action,
+		},
+	}
+
+	var tests = []struct {
+		desc     string
+		args     []string
+		expected []string
+		objects  []runtime.Object
+	}{
+		{
+			"list all policies",
+			[]string{"--kyverno"},
+			[]string{"foos.policies.kyverno.io", "enforce", "invalid config"},
+			[]runtime.Object{unstructuredObj},
+		},
+		{
+			"list policy with given name",
+			[]string{"--kyverno", "bar-1"},
+			[]string{"bar", "bar-1", "demo", "audit", "invalid config"},
+			[]runtime.Object{unstructuredObj},
+		},
+		{
+			"list non existent policy",
+			[]string{"--kyverno", "nop"},
+			[]string{"No Matching Policy Found"},
+			[]runtime.Object{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			factory := bbTestUtil.GetFakeFactory()
+			factory.ResetIOStream()
+			factory.SetObjects(test.objects)
+			factory.SetGVRToListKind(gvrToListKindForPolicies())
+			v, _ := factory.GetViper()
+			v.Set("big-bang-repo", "test")
+			v.Set("kyverno", true)
+			v.Set("output-config.format", "test")
+
+			// Act
+			cmd, _ := NewPoliciesCmd(factory)
+			err := cmd.RunE(cmd, []string{})
+
+			// Assert
+			expectedError := "error outputting policies: unsupported format: test"
+			if err == nil || err.Error() != expectedError {
+				t.Errorf("Expected error: %s, got %v", expectedError, err)
 			}
 		})
 	}
