@@ -34,19 +34,16 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 			var validCommands string
 			for i, subCmd := range subCommands {
-				validCommands += fmt.Sprintf("%s", subCmd.Use)
+				validCommands += subCmd.Use
 				if i != len(subCommands)-1 {
 					validCommands += ", "
 				}
 			}
-			streams, err := factory.GetIOStream()
+			loggingClient, err := factory.GetLoggingClient()
 			if err != nil {
-				return fmt.Errorf("Unable to get IO streams: %w", err)
+				return fmt.Errorf("Unable to get logging client: %w", err)
 			}
-			_, err = streams.Out.Write([]byte(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands)))
-			if err != nil {
-				return fmt.Errorf("Unable to write to output stream: %w", err)
-			}
+			loggingClient.Error(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands))
 
 			err = cmd.Help()
 			if err != nil {

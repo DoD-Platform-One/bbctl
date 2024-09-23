@@ -132,8 +132,15 @@ func (f *FakeFactory) SetEC2Client(ec2Client *ec2.Client) {
 func (f *FakeFactory) SetLoggingFunc(loggingFunc fakeLog.LoggingFunction) {
 	var loggingFuncToUse fakeLog.LoggingFunction
 	if loggingFunc == nil {
+		streams, err := f.GetIOStream()
+		if err != nil {
+			panic(err)
+		}
 		loggingFuncToUse = func(args ...string) {
-			fmt.Println(args)
+			_, err = streams.ErrOut.Write([]byte(strings.Join(args, "\n")))
+			if err != nil {
+				panic(err)
+			}
 		}
 	} else {
 		loggingFuncToUse = loggingFunc
@@ -381,16 +388,7 @@ func (f *FakeFactory) GetLoggingClient() (bbLog.Client, error) {
 
 // GetLoggingClientWithLogger - get logging client providing logger
 func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error) {
-	var localFunc fakeLog.LoggingFunction
-	if f.loggingFunc == nil {
-		localFunc = func(args ...string) {
-			fmt.Println(args)
-		}
-	} else {
-		localFunc = f.loggingFunc
-	}
-
-	client := fakeLog.NewFakeClient(localFunc)
+	client := fakeLog.NewFakeClient(f.loggingFunc)
 	return client, nil
 }
 

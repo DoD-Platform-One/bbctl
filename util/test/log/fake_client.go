@@ -77,7 +77,6 @@ func (c *fakeClient) Enabled(context context.Context, level slog.Level) bool {
 func (c *fakeClient) Error(format string, args ...interface{}) {
 	msg := fmt.Sprintf("ERROR: "+format, args...)
 	c.logFunction(msg)
-	panic(msg)
 }
 
 // ErrorContext not implemented

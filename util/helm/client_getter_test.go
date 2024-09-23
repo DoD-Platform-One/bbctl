@@ -2,11 +2,14 @@ package helm
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/rest"
 	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
+	fakeLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 )
 
 func TestToRESTConfig(t *testing.T) {
@@ -28,7 +31,7 @@ func TestToRESTConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
 			restConfig := &rest.Config{Host: "localhost:8080"}
-			restClientGetter := NewRESTClientGetter(restConfig, "default", nil)
+			restClientGetter := NewRESTClientGetter(restConfig, "default", nil, nil)
 			if tc.shouldErr {
 				restClientGetter.toRESTConfigShouldErr = true
 			}
@@ -78,7 +81,7 @@ func TestToDiscoveryClient(t *testing.T) {
 				restConfig.ExecProvider = &clientCmdApi.ExecConfig{}
 				restConfig.AuthProvider = &clientCmdApi.AuthProviderConfig{}
 			}
-			restClientGetter := NewRESTClientGetter(restConfig, "default", nil)
+			restClientGetter := NewRESTClientGetter(restConfig, "default", nil, nil)
 			if tc.shouldErrOnRESTConfig {
 				restClientGetter.toRESTConfigShouldErr = true
 			}
@@ -121,7 +124,7 @@ func TestToRestMapper(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
 			restConfig := &rest.Config{Host: "localhost:8080"}
-			restClientGetter := NewRESTClientGetter(restConfig, "default", nil)
+			restClientGetter := NewRESTClientGetter(restConfig, "default", nil, nil)
 			if tc.shouldErr {
 				restClientGetter.toRESTConfigShouldErr = true
 			}
@@ -143,7 +146,7 @@ func TestToRestMapper(t *testing.T) {
 func TestToRawKubeConfigLoader(t *testing.T) {
 	// Arrange
 	// Act
-	restClientGetter := NewRESTClientGetter(nil, "default", nil)
+	restClientGetter := NewRESTClientGetter(nil, "default", nil, nil)
 	// Assert
 	assert.Nil(t, restClientGetter.ToRawKubeConfigLoader())
 }
@@ -168,20 +171,27 @@ func TestSendWarning(t *testing.T) {
 			// Arrange
 			restConfig := &rest.Config{Host: "localhost:8080"}
 			buf := &bytes.Buffer{}
+			result := ""
+			var loggingClient log.Client
 			var warningHandler func(string)
 			if tc.useCustomHandler {
 				warningHandler = func(s string) {
 					buf.WriteString(s)
 				}
+			} else {
+				loggingClient = fakeLog.NewFakeClient(func(s ...string) {
+					result = strings.Join(s, "")
+				})
 			}
-			restClientGetter := NewRESTClientGetter(restConfig, "default", warningHandler)
+			restClientGetter := NewRESTClientGetter(restConfig, "default", warningHandler, loggingClient)
 			// Act
 			restClientGetter.SendWarning("test")
 			// Assert
 			if tc.useCustomHandler {
 				assert.Equal(t, "test", buf.String())
+			} else {
+				assert.Equal(t, "WARN: test", result)
 			}
-			// TODO: fmt.Print is not tested, it should eventually be tested when it uses streams to print instead of fmt.Print
 		})
 	}
 }

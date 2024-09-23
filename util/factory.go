@@ -452,7 +452,7 @@ func (f *UtilityFactory) getHelmConfig(
 	}
 
 	// TODO: add support for an alternate warning handler and then just default nil
-	clientGetter := helm.NewRESTClientGetter(config, namespace, nil)
+	clientGetter := helm.NewRESTClientGetter(config, namespace, nil, loggingClient)
 
 	debugLog := func(format string, v ...interface{}) {
 		loggingClient.Debug(format, v...)
