@@ -33,19 +33,20 @@ func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
+	factory.SetLoggingFunc(nil)
 	streams, _ := factory.GetIOStream()
 	in := streams.In.(*bytes.Buffer)
 	out := streams.Out.(*bytes.Buffer)
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
 	cmd, _ := NewDeployCmd(factory)
-	assert.Nil(t, cmd.Execute())
+	assert.Nil(t, cmd.RunE(cmd, []string{}))
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deploy", cmd.Use)
 	assert.Empty(t, in.String())
-	assert.NotEmpty(t, out.String())
-	assert.Empty(t, errOut.String())
+	assert.Empty(t, out.String())
+	assert.Contains(t, errOut.String(), "error: must specify one of:")
 }
 
 func TestRoot_NewDeployBigBang_CommandError(t *testing.T) {
@@ -64,16 +65,16 @@ func TestRoot_NewDeployBigBang_CommandError(t *testing.T) {
 
 func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 	testCases := []struct {
-		name                string
-		errorOnGetIOStreams bool
-		errorOnWrite        bool
-		errorOnHelp         bool
-		expectedError       string
+		name                 string
+		errorOnLoggingClient bool
+		errorOnWrite         bool
+		errorOnHelp          bool
+		expectedError        string
 	}{
 		{
-			name:                "GetIOStreams",
-			errorOnGetIOStreams: true,
-			expectedError:       "Unable to get IO streams",
+			name:                 "LoggingClient",
+			errorOnLoggingClient: true,
+			expectedError:        "Unable to get logging client",
 		},
 		{
 			name:          "Write",
@@ -92,13 +93,13 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			cmd, _ := NewDeployCmd(factory)
-			if tc.errorOnGetIOStreams {
-				factory.SetFail.GetIOStreams = 1
+			if tc.errorOnLoggingClient {
+				factory.SetFail.GetLoggingClient = true
 			}
 			if tc.errorOnWrite {
 				fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 				streams, _ := factory.GetIOStream()
-				streams.Out = fakeWriter
+				streams.ErrOut = fakeWriter
 				factory.SetIOStream(streams)
 			}
 			if tc.errorOnHelp {
@@ -107,12 +108,23 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 				})
 			}
 			// Act
-			err := cmd.Execute()
+			var err error
+			if tc.errorOnWrite || tc.errorOnHelp {
+				assert.Panics(t, func() {
+					err = cmd.RunE(cmd, []string{})
+				})
+			} else {
+				err = cmd.RunE(cmd, []string{})
+			}
 			// Assert
-			assert.Error(t, err)
 			assert.NotNil(t, cmd)
 			assert.Equal(t, "deploy", cmd.Use)
-			assert.Contains(t, err.Error(), tc.expectedError)
+			if tc.errorOnWrite || tc.errorOnHelp {
+				assert.Nil(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedError)
+			}
 		})
 	}
 }

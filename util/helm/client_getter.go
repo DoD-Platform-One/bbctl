@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 	restMapper "k8s.io/client-go/restmapper"
 	clientCmd "k8s.io/client-go/tools/clientcmd"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 )
 
 // RESTClientGetter defines the values of a helm REST client
@@ -20,11 +21,11 @@ type RESTClientGetter struct {
 }
 
 // NewRESTClientGetter returns a RESTClientGetter using the provided 'namespace' and 'restConfig' and optiional warningHandlerOverride (default is fmt.Print).
-func NewRESTClientGetter(restConfig *rest.Config, namespace string, warningHandlerOverride func(string)) *RESTClientGetter {
+func NewRESTClientGetter(restConfig *rest.Config, namespace string, warningHandlerOverride func(string), loggingClient log.Client) *RESTClientGetter {
 	tempWarningHandler := warningHandlerOverride
 	if tempWarningHandler == nil {
 		tempWarningHandler = func(s string) {
-			fmt.Print(s)
+			loggingClient.Warn(s)
 		}
 	}
 	return &RESTClientGetter{
