@@ -330,7 +330,7 @@ func TestGatekeeperAuditViolations(t *testing.T) {
   kind: k1
   namespace: ns1
   policy: ""
-  constraint: '%!s(<nil>)'
+  constraint: NA
   message: invalid config
   action: '%!s(<nil>)'
   timestamp: "2021-11-27T23:55:33Z"`
@@ -338,7 +338,7 @@ func TestGatekeeperAuditViolations(t *testing.T) {
   kind: k2
   namespace: ns2
   policy: ""
-  constraint: '%!s(<nil>)'
+  constraint: NA
   message: invalid config
   action: '%!s(<nil>)'
   timestamp: "2021-11-27T23:55:33Z"`
@@ -442,7 +442,7 @@ func TestGatekeeperDenyViolations(t *testing.T) {
   kind: k1
   namespace: ns1
   policy: ""
-  constraint: ':'
+  constraint: NA
   message: abc
   action: ""
   timestamp: "2021-12-01T20:01:05Z"`
@@ -450,7 +450,7 @@ func TestGatekeeperDenyViolations(t *testing.T) {
   kind: k2
   namespace: ns2
   policy: ""
-  constraint: ':'
+  constraint: NA
   message: xyz
   action: ""
   timestamp: "2021-12-01T20:01:05Z"`
@@ -556,7 +556,7 @@ func TestKyvernoAuditViolations(t *testing.T) {
 	violation1 := `- name: foo
   kind: k1
   namespace: ns1
-  policy: ""
+  policy: NA
   constraint: ""
   message: FailedAdmission
   action: ""
@@ -564,7 +564,7 @@ func TestKyvernoAuditViolations(t *testing.T) {
 	violation2 := `- name: bar
   kind: k2
   namespace: ns2
-  policy: ""
+  policy: NA
   constraint: ""
   message: FailedAdmission
   action: ""
@@ -1004,7 +1004,7 @@ func TestListKyvernoViolations(t *testing.T) {
 	violation2 := `- name: bar
   kind: k2
   namespace: ns1
-  policy: ""
+  policy: NA
   constraint: ""
   message: FailedAudit
   action: ""`
@@ -1172,7 +1172,7 @@ func TestListGkDenyViolations(t *testing.T) {
   kind: k1
   namespace: ns1
   policy: ""
-  constraint: ':'
+  constraint: NA
   message: abc
   action: ""`
 	tests := []struct {
@@ -1258,7 +1258,7 @@ func TestListGkAuditViolations(t *testing.T) {
   kind: k1
   namespace: ns1
   policy: ""
-  constraint: '%!s(<nil>)'
+  constraint: NA
   message: FailedAdmission
   action: deny`
 	tests := []struct {
@@ -1674,21 +1674,57 @@ func TestNoViolationsPrintViolationsErr(t *testing.T) {
 func TestParseViolationsErr(t *testing.T) {
 	// Arrange
 	tests := []struct {
-		desc        string
-		expectedErr error
-		violation   policyViolation
-		isPolicy    bool
+		desc           string
+		expectedErr    error
+		violation      policyViolation
+		parsedVolation string
+		parsedMessage  string
+		isPolicy       bool
 	}{
 		{
-			"policy violation error",
-			fmt.Errorf("error parsing policy name from violations"),
+			"constraint no violation message error",
+			fmt.Errorf("nothing to parse from violation message"),
 			policyViolation{},
+			"",
+			"",
+			false,
+		},
+		{
+			"policy no violation message error",
+			fmt.Errorf("nothing to parse from violation message"),
+			policyViolation{},
+			"",
+			"",
 			true,
 		},
 		{
 			"constraint violation error",
-			fmt.Errorf("error parsing constraint name from violations"),
-			policyViolation{},
+			fmt.Errorf("error parsing constraint name from violation"),
+			policyViolation{
+				message: "parsing test constraint violation with nothing to parse",
+			},
+			"NA",
+			"parsing test constraint violation with nothing to parse",
+			false,
+		},
+		{
+			"policy violation error",
+			fmt.Errorf("error parsing policy name from violation"),
+			policyViolation{
+				message: "parsing test policy violation with nothing to parse",
+			},
+			"NA",
+			"parsing test policy violation with nothing to parse",
+			true,
+		},
+		{
+			"constraint violation no error",
+			nil,
+			policyViolation{
+				message: "parsing test constraint violation: a long message to parse",
+			},
+			"parsing test constraint violation",
+			"parsing test constraint violation: a long message to parse",
 			false,
 		},
 		{
@@ -1697,14 +1733,104 @@ func TestParseViolationsErr(t *testing.T) {
 			policyViolation{
 				message: "parsing test policy violation: validation error: a long message to parse",
 			},
+			"parsing test policy violation",
+			"validation error: a long message to parse",
 			true,
 		},
 		{
-			"constraint violation no error",
+			"policy violation with existing policy no error",
 			nil,
 			policyViolation{
-				message: "parsing test constraint violation: validation error: a long message to parse",
+				message: "parsing test policy violation: validation error: a long message to parse",
+				policy:  "original policy",
 			},
+			"original policy: parsing test policy violation",
+			"validation error: a long message to parse",
+			true,
+		},
+		{
+			"constraint violation with optional keyword 1 no error",
+			nil,
+			policyViolation{
+				message: "container <test> has no cpu limit",
+			},
+			"container resource management",
+			"container <test> has no cpu limit",
+			false,
+		},
+		{
+			"constraint violation with optional keyword 2 no error",
+			nil,
+			policyViolation{
+				message: "container <test> has no cpu request",
+			},
+			"container resource management",
+			"container <test> has no cpu request",
+			false,
+		},
+		{
+			"constraint violation multiple keywords no error",
+			nil,
+			policyViolation{
+				message: "parsing test constraint violation: a long message to parse. Here is another sentence.",
+			},
+			"parsing test constraint violation: a long message to parse",
+			"parsing test constraint violation: a long message to parse. Here is another sentence.",
+			false,
+		},
+		{
+			"constraint violation with existing constraint no error",
+			nil,
+			policyViolation{
+				message:    "parsing test constraint violation: a long message to parse",
+				constraint: "original constraint",
+			},
+			"original constraint: parsing test constraint violation",
+			"parsing test constraint violation: a long message to parse",
+			false,
+		},
+		{
+			"constraint violation without optional keyword and with existing constraint no error",
+			nil,
+			policyViolation{
+				message:    "Container <test> in your <Pod> <test-pod> has no <readinessProbe>",
+				constraint: "original constraint",
+			},
+			"original constraint: readiness, liveness, and/or startup probe",
+			"Container <test> in your <Pod> <test-pod> has no <readinessProbe>",
+			false,
+		},
+		{
+			"constraint violation with optional keyword 1 and existing constraint no error",
+			nil,
+			policyViolation{
+				message:    "container <test> has no cpu limit",
+				constraint: "original constraint",
+			},
+			"original constraint: container resource management",
+			"container <test> has no cpu limit",
+			false,
+		},
+		{
+			"constraint violation with optional keyword 2 and existing constraint no error",
+			nil,
+			policyViolation{
+				message:    "container <test> has no cpu request",
+				constraint: "original constraint",
+			},
+			"original constraint: container resource management",
+			"container <test> has no cpu request",
+			false,
+		},
+		{
+			"constraint violation with only 1 optional keyword and existing constraint no error",
+			nil,
+			policyViolation{
+				message:    "profile not set` is not allowed for container ''temp''. Found at: no explicit profile found. Allowed profiles: {RuntimeDefault, runtime/default}",
+				constraint: "original constraint",
+			},
+			"original constraint: profile configuration",
+			"profile not set` is not allowed for container ''temp''. Found at: no explicit profile found. Allowed profiles: {RuntimeDefault, runtime/default}",
 			false,
 		},
 	}
@@ -1723,12 +1849,13 @@ func TestParseViolationsErr(t *testing.T) {
 
 			if test.expectedErr == nil {
 				assert.Nil(t, parseErr)
-				assert.Equal(t, test.violation.message, "validation error: a long message to parse")
 				if test.isPolicy {
-					assert.Equal(t, test.violation.policy, "parsing test policy violation")
+					assert.Equal(t, test.parsedMessage, test.violation.message)
+					assert.Equal(t, test.parsedVolation, test.violation.policy)
 				}
 				if !test.isPolicy {
-					assert.Equal(t, test.violation.constraint, "parsing test constraint violation")
+					assert.Equal(t, test.parsedMessage, test.violation.message)
+					assert.Equal(t, test.parsedVolation, test.violation.constraint)
 				}
 			}
 

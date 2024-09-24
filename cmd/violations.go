@@ -273,7 +273,7 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 		parseErr := parseViolation(true, &violation)
 		if parseErr != nil {
 			// could return error, currently logging error at warn level as it does not cause other issues
-			v.logger.Warn("error parsing policy name from kyverno violations")
+			v.logger.Warn("error parsing policy name from kyverno violations: %s", parseErr.Error())
 		}
 		v.violations = append(v.violations, violation)
 	}
@@ -335,7 +335,7 @@ func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
 		parseErr := parseViolation(false, &violation)
 		if parseErr != nil {
 			// could return error, currently logging error at warn level as it does not cause other issues
-			v.logger.Warn("error parsing constraint name from gatekeeper deny violations")
+			v.logger.Warn("error parsing constraint name from gatekeeper deny violations: %s", parseErr.Error())
 		}
 		v.violations = append(v.violations, violation)
 	}
@@ -436,7 +436,7 @@ func (v *violationsCmdHelper) processGkViolations(namespace string, violations *
 			parseErr := parseViolation(false, &violation)
 			if parseErr != nil {
 				// could return error, currently logging error at warn level as it does not cause other issues
-				v.logger.Warn("error parsing constraint name from gatekeeper violations")
+				v.logger.Warn("error parsing constraint name from gatekeeper violations: %s", parseErr.Error())
 			}
 			v.violations = append(v.violations, violation)
 		}
@@ -448,20 +448,158 @@ func (v *violationsCmdHelper) processGkViolations(namespace string, violations *
 }
 
 // parses the violation policy or constraint from the message
-// could move all calls to parseViolation to printViolation
 func parseViolation(isPolicy bool, violation *policyViolation) error {
+	if len(violation.message) <= 0 {
+		return fmt.Errorf("nothing to parse from violation message")
+	}
+
+	var parsedConstraint bytes.Buffer
+	if violation.constraint != "" && violation.constraint != ":" && !strings.Contains(violation.constraint, "nil") {
+		parsedConstraint.WriteString(violation.constraint)
+	}
+	var parsedPolicy bytes.Buffer
+	if violation.policy != "" && !strings.Contains(violation.policy, "nil") {
+		parsedPolicy.WriteString(violation.policy)
+	}
+
 	if isPolicy {
 		if i := strings.Index(violation.message, "validation error:"); i >= 0 {
-			violation.policy, violation.message = violation.message[:i-2], violation.message[i:]
+			if parsedPolicy.String() != "" {
+				parsedPolicy.WriteString(": ")
+			}
+			parsedPolicy.WriteString(violation.message[:i-2])
+			violation.message = violation.message[i:]
+		}
+		if parsedPolicy.String() != "" {
+			violation.policy = parsedPolicy.String()
 			return nil
 		}
-		return fmt.Errorf("error parsing policy name from violations")
+		violation.policy = "NA"
+		return fmt.Errorf("error parsing policy name from violation")
 	}
-	if i := strings.Index(violation.message, "validation error:"); i >= 0 {
-		violation.constraint, violation.message = violation.message[:i-2], violation.message[i:]
+
+	parsers := []struct {
+		// can add additional cases in this struct for new/more cases observed beyond the default of ":"
+		keyword          string // keyword to parse the constraint off of
+		optionalkeyword1 string // additional keyword to parse with the keyword
+		optionalkeyword2 string // additional keyword to parse with the keyword
+		constraint       string // given constraint to use based off the keyword
+	}{
+		{
+			"securityContext",
+			"",
+			"",
+			"securityContext not configured",
+		},
+		{
+			"disallowed capability",
+			"",
+			"",
+			"disallowed capability",
+		},
+		{
+			"dropping",
+			"",
+			"",
+			"capabilities not dropping",
+		},
+		{
+			"disallowed",
+			"",
+			"",
+			"disallowed user/group",
+		},
+		{
+			"Privilege escalation container is not allowed",
+			"",
+			"",
+			"privilege escalation container is not allowed",
+		},
+		{
+			"profile",
+			"explicit",
+			"",
+			"profile configuration",
+		},
+		{
+			"container",
+			"limit",
+			"request",
+			"container resource management",
+		},
+		{
+			" for ",
+			"",
+			"",
+			"",
+		},
+		{
+			"Probe",
+			"",
+			"",
+			"readiness, liveness, and/or startup probe",
+		},
+		{
+			".",
+			"",
+			"",
+			"",
+		},
+		{
+			":",
+			"",
+			"",
+			"",
+		},
+	}
+
+	for _, parser := range parsers {
+		if parser.optionalkeyword1 != "" &&
+			strings.Contains(violation.message, parser.keyword) &&
+			strings.Contains(violation.message, parser.optionalkeyword1) {
+			if parsedConstraint.String() != "" {
+				parsedConstraint.WriteString(": ")
+			}
+			parsedConstraint.WriteString(parser.constraint)
+			break
+		}
+		if parser.optionalkeyword2 != "" &&
+			strings.Contains(violation.message, parser.keyword) &&
+			strings.Contains(violation.message, parser.optionalkeyword2) {
+			if parsedConstraint.String() != "" {
+				parsedConstraint.WriteString(": ")
+			}
+			parsedConstraint.WriteString(parser.constraint)
+			break
+		}
+		if strings.Contains(violation.message, parser.keyword) {
+			// has predefined constraint
+			if parser.constraint != "" {
+				if parsedConstraint.String() != "" {
+					parsedConstraint.WriteString(": ")
+				}
+				parsedConstraint.WriteString(parser.constraint)
+				break
+			}
+			// has to get constraint from message
+			if parser.constraint == "" {
+				i := strings.Index(violation.message, parser.keyword)
+				if i > 0 && i < len(violation.message)-1 {
+					if parsedConstraint.String() != "" {
+						parsedConstraint.WriteString(": ")
+					}
+					parsedConstraint.WriteString(violation.message[:i])
+					break
+				}
+			}
+		}
+	}
+	if parsedConstraint.String() != "" {
+		violation.constraint = parsedConstraint.String()
 		return nil
 	}
-	return fmt.Errorf("error parsing constraint name from violations")
+	violation.constraint = "NA"
+	return fmt.Errorf("error parsing constraint name from violation")
 }
 
 // printViolation prints the violation information to the defined client io.Writer
