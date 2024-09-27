@@ -13,7 +13,7 @@ func TestRoot_NewConfigCmd(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
-	cmd := NewConfigCmd(factory)
+	cmd, _ := NewConfigCmd(factory)
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "config", cmd.Use)
@@ -57,7 +57,7 @@ func TestRoot_NewConfigCmd_NoSubcommand(t *testing.T) {
 				factory.SetFail.GetOutputClient = true
 			}
 			// Act
-			cmd := NewConfigCmd(factory)
+			cmd, _ := NewConfigCmd(factory)
 			err := cmd.Execute()
 			// Assert
 			assert.Empty(t, errOut.String())

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
@@ -22,7 +24,7 @@ var (
 )
 
 // NewConfigCmd - Returns a minimal parent command for the default config commands
-func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
+func NewConfigCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     configUse,
 		Short:   configShort,
@@ -42,7 +44,11 @@ func NewConfigCmd(factory bbUtil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewConfigViewCmd(factory))
-	cmd.AddCommand(NewConfigInitCmd(factory))
+	initCmd, initCmdError := NewConfigInitCmd(factory)
+	if initCmdError != nil {
+		return nil, fmt.Errorf("error retrieving init command: %w", initCmdError)
+	}
+	cmd.AddCommand(initCmd)
 
-	return cmd
+	return cmd, nil
 }

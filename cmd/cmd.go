@@ -45,7 +45,11 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("Error retrieving Completion Command: %w", completionCmdError)
 	}
 	cmd.AddCommand(completionCmd)
-	cmd.AddCommand(config.NewConfigCmd(factory))
+	configCmd, configCmdError := config.NewConfigCmd(factory)
+	if configCmdError != nil {
+		return nil, fmt.Errorf("Error retrieving Config Command: %w", configCmdError)
+	}
+	cmd.AddCommand(configCmd)
 	versionCmd, versionCmdError := NewVersionCmd(factory)
 	if versionCmdError != nil {
 		return nil, fmt.Errorf("Error retrieving Version Command: %w", versionCmdError)
