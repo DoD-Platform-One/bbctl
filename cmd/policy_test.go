@@ -35,7 +35,7 @@ func TestGetPolicyCmdConfigClientError(t *testing.T) {
 	// Assert
 	assert.Nil(t, cmd)
 	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -291,11 +291,11 @@ func TestGetConfigClientError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Error(t, err1)
-	if !assert.Contains(t, err1.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err1.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
 	assert.Error(t, err2)
-	if !assert.Contains(t, err2.Error(), "Unable to get config client:") {
+	if !assert.Contains(t, err2.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
 }

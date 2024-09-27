@@ -97,7 +97,7 @@ func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("Unable to get config client: %v", clientError)
+		return nil, fmt.Errorf("unable to get config client: %v", clientError)
 	}
 
 	gatekeeperError := configClient.SetAndBindFlag("gatekeeper", "", false, "Print gatekeeper policy")
@@ -204,7 +204,7 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return policyListOutput, fmt.Errorf("Unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("unable to get config client: %v", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
@@ -325,7 +325,7 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.P
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return policyListOutput, fmt.Errorf("Unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("unable to get config client: %v", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {

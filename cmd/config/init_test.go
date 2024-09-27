@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	apiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
@@ -35,7 +36,7 @@ func TestGetConfigInit(t *testing.T) {
 				factory.SetFail.GetIOStreams = 1
 			}
 			// Act
-			cmd := NewConfigInitCmd(factory)
+			cmd, _ := NewConfigInitCmd(factory)
 			// Assert
 			err := cmd.RunE(cmd, []string{})
 			if tc.errorOnStream {
@@ -128,6 +129,94 @@ func TestWriteConfigFile(t *testing.T) {
 			if tc.errorOnClose || tc.errorOnCreate || tc.errorOnHomeDir || tc.errorOnMarshal || tc.errorOnWrite {
 				assert.NotNil(t, err)
 				assert.Contains(t, err.Error(), tc.expectedOutput)
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
+}
+
+func TestConfigInitErrorBindingFlags(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+
+	expectedError := fmt.Errorf("failed to set and bind flag")
+	logClient, _ := factory.GetLoggingClient()
+
+	tests := []struct {
+		flagName       string
+		failOnCallNum  int
+		expectedCmd    bool
+		expectedErrMsg string
+	}{
+		{
+			flagName:       "bbctl-log-level",
+			failOnCallNum:  1,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-level flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "bbctl-log-add-source",
+			failOnCallNum:  2,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-add-source flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "bbctl-log-format",
+			failOnCallNum:  3,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-format flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "big-bang-repo",
+			failOnCallNum:  4,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding big-bang-repo flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "bbctl-log-output",
+			failOnCallNum:  5,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-output flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "big-bang-credential-helper",
+			failOnCallNum:  6,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding big-bang-credential-helper flag: %s", expectedError.Error()),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.flagName, func(t *testing.T) {
+			callCount := 0
+			setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value any, description string) error {
+				callCount++
+				if callCount == tt.failOnCallNum {
+					return expectedError
+				}
+				return nil
+			}
+
+			configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
+			assert.Nil(t, err)
+			factory.SetConfigClient(configClient)
+
+			// Act
+			cmd, err := NewConfigInitCmd(factory)
+
+			// Assert
+			if tt.expectedCmd {
+				assert.NotNil(t, cmd)
+			} else {
+				assert.Nil(t, cmd)
+			}
+
+			if tt.expectedErrMsg != "" {
+				assert.NotNil(t, err)
+				assert.Equal(t, tt.expectedErrMsg, err.Error())
 			} else {
 				assert.Nil(t, err)
 			}

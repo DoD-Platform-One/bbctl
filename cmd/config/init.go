@@ -26,20 +26,80 @@ var (
 )
 
 // NewConfigInitCmd - create a new Cobra config init command
-func NewConfigInitCmd(factory bbUtil.Factory) *cobra.Command {
+func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:                   initUse,
 		Short:                 initShort,
 		Long:                  initLong,
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return initBBConfig(factory)
+			return initBBConfig(factory, cmd)
 		},
 	}
-	return cmd
+
+	configClient, err := factory.GetConfigClient(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get config client: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"bbctl-log-level",
+		"",
+		"info",
+		"Log level for bbctl. Options are debug, info, warn, error",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding bbctl-log-level flag: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"bbctl-log-add-source",
+		"",
+		false,
+		"Add source to log output",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding bbctl-log-add-source flag: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"bbctl-log-format",
+		"",
+		"json",
+		"Log format for bbctl. Options are json, text",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding bbctl-log-format flag: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"big-bang-repo",
+		"",
+		"",
+		"Location on the filesystem where the Big Bang product repo is checked out",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding big-bang-repo flag: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"bbctl-log-output",
+		"",
+		"stdout",
+		"Log output for bbctl. Options are stdout, stderr, file",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding bbctl-log-output flag: %w", err)
+	}
+	err = configClient.SetAndBindFlag(
+		"big-bang-credential-helper",
+		"",
+		"",
+		"Location of a program that bbctl can use as a credential helper",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding big-bang-credential-helper flag: %w", err)
+	}
+
+	return cmd, nil
 }
 
-func initBBConfig(factory bbUtil.Factory) (err error) {
+func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
 	streams, err := factory.GetIOStream()
 	if err != nil {
 		return fmt.Errorf("error getting IO streams: %w", err)
@@ -79,16 +139,21 @@ func initBBConfig(factory bbUtil.Factory) (err error) {
 	fmt.Println("Please enter values for the following configurations.")
 	for _, c := range configKeys {
 		var input string
+		flag, _ := command.Flags().GetString(c.key)
 		// These don't use the standard output client because they are interactive
-		fmt.Fprintln(streams.Out, strings.Replace(c.key, "-", " ", -1))
-		fmt.Fprintln(streams.Out, c.info)
-		if c.optional {
-			fmt.Fprintln(streams.Out, "Press enter to skip")
-		}
-		fmt.Fprint(streams.Out, "$ ")
-		fmt.Fscanln(streams.In, &input)
-		if c.optional && input != "" || !c.optional {
-			config[c.key] = input
+		if flag != "" {
+			config[c.key] = flag
+		} else {
+			fmt.Fprintln(streams.Out, strings.Replace(c.key, "-", " ", -1))
+			fmt.Fprintln(streams.Out, c.info)
+			if c.optional {
+				fmt.Fprintln(streams.Out, "Press enter to skip")
+			}
+			fmt.Fprint(streams.Out, "$ ")
+			fmt.Fscanln(streams.In, &input)
+			if c.optional && input != "" || !c.optional {
+				config[c.key] = input
+			}
 		}
 	}
 	fmt.Println(config)

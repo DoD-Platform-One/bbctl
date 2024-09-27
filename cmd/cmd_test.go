@@ -72,7 +72,7 @@ func TestNewRootCmdErrors(t *testing.T) {
 		{
 			name:            "error on policies",
 			errorOnPolicies: true,
-			expectedError:   "Unable to get config client",
+			expectedError:   "unable to get config client",
 		},
 		{
 			name:             "error on preflight",
