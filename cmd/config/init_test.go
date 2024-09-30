@@ -107,12 +107,7 @@ func TestWriteConfigFile(t *testing.T) {
 				}
 				return []byte(tc.expectedOutput), nil
 			}
-			homeDir := func() (string, error) {
-				if tc.errorOnHomeDir {
-					return "", err
-				}
-				return "test", nil
-			}
+			homeDir := "test"
 			create := func(path string) (commonInterfaces.FileLike, error) {
 				if tc.errorOnCreate {
 					return nil, err
@@ -126,7 +121,7 @@ func TestWriteConfigFile(t *testing.T) {
 			// Act
 			err = writeConfigFile(config, marshal, homeDir, create)
 			// Assert
-			if tc.errorOnClose || tc.errorOnCreate || tc.errorOnHomeDir || tc.errorOnMarshal || tc.errorOnWrite {
+			if tc.errorOnClose || tc.errorOnCreate || tc.errorOnMarshal || tc.errorOnWrite {
 				assert.NotNil(t, err)
 				assert.Contains(t, err.Error(), tc.expectedOutput)
 			} else {
@@ -152,38 +147,44 @@ func TestConfigInitErrorBindingFlags(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{
-			flagName:       "bbctl-log-level",
+			flagName:       "output",
 			failOnCallNum:  1,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding output flag: %s", expectedError.Error()),
+		},
+		{
+			flagName:       "bbctl-log-level",
+			failOnCallNum:  2,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-level flag: %s", expectedError.Error()),
 		},
 		{
 			flagName:       "bbctl-log-add-source",
-			failOnCallNum:  2,
+			failOnCallNum:  3,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-add-source flag: %s", expectedError.Error()),
 		},
 		{
 			flagName:       "bbctl-log-format",
-			failOnCallNum:  3,
+			failOnCallNum:  4,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-format flag: %s", expectedError.Error()),
 		},
 		{
 			flagName:       "big-bang-repo",
-			failOnCallNum:  4,
+			failOnCallNum:  5,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding big-bang-repo flag: %s", expectedError.Error()),
 		},
 		{
 			flagName:       "bbctl-log-output",
-			failOnCallNum:  5,
+			failOnCallNum:  6,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding bbctl-log-output flag: %s", expectedError.Error()),
 		},
 		{
 			flagName:       "big-bang-credential-helper",
-			failOnCallNum:  6,
+			failOnCallNum:  7,
 			expectedCmd:    false,
 			expectedErrMsg: fmt.Sprintf("error setting and binding big-bang-credential-helper flag: %s", expectedError.Error()),
 		},
