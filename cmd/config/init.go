@@ -41,6 +41,16 @@ func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config client: %w", err)
 	}
+
+	err = configClient.SetAndBindFlag(
+		"output",
+		"o",
+		"$HOME/.bbctl/",
+		"Specify the output file where all configurations will be stored",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding output flag: %w", err)
+	}
 	err = configClient.SetAndBindFlag(
 		"bbctl-log-level",
 		"",
@@ -156,26 +166,38 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
 			}
 		}
 	}
-	fmt.Println(config)
 
-	return writeConfigFile(&config, yaml.Marshal, os.UserHomeDir, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	output, _ := command.Flags().GetString("output")
+	if output == "" {
+		var input string
+		fmt.Println("Please enter the output path for the config.yaml file.")
+		fmt.Fprintln(streams.Out, "Press enter to skip")
+		fmt.Fprint(streams.Out, "$ ")
+		fmt.Fscanln(streams.In, &input)
+		if input != "" {
+			output = input
+		} else {
+			homedir, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+			output = path.Join(homedir, ".bbctl")
+		}
+	}
+	return writeConfigFile(&config, yaml.Marshal, output, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
 }
 
 func writeConfigFile(
 	config *map[string]interface{},
 	marshallFunc func(interface{}) ([]byte, error),
-	homeDirFunc func() (string, error),
+	outputDir string,
 	createFunc func(string) (commonInterfaces.FileLike, error),
 ) (err error) {
 	configYaml, err := marshallFunc(&config)
 	if err != nil {
 		return err
 	}
-	homedir, err := homeDirFunc()
-	if err != nil {
-		return err
-	}
-	configFile, err := createFunc(path.Join(homedir, ".bbctl", "config.yaml"))
+	configFile, err := createFunc(path.Join(outputDir, "config.yaml"))
 	if err != nil {
 		return err
 	}
