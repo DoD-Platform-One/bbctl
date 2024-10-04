@@ -18,7 +18,7 @@ var (
 )
 
 // Function that returns the set command
-func NewSetCmd(factory bbUtil.Factory) *cobra.Command {
+func NewSetCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	var setCmd = &cobra.Command{
 		Use:   setUse,
 		Short: setShort,
@@ -32,7 +32,8 @@ func NewSetCmd(factory bbUtil.Factory) *cobra.Command {
 				return fmt.Errorf("failed to get output client: %w", err)
 			}
 
-			err = setConfigValue(factory, key, value)
+			filename, _ := cmd.Flags().GetString("output")
+			err = setConfigValue(factory, key, value, filename)
 			if err != nil {
 				return fmt.Errorf("failed to set config value: %w", err)
 			}
@@ -47,17 +48,36 @@ func NewSetCmd(factory bbUtil.Factory) *cobra.Command {
 		},
 	}
 
+	configClient, err := factory.GetConfigClient(setCmd)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get config client: %w", err)
+	}
+
+	err = configClient.SetAndBindFlag(
+		"output",
+		"o",
+		"$HOME/.bbctl/",
+		"Specify the output file where all configurations will be stored",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting and binding output flag: %w", err)
+	}
+
 	// Return the setCmd command to be used elsewhere
-	return setCmd
+	return setCmd, nil
 }
 
 // SetConfigValue updates the key-value pair in the config.yaml file
-func setConfigValue(factory util.Factory, key string, value string) error {
+func setConfigValue(factory util.Factory, key string, value string, filename string) error {
 	viperInstance, err := factory.GetViper()
 	if err != nil {
 		return fmt.Errorf("failed to get viper: %w", err)
 	}
 
 	viperInstance.Set(key, value)
+
+	if filename != "" {
+		return viperInstance.WriteConfigAs(filename)
+	}
 	return viperInstance.WriteConfig()
 }

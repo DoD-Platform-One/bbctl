@@ -2,12 +2,14 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
+	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -59,9 +61,9 @@ func TestSet_NewSetCmd(t *testing.T) {
 			if tc.errorOnOutput {
 				v.Set("format", "garbage")
 			}
-			cmd := NewSetCmd(factory)
+			cmd, _ := NewSetCmd(factory)
 			if tc.errorOnSetConfigValue {
-				factory.SetFail.GetViper = 3
+				factory.SetFail.GetViper = 4
 			}
 			// Act
 			err := cmd.RunE(cmd, []string{"test", "stuff"})
@@ -125,7 +127,7 @@ func TestSet_SetConfigValue(t *testing.T) {
 				assert.Nil(t, v.ReadInConfig())
 			}
 			// Act
-			err := setConfigValue(factory, "test", "stuff")
+			err := setConfigValue(factory, "test", "stuff", "")
 			// Assert
 			if tc.errorOnGetViper || tc.errorOnWriteConfig {
 				assert.NotNil(t, err)
@@ -148,6 +150,64 @@ func TestSet_SetConfigValue(t *testing.T) {
 				assert.Equal(t, "stuff", obj["test"])
 				assert.Equal(t, "test", obj["big-bang-repo"])
 				assert.Len(t, obj, 2)
+			}
+		})
+	}
+}
+
+func TestConfigSetErrorBindingFlags(t *testing.T) {
+	// Arrange
+	factory := bbTestUtil.GetFakeFactory()
+	v, _ := factory.GetViper()
+	v.Set("big-bang-repo", "test")
+
+	expectedError := fmt.Errorf("failed to set and bind flag")
+	logClient, _ := factory.GetLoggingClient()
+
+	tests := []struct {
+		flagName       string
+		failOnCallNum  int
+		expectedCmd    bool
+		expectedErrMsg string
+	}{
+		{
+			flagName:       "output",
+			failOnCallNum:  1,
+			expectedCmd:    false,
+			expectedErrMsg: fmt.Sprintf("error setting and binding output flag: %s", expectedError.Error()),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.flagName, func(t *testing.T) {
+			callCount := 0
+			setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value any, description string) error {
+				callCount++
+				if callCount == tt.failOnCallNum {
+					return expectedError
+				}
+				return nil
+			}
+
+			configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
+			assert.Nil(t, err)
+			factory.SetConfigClient(configClient)
+
+			// Act
+			cmd, err := NewSetCmd(factory)
+
+			// Assert
+			if tt.expectedCmd {
+				assert.NotNil(t, cmd)
+			} else {
+				assert.Nil(t, cmd)
+			}
+
+			if tt.expectedErrMsg != "" {
+				assert.NotNil(t, err)
+				assert.Equal(t, tt.expectedErrMsg, err.Error())
+			} else {
+				assert.Nil(t, err)
 			}
 		})
 	}

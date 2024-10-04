@@ -49,6 +49,11 @@ func NewConfigCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("error retrieving init command: %w", initCmdError)
 	}
 	cmd.AddCommand(initCmd)
+	setCmd, setCmdError := NewSetCmd(factory)
+	if setCmdError != nil {
+		return nil, fmt.Errorf("error retrieving set command: %w", setCmdError)
+	}
+	cmd.AddCommand(setCmd)
 
 	return cmd, nil
 }
