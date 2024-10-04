@@ -3,5 +3,7 @@
 *.txt
 test.out
 bin/
-/config
 ./.bbctl/config
+coverage.html
+pkg/
+config.yaml

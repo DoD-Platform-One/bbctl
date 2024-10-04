@@ -9,5 +9,5 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Run tests
 echo "Running tests in $PACKAGE_DIR..."
-go test -v -coverprofile=test.out -cover ./...
-go tool cover -html=test.out
+go test -v -coverprofile=cover.txt ./...
+go tool cover -html=cover.txt
