@@ -1,6 +1,7 @@
 /bbctl
 .vscode
 *.txt
+!NOTES.txt
 test.out
 bin/
 ./.bbctl/config

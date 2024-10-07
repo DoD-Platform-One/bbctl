@@ -1,0 +1,15 @@
+{{- if .Values.bigbangUpdater.enabled -}}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-updater.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-updater.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-updater.service-account-annotations" .) }}
+{{- $_ := set $custom "fullname" (include "bigbang-updater.fullname" .) }}
+{{- $_ := set $custom "schedule" .Values.bigbangUpdater.schedule }}
+{{- $_ := set $custom "command" (include "bigbang-updater.command" .) }}
+{{- $_ := set $custom "args" (include "bigbang-updater.args" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cron-job" $args | nindent 0 }}
+{{- end }}

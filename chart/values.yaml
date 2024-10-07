@@ -1,0 +1,112 @@
+# Default values for bbctl.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Passdown values from Big Bang
+bigbang:
+  domain: bigbang.dev
+  openshift: false
+  networkPolicies:
+    enabled: false
+    controlPlaneCidr: 0.0.0.0/0
+    controlPlaneNode:
+  istio:
+    enabled: false
+    hardened:
+      enabled: false
+  monitoring:
+    enabled: false
+  addons:
+    authservice:
+      enabled: false
+      values:
+        selector:
+          key: protect
+          value: keycloak
+
+image:
+  repository: "registry1.dso.mil/ironbank/big-bang/bbctl"
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+yqImage:
+  repository: "registry1.dso.mil/ironbank/opensource/yq/yq"
+  pullPolicy: Always
+  tag: "4.44.3"
+
+imagePullSecrets:
+  - name: "private-registry"
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Annotations to add to all service accounts
+  annotations: {}
+  # The base name of the service account to use.
+  # If not set, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+istio:
+  enabled: false
+
+baseConfig:
+  bbctl-log-add-source: true
+  bbctl-log-format: json
+  bbctl-log-level: warn
+  bbctl-log-output: stderr
+  big-bang-credential-helper: credentials-file
+  big-bang-repo: https://repo1.dso.mil/big-bang/bigbang/-/blob/master/
+  output-config:
+    format: yaml
+
+baseLabels: {}
+
+bigbangUpdater:
+  enabled: true
+  schedule: "0 * * * *"
+  bigbangReleaseName: "bigbang"
+  bigbangReleaseNamespace: "bigbang"
+  labels: {}
+  config: {}
+  podAnnotations: {}
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The override name of the service account to use.
+    # If not set and create is true, -bigbang-updater is appended to .Values.serviceAccount.name
+    name: ""
