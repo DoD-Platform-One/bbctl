@@ -1,0 +1,49 @@
+apiVersion: v2
+name: bbctl
+description: |
+  bbctl as a helm chart for partial automated management of Big Bang.
+
+  ## Introduction
+
+  `bbctl` is a command line interface (CLI) tool to simplify development, deployment, auditing, and maintaining the deployment of Big Bang a kubernetes cluster.
+
+  ## User Guide
+
+  Follow the [user guide](/docs/user-guide.md) for how to install and use the `bbctl` tool.
+
+  ## Developer Documentation
+
+  Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
+
+  ## `bbctl` Usage and Design Priorities
+
+  ### Automated usage over interactive usage
+
+  `bbctl` is primarily intended to be piped to/from other tools and shell scripts. Interactive use is a future possibility.
+
+  ### Multiple execution contexts
+
+  `bbctl` will be running as a cronjob in cluster, possibly as web server in cluster, potentially in pipelines, and on developer machines.
+
+  ### External _and_ internal users
+
+  `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
+type: application
+# This is the chart version. This version number should be incremented each time you make changes
+version: 0.7.4-bb.0
+# This is the version number of the application being deployed.
+appVersion: "0.7.4"
+keywords:
+- bigbang
+- bbctl
+home: https://repo1.dso.mil/big-bang/product/packages/bbctl
+icon: https://repo1.dso.mil/uploads/-/system/group/avatar/3988/bigbanglogo.png?width=48
+sources:
+- https://repo1.dso.mil/big-bang/product/packages/bbctl
+maintainers:
+# this should be replaced by a shared email address
+- name: Andrew Shoell
+  email: andrew.shoell.ctr@us.af.mil
+annotations:
+  bigbang.dev/upstreamReleaseNotesMarkdown: |
+    There is no upstream for this chart.
