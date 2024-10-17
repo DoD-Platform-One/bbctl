@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestBasicOutput_MarshalYaml(t *testing.T) {
+func TestBasicOutput_EncodeYAML(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     map[string]interface{}
@@ -43,23 +44,22 @@ func TestBasicOutput_MarshalYaml(t *testing.T) {
 
 			output := &BasicOutput{Vals: tt.input}
 
-			yamlData, err := output.MarshalYaml()
+			yamlData, err := output.EncodeYAML()
 
 			if tt.wantPanic {
 				if err != nil {
-					assert.Error(t, err)
+					require.Error(t, err)
 					assert.Nil(t, yamlData)
-
 				}
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(yamlData))
 			}
 		})
 	}
 }
 
-func TestBasicOutput_MarshalJson(t *testing.T) {
+func TestBasicOutput_EncodeJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    map[string]interface{}
@@ -90,20 +90,20 @@ func TestBasicOutput_MarshalJson(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output := &BasicOutput{Vals: tt.input}
 
-			jsonData, err := output.MarshalJson()
+			jsonData, err := output.EncodeJSON()
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, jsonData)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(jsonData))
 			}
 		})
 	}
 }
 
-func TestBasicOutput_MarshalHumanReadable(t *testing.T) {
+func TestBasicOutput_EncodeText(t *testing.T) {
 	tests := []struct {
 		name          string
 		input         map[string]interface{}
@@ -132,15 +132,15 @@ func TestBasicOutput_MarshalHumanReadable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			output := &BasicOutput{Vals: tt.input}
 
-			humanReadable, err := output.MarshalHumanReadable()
+			text, err := output.EncodeText()
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
-				assert.Empty(t, humanReadable)
+				require.Error(t, err)
+				assert.Empty(t, text)
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, string(humanReadable))
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, string(text))
 			}
 		})
 	}

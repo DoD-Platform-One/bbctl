@@ -2,12 +2,13 @@ package deploy
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
@@ -45,7 +46,7 @@ func TestFlux_NewDeployFluxCmd_MissingBigBangRepo(t *testing.T) {
 
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(
 		t,
 		err.Error(),
@@ -97,12 +98,12 @@ func TestFlux_NewDeployFluxCmd_Output(t *testing.T) {
 		{
 			name:           "JSON",
 			format:         "json",
-			expectedOutput: `{"general_info":{},"actions":["Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p"],"warnings":[]}`,
+			expectedOutput: `{"generalInfo":{},"actions":["Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p"],"warnings":[]}`,
 		},
 		{
 			name:           "YAML",
 			format:         "yaml",
-			expectedOutput: "general_info: {}\nactions:\n- 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n",
+			expectedOutput: "generalInfo: {}\nactions:\n- 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n",
 		},
 		{
 			name:           "TEXT",
@@ -119,7 +120,7 @@ func TestFlux_NewDeployFluxCmd_Output(t *testing.T) {
 			streams, _ := factory.GetIOStream()
 			// Set up the environment and configuration
 			bigBangRepoLocation := "/tmp/big-bang"
-			assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+			require.NoError(t, os.MkdirAll(bigBangRepoLocation, 0755))
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", bigBangRepoLocation)
 			v.Set("output-config.format", tc.format)
@@ -129,7 +130,7 @@ func TestFlux_NewDeployFluxCmd_Output(t *testing.T) {
 			err := cmd.Execute()
 			// Assert
 			assert.NotNil(t, cmd)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, "flux", cmd.Use)
 			assert.Empty(t, streams.ErrOut.(*bytes.Buffer).String())
 			// Check the output
@@ -152,7 +153,7 @@ func TestDeployFluxConfigClientError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get config client") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -165,10 +166,10 @@ func TestFluxFailToGetConfig(t *testing.T) {
 	cmd := NewDeployFluxCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	factory.SetConfigClient(client)
@@ -177,7 +178,7 @@ func TestFluxFailToGetConfig(t *testing.T) {
 	err := deployFluxToCluster(factory, cmd, []string{})
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -260,7 +261,7 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 		{
 			name:          "Fail on Command Run",
 			errorOnCmdRun: true,
-			expectedError: "Failed to run command",
+			expectedError: "failed to run command",
 		},
 		{
 			name:           "Fail on Output",
@@ -276,8 +277,8 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			factory.ResetIOStream()
 			streams, err := factory.GetIOStream()
 			// TODO: fix the flux client changing up the streams
-			originalOut := (*streams).Out
-			assert.Nil(t, err)
+			originalOut := streams.Out
+			require.NoError(t, err)
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "/tmp/big-bang")
 			v.Set("format", "yaml")
@@ -297,17 +298,17 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 				factory.SetFail.GetCredentialHelper = true
 			}
 			if tc.errorOnUsername {
-				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+				factory.SetCredentialHelper(func(s1, _ string) (string, error) {
 					if s1 == "username" {
-						return "", fmt.Errorf("Dummy Error")
+						return "", errors.New("dummy error")
 					}
 					return "dummy", nil
 				})
 			}
 			if tc.errorOnPassword {
-				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+				factory.SetCredentialHelper(func(s1, _ string) (string, error) {
 					if s1 == "password" {
-						return "", fmt.Errorf("Dummy Error")
+						return "", errors.New("dummy error")
 					}
 					return "dummy", nil
 				})
@@ -321,7 +322,7 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			if tc.errorOnCopyBuffer {
 				r, w, _ := bbTestApiWrappers.CreateFakeFileFromOSPipe(t, false, false)
 				r.SetFail.WriteTo = true
-				assert.Nil(t, factory.SetPipe(r, w))
+				require.NoError(t, factory.SetPipe(r, w))
 			}
 			if tc.errorOnCmdRun {
 				factory.SetFail.SetCommandWrapperRunError = true
@@ -336,7 +337,7 @@ func TestDeployFluxToClusterErrors(t *testing.T) {
 			// Act
 			err = deployFluxToCluster(factory, cmd, []string{})
 			// Assert
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
 			if tc.errorOnOutput {
 				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeReaderWriter).ActualBuffer.(*bytes.Buffer).String())

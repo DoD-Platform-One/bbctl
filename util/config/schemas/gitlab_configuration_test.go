@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetGitLabConfigurations(t *testing.T) {
@@ -62,7 +63,7 @@ func TestGetGitLabConfigurations(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if tt.token != "" {
 				assert.Equal(t, tt.token, tt.arg.Token)
 			}

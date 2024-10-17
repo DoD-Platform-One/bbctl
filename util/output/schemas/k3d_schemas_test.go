@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
@@ -16,18 +17,18 @@ func TestK3dOutputFormat(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
 			name:     "YAML Output",
 			format:   output.YAML,
-			expected: "general_info: {}\nactions:\n- Action 1\n- Action 2\nwarnings:\n- Warning 1\n",
+			expected: "generalInfo: {}\nactions:\n- Action 1\n- Action 2\nwarnings:\n- Warning 1\n",
 		},
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: "{\n  \"general_info\": null,\n  \"actions\": [\n    \"Action 1\",\n    \"Action 2\"\n  ],\n  \"warnings\": [\n    \"Warning 1\"\n  ]\n}",
+			expected: "{\"generalInfo\":null,\"actions\":[\"Action 1\",\"Action 2\"],\"warnings\":[\"Warning 1\"]}",
 		},
 		{
 			name:     "Text Output",
@@ -43,14 +44,14 @@ func TestK3dOutputFormat(t *testing.T) {
 
 			switch tt.format {
 			case output.YAML:
-				actual, err = k3dOutput.MarshalYaml()
+				actual, err = k3dOutput.EncodeYAML()
 			case output.JSON:
-				actual, err = k3dOutput.MarshalJson()
+				actual, err = k3dOutput.EncodeJSON()
 			case output.TEXT:
-				actual, err = k3dOutput.MarshalHumanReadable()
+				actual, err = k3dOutput.EncodeText()
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, string(actual))
 		})
 	}
@@ -64,7 +65,7 @@ func TestHostsOutputFormat(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -75,7 +76,7 @@ func TestHostsOutputFormat(t *testing.T) {
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: "{\n  \"hosts\": {\n    \"192.168.1.1\": [\n      \"host1.local\",\n      \"host2.local\"\n    ]\n  }\n}",
+			expected: "{\"hosts\":{\"192.168.1.1\":[\"host1.local\",\"host2.local\"]}}",
 		},
 		{
 			name:     "Text Output",
@@ -91,14 +92,14 @@ func TestHostsOutputFormat(t *testing.T) {
 
 			switch tt.format {
 			case output.YAML:
-				actual, err = hostsOutput.MarshalYaml()
+				actual, err = hostsOutput.EncodeYAML()
 			case output.JSON:
-				actual, err = hostsOutput.MarshalJson()
+				actual, err = hostsOutput.EncodeJSON()
 			case output.TEXT:
-				actual, err = hostsOutput.MarshalHumanReadable()
+				actual, err = hostsOutput.EncodeText()
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, string(actual))
 		})
 	}
@@ -106,24 +107,24 @@ func TestHostsOutputFormat(t *testing.T) {
 
 func TestShellProfileOutputFormat(t *testing.T) {
 	shellProfileOutput := ShellProfileOutput{
-		KubeConfig:       "~/.kube/developer-dev-config",
-		BB_K3D_PUBLICIP:  "172.16.1.1",
-		BB_K3D_PRIVATEIP: "10.0.0.1",
+		KubeConfig:   "~/.kube/developer-dev-config",
+		K3DPublicIP:  "172.16.1.1",
+		K3DPrivateIP: "10.0.0.1",
 	}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
 			name:     "YAML Output",
 			format:   output.YAML,
-			expected: "kubeconfig: ~/.kube/developer-dev-config\nbb_k3d_publicip: 172.16.1.1\nbb_k3d_privateip: 10.0.0.1\n",
+			expected: "kubeconfig: ~/.kube/developer-dev-config\npublicIp: 172.16.1.1\nprivateIp: 10.0.0.1\n",
 		},
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: "{\n  \"kubeconfig\": \"~/.kube/developer-dev-config\",\n  \"bb_k3d_publicip\": \"172.16.1.1\",\n  \"bb_k3d_privateip\": \"10.0.0.1\"\n}",
+			expected: "{\"kubeconfig\":\"~/.kube/developer-dev-config\",\"publicIp\":\"172.16.1.1\",\"privateIp\":\"10.0.0.1\"}",
 		},
 		{
 			name:     "Text Output",
@@ -139,14 +140,14 @@ func TestShellProfileOutputFormat(t *testing.T) {
 
 			switch tt.format {
 			case output.YAML:
-				actual, err = shellProfileOutput.MarshalYaml()
+				actual, err = shellProfileOutput.EncodeYAML()
 			case output.JSON:
-				actual, err = shellProfileOutput.MarshalJson()
+				actual, err = shellProfileOutput.EncodeJSON()
 			case output.TEXT:
-				actual, err = shellProfileOutput.MarshalHumanReadable()
+				actual, err = shellProfileOutput.EncodeText()
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, string(actual))
 		})
 	}

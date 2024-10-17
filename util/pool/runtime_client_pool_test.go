@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakeRuntimeClient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -36,7 +37,7 @@ func TestRuntimeClientPoolContains(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// arrange
 			goodScheme := runtime.NewScheme()
-			assert.Nil(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
+			require.NoError(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
 			goodClientBuilder := &fakeRuntimeClient.ClientBuilder{}
 			goodClientBuilder.WithScheme(goodScheme)
 			goodClient := goodClientBuilder.Build()
@@ -45,7 +46,7 @@ func TestRuntimeClientPoolContains(t *testing.T) {
 				client: goodClient,
 			}
 			badScheme1 := runtime.NewScheme()
-			assert.Nil(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v0"}))
+			require.NoError(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v0"}))
 			badClientBuilder1 := &fakeRuntimeClient.ClientBuilder{}
 			badClientBuilder1.WithScheme(badScheme1)
 			badClient1 := badClientBuilder1.Build()
@@ -76,7 +77,7 @@ func TestRuntimeClientPoolContains(t *testing.T) {
 func TestRuntimeClientPoolAdd(t *testing.T) {
 	// arrange
 	goodScheme := runtime.NewScheme()
-	assert.Nil(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
+	require.NoError(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
 	goodClientBuilder := &fakeRuntimeClient.ClientBuilder{}
 	goodClientBuilder.WithScheme(goodScheme)
 	goodClient := goodClientBuilder.Build()

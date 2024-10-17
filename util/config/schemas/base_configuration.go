@@ -6,6 +6,6 @@ import (
 
 type BaseConfiguration interface {
 	// reconcileConfiguration reconciles the configuration.
-	ReconcileConfiguration(*viper.Viper) error
+	ReconcileConfiguration(instance *viper.Viper) error
 	getSubConfigurations() []BaseConfiguration
 }

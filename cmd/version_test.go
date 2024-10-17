@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeSchema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -22,6 +23,8 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 )
+
+const bigBangRepo = "big-bang/bigbang"
 
 func TestGetVersionUsage(t *testing.T) {
 	// Arrange
@@ -75,7 +78,7 @@ func TestGetVersion(t *testing.T) {
 	res := cmd.RunE(cmd, []string{})
 
 	// Assert
-	assert.NoError(t, res)
+	require.NoError(t, res)
 	if !assert.Contains(t, buf.String(), "bigbang: 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
@@ -121,7 +124,7 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if !assert.NotContains(t, buf.String(), "bigbang: 1.0.2") {
 		t.Errorf("unexpected output: %s", buf.String())
 	}
@@ -143,7 +146,7 @@ func TestGetVersionInvalidClientFlag(t *testing.T) {
 	err := cmd.Execute()
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "invalid argument \"string-value\" for \"--client\" flag") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -162,9 +165,8 @@ func TestGetVersionWithError(t *testing.T) {
 
 	// Assert
 	expected := "error getting Big Bang version: error getting Big Bang version: error fetching Big Bang release version: error getting helm information for release bigbang: release bigbang not found"
-	if assert.Error(t, err) {
-		assert.Equal(t, expected, err.Error())
-	}
+	require.Error(t, err)
+	assert.Equal(t, expected, err.Error())
 }
 
 func TestGetVersionWithBadParams(t *testing.T) {
@@ -180,7 +182,7 @@ func TestGetVersionWithBadParams(t *testing.T) {
 	res := cmd.Execute()
 
 	// Assert
-	assert.Error(t, res)
+	require.Error(t, res)
 	assert.Equal(t, "unknown flag: --invalid-parameter", res.Error())
 }
 
@@ -206,30 +208,30 @@ func TestGetVersionHelperWithLoggerError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Set a config client to avoid this from failing on getting logging client
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: "test",
 		}, nil
 	}
 
 	logger, err := factory.GetLoggingClient()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	client, err := bbConfig.NewClient(getConfigFunc, nil, &logger, cmd, v)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	factory.SetConfigClient(client)
 
 	// Set constants client to fail now
-	expectedError := fmt.Errorf("failed to get constants")
+	expectedError := errors.New("failed to get constants")
 	constantsClient := mock.MockConstantsClient{}
 	constantsClient.On("GetConstants").Return(static.Constants{BigBangNamespace: "bigbang"}, expectedError)
 
@@ -247,25 +249,25 @@ func TestGetVersionHelperWithConstantsClientError(t *testing.T) {
 	factory := bbTestUtil.GetFakeFactory()
 	factory.SetHelmReleases(nil)
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	// Act
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Set a config client to avoid this from failing on getting logging client
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: "test",
 		}, nil
 	}
 
 	logger, err := factory.GetLoggingClient()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	client, err := bbConfig.NewClient(getConfigFunc, nil, &logger, cmd, v)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	factory.SetConfigClient(client)
 
@@ -276,7 +278,6 @@ func TestGetVersionHelperWithConstantsClientError(t *testing.T) {
 	// Assert
 	assert.Nil(t, versionHelper)
 	assert.Equal(t, "error getting logging client: failed to get logging client", err.Error())
-
 }
 
 func TestGetVersionHelperWithGitlabError(t *testing.T) {
@@ -289,7 +290,7 @@ func TestGetVersionHelperWithGitlabError(t *testing.T) {
 	// Act
 	factory.SetFail.GetGitLabClient = true
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	helper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
 	assert.Nil(t, helper)
@@ -306,7 +307,7 @@ func TestGetVersionHelperWithKubeError(t *testing.T) {
 	// Act
 	factory.SetFail.GetK8sDynamicClient = true
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	helper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
 	assert.Nil(t, helper)
@@ -326,7 +327,7 @@ func TestGetVersionWithHelmError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "error creating version helper: failed to get helm client", err.Error())
 }
 
@@ -337,10 +338,10 @@ func TestVersionFailToGetConfig(t *testing.T) {
 	cmd, _ := NewVersionCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	factory.SetConfigClient(client)
@@ -349,7 +350,7 @@ func TestVersionFailToGetConfig(t *testing.T) {
 	assert.Nil(t, h)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -361,7 +362,7 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
+	expectedError := errors.New("failed to set and bind flag")
 	logClient, _ := factory.GetLoggingClient()
 
 	tests := []struct {
@@ -374,26 +375,26 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 			flagName:       "client",
 			failOnCallNum:  1,
 			expectedCmd:    false,
-			expectedErrMsg: fmt.Sprintf("error setting and binding client flag: %s", expectedError.Error()),
+			expectedErrMsg: "error setting and binding client flag: " + expectedError.Error(),
 		},
 		{
 			flagName:       "all-charts",
 			failOnCallNum:  2,
 			expectedCmd:    false,
-			expectedErrMsg: fmt.Sprintf("error setting and binding all-charts flag: %s", expectedError.Error()),
+			expectedErrMsg: "error setting and binding all-charts flag: " + expectedError.Error(),
 		},
 		{
 			flagName:       "check-for-updates",
 			failOnCallNum:  3,
 			expectedCmd:    false,
-			expectedErrMsg: fmt.Sprintf("error setting and binding check-for-updates flag: %s", expectedError.Error()),
+			expectedErrMsg: "error setting and binding check-for-updates flag: " + expectedError.Error(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.flagName, func(t *testing.T) {
 			callCount := 0
-			setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value any, description string) error {
+			setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, _ string, _ string, _ any, _ string) error {
 				callCount++
 				if callCount == tt.failOnCallNum {
 					return expectedError
@@ -402,7 +403,7 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 			}
 
 			configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.SetConfigClient(configClient)
 
 			// Act
@@ -416,10 +417,10 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 			}
 
 			if tt.expectedErrMsg != "" {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectedErrMsg, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -433,7 +434,7 @@ func TestVersionOutputClientError(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
 	assert.Nil(t, h)
@@ -448,22 +449,22 @@ func TestClientVersionMarshalError(t *testing.T) {
 	v.Set("client", true)
 	v.Set("output-config.format", "")
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Act
 	err = h.bbVersion([]string{})
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	expectedError := "unable to write human-readable output: FakeWriter intentionally errored"
 	assert.Equal(t, expectedError, err.Error())
 	assert.Empty(t, fakeWriter.ActualBuffer.(*bytes.Buffer).String())
@@ -497,16 +498,16 @@ func TestClientandBBVersionMarshalError(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("output-config.format", "")
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, true)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Act
 	err = h.bbVersion([]string{})
@@ -523,7 +524,7 @@ func TestBBVersionAllCharts(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("all-charts", true)
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
@@ -532,18 +533,17 @@ func TestBBVersionAllCharts(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, h.bbVersion([]string{}))
+	assert.Empty(t, h.bbVersion([]string{}))
 
 	output := fakeWriter.ActualBuffer.(*bytes.Buffer).String()
 
 	assert.Contains(t, output, "bigbang:1.0.2")
 	assert.Contains(t, output, "grafana:1.0.3")
-
 }
 
 func TestBBVersionErrorGettingAllCharts(t *testing.T) {
@@ -552,7 +552,7 @@ func TestBBVersionErrorGettingAllCharts(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("all-charts", true)
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
@@ -562,13 +562,13 @@ func TestBBVersionErrorGettingAllCharts(t *testing.T) {
 	factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &errorListHelmReleasesFunc)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "error getting all chart versions: error getting helmreleases: error in list crds", err.Error())
 }
 
@@ -578,24 +578,24 @@ func TestBBVersionNoArgsErrorCheckingForUpdates(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("check-for-updates", true)
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 	factory.SetHelmReleases(buildReleaseFixture())
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		return nil, fmt.Errorf("dummy error")
+	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+		return nil, errors.New("dummy error")
 	})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{})
 
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "error checking for updates: error checking for latest chart version: error getting Chart.yaml: dummy error", err.Error())
 }
 
@@ -604,7 +604,7 @@ func TestBBVersionWithChartName(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
@@ -613,17 +613,16 @@ func TestBBVersionWithChartName(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{"grafana"})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	output := fakeWriter.ActualBuffer.(*bytes.Buffer).String()
 	assert.Contains(t, output, "grafana:1.0.3")
-
 }
 
 func TestBBVersionWithChartNameErrorGettingChartVersion(t *testing.T) {
@@ -631,7 +630,7 @@ func TestBBVersionWithChartNameErrorGettingChartVersion(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
@@ -644,17 +643,17 @@ func TestBBVersionWithChartNameErrorGettingChartVersion(t *testing.T) {
 			"apiVersion": "helm.toolkit.fluxcd.io/v2",
 			"kind":       "HelmRelease",
 		},
-		Items: []unstructured.Unstructured{newHelmRelease("grafana", "bigbang", "")},
+		Items: []unstructured.Unstructured{newHelmRelease("grafana", "")},
 	}
 
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), releases})
 	factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &errorListHelmReleasesFunc)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{"grafana"})
 	assert.Equal(t, `error getting chart version: error getting version for release "grafana": no version specified for the chart`, err.Error())
@@ -666,22 +665,22 @@ func TestBBVersionWithChartNameErrorCheckingForUpdates(t *testing.T) {
 	v.Set("big-bang-repo", "test")
 	v.Set("check-for-updates", true)
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 	factory.SetHelmReleases(buildReleaseFixture())
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		return nil, fmt.Errorf("dummy error")
+	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+		return nil, errors.New("dummy error")
 	})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{"grafana"})
 	assert.Equal(t, `error checking for updates: error checking for latest chart version: error getting Chart.yaml: dummy error`, err.Error())
@@ -692,17 +691,17 @@ func TestBBVersionWithInvalidNumberOfArguments(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	fakeWriter := bbTestApiWrappers.CreateFakeReaderWriter(t, false, false)
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = h.bbVersion([]string{"too", "many", "arguments"})
 	assert.Equal(t, "invalid number of arguments", err.Error())
@@ -730,14 +729,14 @@ func TestGetReleaseVersionNoVersionSet(t *testing.T) {
 	factory.SetHelmReleases(relases)
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getReleaseVersion("grafana")
 	assert.Empty(t, version)
@@ -795,8 +794,8 @@ var fluxResourceGVR = map[runtimeSchema.GroupVersionResource]string{
 }
 
 var errorListHelmReleasesFunc = func(client *dynamicFake.FakeDynamicClient) {
-	client.Fake.PrependReactor("list", "helmreleases", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-		return true, nil, fmt.Errorf("error in list crds")
+	client.Fake.PrependReactor("list", "helmreleases", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("error in list crds")
 	})
 }
 
@@ -853,14 +852,14 @@ func buildGitRepoFixture() *unstructured.UnstructuredList {
 	}
 }
 
-func newHelmRelease(name, namespace, chartVersion string) unstructured.Unstructured {
+func newHelmRelease(name, chartVersion string) unstructured.Unstructured {
 	return unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "helm.toolkit.fluxcd.io/v2",
 			"kind":       "HelmRelease",
 			"metadata": map[string]any{
 				"name":      name,
-				"namespace": namespace,
+				"namespace": "bigbang",
 			},
 			"status": map[string]any{
 				"history": []any{
@@ -875,12 +874,12 @@ func newHelmRelease(name, namespace, chartVersion string) unstructured.Unstructu
 
 func buildHelmReleaseFixture(includeBigBang bool) *unstructured.UnstructuredList {
 	items := []unstructured.Unstructured{
-		newHelmRelease("grafana", "bigbang", "1.0.3"),
-		newHelmRelease("tempo", "bigbang", "3.2.1"),
+		newHelmRelease("grafana", "1.0.3"),
+		newHelmRelease("tempo", "3.2.1"),
 	}
 
 	if includeBigBang {
-		items = append(items, newHelmRelease("bigbang", "bigbang", "1.0.2"))
+		items = append(items, newHelmRelease("bigbang", "1.0.2"))
 	}
 
 	return &unstructured.UnstructuredList{
@@ -893,7 +892,6 @@ func buildHelmReleaseFixture(includeBigBang bool) *unstructured.UnstructuredList
 }
 
 func TestGetAllChartVersions(t *testing.T) {
-
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(buildReleaseFixture())
@@ -901,67 +899,65 @@ func TestGetAllChartVersions(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, outputMap["bigbang"], "1.0.2")
-	assert.Equal(t, outputMap["grafana"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"], "3.2.1")
+	assert.Equal(t, "1.0.2", outputMap["bigbang"])
+	assert.Equal(t, "1.0.3", outputMap["grafana"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"])
 }
 
 func TestGetAllChartVersionsBigBangManagedByFlux(t *testing.T) {
-
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(true)})
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, outputMap["bigbang"], "1.0.2")
-	assert.Equal(t, outputMap["grafana"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"], "3.2.1")
+	assert.Equal(t, "1.0.2", outputMap["bigbang"])
+	assert.Equal(t, "1.0.3", outputMap["grafana"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"])
 }
 
 func TestGetAllChartVersionsErrorGettingBigBangVersion(t *testing.T) {
-
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(false)
 	assert.Equal(t, "error getting Big Bang version: error fetching Big Bang release version: error getting helm information for release bigbang: release bigbang not found", err.Error())
 
-	assert.Equal(t, outputMap["grafana"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"], "3.2.1")
+	assert.Equal(t, "1.0.3", outputMap["grafana"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"])
 }
 
 func TestGetAllChartVersionsErrorListingReleases(t *testing.T) {
@@ -977,21 +973,20 @@ func TestGetAllChartVersionsErrorListingReleases(t *testing.T) {
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(false)
 	assert.Equal(t, "error getting helmreleases: error in list crds", err.Error())
-	assert.Empty(t, len(outputMap))
+	assert.Empty(t, outputMap)
 }
 
 func TestGetAllChartVersionsCheckForUpdates(t *testing.T) {
-
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(buildReleaseFixture())
@@ -1002,35 +997,35 @@ func TestGetAllChartVersionsCheckForUpdates(t *testing.T) {
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
 		switch repository {
-		case "big-bang/bigbang":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "master")
+		case bigBangRepo:
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "master", branch)
 			return []byte("version: 1.0.2"), nil
 		case "big-bang/product/packages/grafana":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: 2.0.0"), nil
 		case "big-bang/product/packages/tempo":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: 3.2.2"), nil
 		}
 
-		return nil, fmt.Errorf("invalid repository")
+		return nil, errors.New("invalid repository")
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]any{
 		"grafana": map[string]any{
 			"version":         "1.0.3",
@@ -1048,35 +1043,32 @@ func TestGetAllChartVersionsCheckForUpdates(t *testing.T) {
 			"updateAvailable": true,
 		},
 	}, outputMap)
-
 }
 
 func TestGetAllChartVersionsCheckForUpdatesErrorGettingLatestChartVersion(t *testing.T) {
-
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
 	factory.SetHelmReleases(buildReleaseFixture())
 
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		return nil, fmt.Errorf("dummy error")
+	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+		return nil, errors.New("dummy error")
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(true)
 	assert.Equal(t, "error getting latest chart version: error getting Chart.yaml: dummy error", err.Error())
 	assert.Empty(t, outputMap)
-
 }
 
 func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfBigBangUpdateIsNewer(t *testing.T) {
@@ -1089,31 +1081,31 @@ func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfBigBangUpdateIsNewer(t
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
 		switch repository {
-		case "big-bang/bigbang":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "master")
+		case bigBangRepo:
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "master", branch)
 			return []byte("version: invalid"), nil
 		case "big-bang/product/packages/grafana":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: 2.0.0"), nil
 		case "big-bang/product/packages/tempo":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: 3.2.2"), nil
 		}
-		return nil, fmt.Errorf("invalid repository")
+		return nil, errors.New("invalid repository")
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(true)
 	assert.Equal(t, `error checking for update: invalid version "invalid": Invalid Semantic Version`, err.Error())
@@ -1123,7 +1115,6 @@ func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfBigBangUpdateIsNewer(t
 		"version":         "1.0.3",
 	}, outputMap["grafana"])
 	assert.Empty(t, outputMap["bigbang"])
-
 }
 
 func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfPackageUpdateIsNewer(t *testing.T) {
@@ -1136,31 +1127,31 @@ func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfPackageUpdateIsNewer(t
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
 		switch repository {
-		case "big-bang/bigbang":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "master")
+		case bigBangRepo:
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "master", branch)
 			return []byte("version: 1.0.2"), nil
 		case "big-bang/product/packages/grafana":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: 2.0.0"), nil
 		case "big-bang/product/packages/tempo":
-			assert.Equal(t, path, "chart/Chart.yaml")
-			assert.Equal(t, branch, "main")
+			assert.Equal(t, "chart/Chart.yaml", path)
+			assert.Equal(t, "main", branch)
 			return []byte("version: invalid"), nil
 		}
-		return nil, fmt.Errorf("invalid repository")
+		return nil, errors.New("invalid repository")
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.getAllChartVersions(true)
 	assert.Equal(t, `error checking for update: invalid version "invalid": Invalid Semantic Version`, err.Error())
@@ -1170,7 +1161,6 @@ func TestGetAllChartVersionsCheckForUpdatesErrorCheckingIfPackageUpdateIsNewer(t
 		"version":         "1.0.3",
 	}, outputMap["grafana"])
 	assert.Empty(t, outputMap["tempo"])
-
 }
 
 func TestGetChartVersion(t *testing.T) {
@@ -1182,17 +1172,17 @@ func TestGetChartVersion(t *testing.T) {
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getChartVersion("bigbang")
-	assert.Nil(t, err)
-	assert.Equal(t, version, "1.0.2")
+	require.NoError(t, err)
+	assert.Equal(t, "1.0.2", version)
 
 	version, err = h.getChartVersion("invalid-chart")
 	assert.Empty(t, version)
@@ -1209,18 +1199,18 @@ func TestGetChartVersion(t *testing.T) {
 //
 // 	v, err := factory.GetViper()
 // 	v.Set("big-bang-repo", "test")
-// 	assert.Nil(t, err)
+// 	require.NoError(t, err)
 //
 // 	cmd, err := NewVersionCmd(factory)
-// 	assert.Nil(t, err)
+// 	require.NoError(t, err)
 //
 // 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-// 	assert.Nil(t, err)
+// 	require.NoError(t, err)
 //
 // 	outputMap, err := h.getChartVersion("bigbang")
 // 	fmt.Println(outputMap)
 // 	assert.Equal(t, "error getting helm information for all releases: dummy error", err.Error())
-// 	assert.Empty(t, len(outputMap))
+// 	assert.Empty(t, outputMap)
 // }
 
 func TestGetLatestChartVersion(t *testing.T) {
@@ -1232,24 +1222,24 @@ func TestGetLatestChartVersion(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, repository, "big-bang/product/packages/grafana")
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "main")
+		assert.Equal(t, "big-bang/product/packages/grafana", repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "main", branch)
 		return []byte("version: 1.0.3"), nil
 	})
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getLatestChartVersion("grafana")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "1.0.3", version)
 }
 
@@ -1260,25 +1250,25 @@ func TestGetLatestChartVersionBigBang(t *testing.T) {
 	factory.SetHelmReleases(buildReleaseFixture())
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, "big-bang/bigbang", repository)
+		assert.Equal(t, bigBangRepo, repository)
 		assert.Equal(t, "chart/Chart.yaml", path)
 		assert.Equal(t, "master", branch)
 		return []byte("version: 1.0.3"), nil
 	})
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getLatestChartVersion("bigbang")
-	assert.Nil(t, err)
-	assert.Equal(t, version, "1.0.3")
+	require.NoError(t, err)
+	assert.Equal(t, "1.0.3", version)
 }
 
 func TestGetLatestChartVersionErrorListingGitRepos(t *testing.T) {
@@ -1289,19 +1279,19 @@ func TestGetLatestChartVersionErrorListingGitRepos(t *testing.T) {
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects(nil)
 
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
+	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
 		return []byte("version: 1.0.3"), nil
 	})
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getLatestChartVersion("grafana")
 	assert.Empty(t, version)
@@ -1317,21 +1307,21 @@ func TestGetLatestChartVersionErrorGettingChartFile(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, repository, "big-bang/product/packages/grafana")
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "main")
-		return []byte("version: 1.0.3"), fmt.Errorf("dummy error")
+		assert.Equal(t, "big-bang/product/packages/grafana", repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "main", branch)
+		return []byte("version: 1.0.3"), errors.New("dummy error")
 	})
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getLatestChartVersion("grafana")
 	assert.Empty(t, version)
@@ -1347,21 +1337,21 @@ func TestGetLatestChartVersionErrorDecodingChartFile(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, repository, "big-bang/product/packages/grafana")
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "main")
+		assert.Equal(t, "big-bang/product/packages/grafana", repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "main", branch)
 		return []byte("not yaml"), nil
 	})
 
 	v, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	v.Set("big-bang-repo", "test")
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	version, err := h.getLatestChartVersion("grafana")
 	assert.Empty(t, version)
@@ -1418,10 +1408,10 @@ func TestUpdateIsNewer(t *testing.T) {
 			result, err := updateIsNewer(tt.current, tt.latest)
 
 			if tt.expectedError != "" {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.expectedResult, result)
 			}
 		})
@@ -1483,30 +1473,29 @@ func TestCheckForUpdates(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, "big-bang/bigbang", repository)
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "master")
+		assert.Equal(t, bigBangRepo, repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "master", branch)
 		return []byte("version: 1.0.2"), nil
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.checkForUpdates("bigbang")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]any{
 		"version":         "1.0.2",
 		"latest":          "1.0.2",
 		"updateAvailable": false,
 	}, outputMap)
-
 }
 
 func TestCheckForUpdatesErrorGettingLatestChartVersion(t *testing.T) {
@@ -1517,19 +1506,19 @@ func TestCheckForUpdatesErrorGettingLatestChartVersion(t *testing.T) {
 	factory.SetGVRToListKind(fluxResourceGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		return nil, fmt.Errorf("dummy error")
+	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+		return nil, errors.New("dummy error")
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.checkForUpdates("bigbang")
 	assert.Empty(t, outputMap)
@@ -1545,26 +1534,25 @@ func TestCheckForUpdatesErrorCheckingIfUpdateIsNewer(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, "big-bang/bigbang", repository)
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "master")
+		assert.Equal(t, bigBangRepo, repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "master", branch)
 		return []byte("version: invalid"), nil
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.checkForUpdates("bigbang")
 	assert.Equal(t, `error checking for update: invalid version "invalid": Invalid Semantic Version`, err.Error())
 	assert.Empty(t, outputMap)
-
 }
 
 func TestCheckForUpdatesErrorGettingChartVersion(t *testing.T) {
@@ -1579,24 +1567,23 @@ func TestCheckForUpdatesErrorGettingChartVersion(t *testing.T) {
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
 	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		assert.Equal(t, repository, "big-bang/product/packages/grafana")
-		assert.Equal(t, path, "chart/Chart.yaml")
-		assert.Equal(t, branch, "main")
+		assert.Equal(t, "big-bang/product/packages/grafana", repository)
+		assert.Equal(t, "chart/Chart.yaml", path)
+		assert.Equal(t, "main", branch)
 		return []byte("version: 1.2.3"), nil
 	})
 
 	v, err := factory.GetViper()
 	v.Set("big-bang-repo", "test")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap, err := h.checkForUpdates("grafana")
 	assert.Equal(t, `error getting current chart version: error getting helmreleases: helmreleases.helm.toolkit.fluxcd.io "grafana" not found`, err.Error())
 	assert.Empty(t, outputMap)
-
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -23,36 +24,6 @@ import (
 	k8sClient "k8s.io/client-go/dynamic"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-)
-
-var (
-	versionUse = `version`
-
-	versionShort = i18n.T(`Print the current bbctl client version and the version of the Big Bang currently deployed.`)
-
-	versionLong = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
-	 The Big Bang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
-	 Using the --client flag will only return the bbctl client version.`))
-
-	versionExample = templates.Examples(i18n.T(`
-		# Print version
-		bbctl version
-		
-		# Print the bbctl client version only
-		bbctl version --client
-
-		# Get the version of a specific chart
-		bbctl version CHART_NAME
-
-		# Get the version of all current installed chartes managed by Big Bang
-		bbctl version --all-charts
-
-		# Get the latest version of a given chart
-		bbctl version CHART_NAME --check-for-updates
-
-		# Get the latest version of all current installed chartes managed by Big Bang
-		bbctl version --all-charts --check-for-updates
-		`))
 )
 
 type versionCmdHelper struct {
@@ -118,6 +89,33 @@ func newVersionCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCl
 
 // NewVersionCmd - Creates a new Cobra command which implements the `bbctl version` functionality
 func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		versionUse   = `version`
+		versionShort = i18n.T(`Print the current bbctl client version and the version of the Big Bang currently deployed.`)
+		versionLong  = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
+		The Big Bang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
+		Using the --client flag will only return the bbctl client version.`))
+		versionExample = templates.Examples(i18n.T(`
+		# Print version
+		bbctl version
+		
+		# Print the bbctl client version only
+		bbctl version --client
+
+		# Get the version of a specific chart
+		bbctl version CHART_NAME
+
+		# Get the version of all current installed chartes managed by Big Bang
+		bbctl version --all-charts
+
+		# Get the latest version of a given chart
+		bbctl version CHART_NAME --check-for-updates
+
+		# Get the latest version of all current installed chartes managed by Big Bang
+		bbctl version --all-charts --check-for-updates
+		`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     versionUse,
 		Short:   versionShort,
@@ -131,7 +129,6 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 			}
 
 			return v.bbVersion(args)
-
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -178,9 +175,6 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 // bbVersion is a helper function to separate a lot of the args and config logic
 // from the command function creation for easier unit testing
 func (v *versionCmdHelper) bbVersion(args []string) error {
-	var err error
-
-	outputMap := map[string]any{}
 	// Short circuit if the user only wants the bbctl client version
 	if v.config.VersionConfiguration.Client {
 		return v.outputClient.Output(&output.BasicOutput{
@@ -191,15 +185,17 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 	}
 
 	if v.config.VersionConfiguration.AllCharts {
-		outputMap, err = v.getAllChartVersions(v.config.VersionConfiguration.CheckForUpdates)
+		chartsOutput, err := v.getAllChartVersions(v.config.VersionConfiguration.CheckForUpdates)
 		if err != nil {
 			return fmt.Errorf("error getting all chart versions: %w", err)
 		}
 		return v.outputClient.Output(&output.BasicOutput{
-			Vals: outputMap,
+			Vals: chartsOutput,
 		})
 	}
 
+	var err error
+	var outputMap map[string]any
 	switch len(args) {
 	// If no arguments are provided, print the version of the Big Bang release
 	// and the bbctl client
@@ -210,7 +206,6 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 				return fmt.Errorf("error checking for updates: %w", err)
 			}
 		} else {
-
 			outputMap, err = v.outputBigBangVersion()
 			if err != nil {
 				return fmt.Errorf("error getting Big Bang version: %w", err)
@@ -235,7 +230,7 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 			}
 		}
 	default:
-		return fmt.Errorf("invalid number of arguments")
+		return errors.New("invalid number of arguments")
 	}
 
 	return v.outputClient.Output(&output.BasicOutput{
@@ -396,7 +391,6 @@ func (v *versionCmdHelper) getReleaseVersion(releaseName string) (string, error)
 
 // getChartVersion gets the version of a chart by the chart name
 func (v *versionCmdHelper) getChartVersion(chartName string) (string, error) {
-
 	if chartName == "bigbang" {
 		return v.getBigBangVersion()
 	}
@@ -422,13 +416,13 @@ func (v *versionCmdHelper) getChartVersion(chartName string) (string, error) {
 
 // checkForChartUpdate checks the current chart version against the latest version available on repo1
 func (v *versionCmdHelper) getLatestChartVersion(chartName string) (string, error) {
-	v.logger.Debug(fmt.Sprintf("checking for update to %s", chartName))
+	v.logger.Debug("checking for update to " + chartName)
 
-	var packageUri, branch string
+	var packageURI, branch string
 
 	// Special consideraiotns for the bigbang chart
 	if chartName == "bigbang" {
-		packageUri = "big-bang/bigbang"
+		packageURI = "big-bang/bigbang"
 		branch = "master"
 	} else {
 		// For all other charts, we'll use the main branch
@@ -445,12 +439,12 @@ func (v *versionCmdHelper) getLatestChartVersion(chartName string) (string, erro
 		}
 
 		// Parse out the package URL from the GitRepo CRD
-		packageUri = strings.TrimSuffix(resource.Object["spec"].(map[string]any)["url"].(string), ".git")
-		packageUri = strings.TrimPrefix(packageUri, "https://repo1.dso.mil/")
+		packageURI = strings.TrimSuffix(resource.Object["spec"].(map[string]any)["url"].(string), ".git")
+		packageURI = strings.TrimPrefix(packageURI, "https://repo1.dso.mil/")
 	}
 
 	// Fetch the latest Chart.yalm from the upstream repo
-	body, err := v.gitlabClient.GetFile(packageUri, "chart/Chart.yaml", branch)
+	body, err := v.gitlabClient.GetFile(packageURI, "chart/Chart.yaml", branch)
 	if err != nil {
 		return "", fmt.Errorf("error getting Chart.yaml: %w", err)
 	}
@@ -464,7 +458,7 @@ func (v *versionCmdHelper) getLatestChartVersion(chartName string) (string, erro
 }
 
 func (v *versionCmdHelper) checkForUpdates(chartName string) (map[string]any, error) {
-	outputMap := map[string]any{}
+	var outputMap map[string]any
 
 	latestVersion, err := v.getLatestChartVersion(chartName)
 	if err != nil {
@@ -504,7 +498,7 @@ func splitChartName(fullName string) string {
 	return fullName
 }
 
-// helmChartManifest is a struct that that partially represents the Chart.yaml file
+// helmChartManifest is a struct that partially represents the Chart.yaml file
 type helmChartManifest struct {
 	Version string `yaml:"version"`
 }

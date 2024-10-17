@@ -9,18 +9,18 @@ import (
 )
 
 type K3dOutput struct {
-	Data Output
+	Data Output `json:"data" yaml:"data"`
 }
 
-func (o *K3dOutput) MarshalYaml() ([]byte, error) {
+func (o *K3dOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(o.Data)
 }
 
-func (o *K3dOutput) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(o.Data, "", "  ")
+func (o *K3dOutput) EncodeJSON() ([]byte, error) {
+	return json.Marshal(o.Data)
 }
 
-func (o *K3dOutput) MarshalHumanReadable() ([]byte, error) {
+func (o *K3dOutput) EncodeText() ([]byte, error) {
 	return []byte(o.String()), nil
 }
 
@@ -46,15 +46,15 @@ type HostsOutput struct {
 	Hosts map[string][]string `json:"hosts" yaml:"hosts"`
 }
 
-func (o *HostsOutput) MarshalYaml() ([]byte, error) {
+func (o *HostsOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(o)
 }
 
-func (o *HostsOutput) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(o, "", "  ")
+func (o *HostsOutput) EncodeJSON() ([]byte, error) {
+	return json.Marshal(o)
 }
 
-func (o *HostsOutput) MarshalHumanReadable() ([]byte, error) {
+func (o *HostsOutput) EncodeText() ([]byte, error) {
 	var sb strings.Builder
 	for ip, hostnames := range o.Hosts {
 		sb.WriteString(fmt.Sprintf("%s\t%s\n", ip, strings.Join(hostnames, "\t")))
@@ -63,23 +63,23 @@ func (o *HostsOutput) MarshalHumanReadable() ([]byte, error) {
 }
 
 type ShellProfileOutput struct {
-	KubeConfig       string `json:"kubeconfig"       yaml:"kubeconfig"`
-	BB_K3D_PUBLICIP  string `json:"bb_k3d_publicip"  yaml:"bb_k3d_publicip"`
-	BB_K3D_PRIVATEIP string `json:"bb_k3d_privateip" yaml:"bb_k3d_privateip"`
+	KubeConfig   string `json:"kubeconfig" yaml:"kubeconfig"`
+	K3DPublicIP  string `json:"publicIp"   yaml:"publicIp"`
+	K3DPrivateIP string `json:"privateIp"  yaml:"privateIp"`
 }
 
-func (o *ShellProfileOutput) MarshalYaml() ([]byte, error) {
+func (o *ShellProfileOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(o)
 }
 
-func (o *ShellProfileOutput) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(o, "", "  ")
+func (o *ShellProfileOutput) EncodeJSON() ([]byte, error) {
+	return json.Marshal(o)
 }
 
-func (o *ShellProfileOutput) MarshalHumanReadable() ([]byte, error) {
+func (o *ShellProfileOutput) EncodeText() ([]byte, error) {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("export KUBECONFIG=%s\n", o.KubeConfig))
-	sb.WriteString(fmt.Sprintf("export BB_K3D_PUBLICIP=%s\n", o.BB_K3D_PUBLICIP))
-	sb.WriteString(fmt.Sprintf("export BB_K3D_PRIVATEIP=%s\n", o.BB_K3D_PRIVATEIP))
+	sb.WriteString(fmt.Sprintf("export BB_K3D_PUBLICIP=%s\n", o.K3DPublicIP))
+	sb.WriteString(fmt.Sprintf("export BB_K3D_PRIVATEIP=%s\n", o.K3DPrivateIP))
 	return []byte(sb.String()), nil
 }

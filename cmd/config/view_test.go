@@ -2,12 +2,13 @@ package config
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
@@ -66,7 +67,7 @@ func TestConfigGetAll(t *testing.T) {
 	}
 
 	streams, streamsErr := factory.GetIOStream()
-	assert.Nil(t, streamsErr)
+	require.NoError(t, streamsErr)
 
 	out := streams.Out.(*bytes.Buffer)
 
@@ -75,7 +76,7 @@ func TestConfigGetAll(t *testing.T) {
 	outputMap := make(map[string]any)
 
 	yamlErr := yaml.Unmarshal(out.Bytes(), outputMap)
-	assert.Nil(t, yamlErr)
+	require.NoError(t, yamlErr)
 
 	for key, value := range testValues {
 		got, ok := outputMap[key]
@@ -156,7 +157,6 @@ func TestConfigViewGetOne(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // Test findRecurisve if called with n empty slice
@@ -184,7 +184,7 @@ func TestConfigViewMarshalError(t *testing.T) {
 	viper, _ := factory.GetViper()
 
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo:         expected,
 			OutputConfiguration: schemas.OutputConfiguration{Format: output.YAML},
@@ -207,7 +207,7 @@ func TestConfigViewMarshalError(t *testing.T) {
 
 	assert.Panics(t, func() {
 		err = getBBConfig(cmd, factory, []string{})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	}, "did not panic marshaling unmarshalable type %w", err)
 }
 
@@ -249,13 +249,13 @@ func TestGlobalConfigFormat(t *testing.T) {
 	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 
 	err = getBBConfig(cmd, factory, []string{})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	expectedStdOut := "BigBangRepo:\"/path/to/repo\","
 	assert.Contains(t, streams.Out.(*bytes.Buffer).String(), expectedStdOut)
 }
@@ -266,14 +266,14 @@ func TestSingleConfigFormat(t *testing.T) {
 	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	streams, err := factory.GetIOStream()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Required value or the execution will fail
 	viper.Set("big-bang-repo", "/path/to/repo")
 	viper.Set("bbctl-log-level", "testLogLevel")
 
 	err = getBBConfig(cmd, factory, []string{"bbctl-log-level"})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	expectedStdOut := "bbctl-log-level:testLogLevel"
 	assert.Contains(t, streams.Out.(*bytes.Buffer).String(), expectedStdOut)
 }
@@ -289,7 +289,7 @@ func TestConfigGetInvalidKey(t *testing.T) {
 
 	err := getBBConfig(cmd, factory, []string{"invalid.key"})
 	// The code splits keys at the dot, so it should look for a parent object "invalid" her
-	expectedError := "error marshaling specific config: No such field: invalid"
+	expectedError := "error marshaling specific config: no such field: invalid"
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected error: %s, got %v", expectedError, err)
 	}
@@ -321,10 +321,10 @@ func TestConfigFailToGetConfig(t *testing.T) {
 	cmd := NewConfigViewCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, err := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	if err != nil {
@@ -336,8 +336,7 @@ func TestConfigFailToGetConfig(t *testing.T) {
 	outputErr := getBBConfig(cmd, factory, []string{})
 
 	// Assert
-	//assert.Equal(t, result, "")
-	assert.Error(t, outputErr)
+	require.Error(t, outputErr)
 	if !assert.Contains(t, outputErr.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", outputErr.Error())
 	}

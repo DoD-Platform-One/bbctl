@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbUtilTestLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 )
@@ -30,6 +31,7 @@ type testClientObjects struct {
 }
 
 func createTestClient(t *testing.T, stringBuilder strings.Builder) testClientObjects {
+	t.Helper()
 	publicIP := publicIPConst
 	reservationID := "r-1234567890abcdef0"
 	instanceID := "i-1234567890abcdef0"
@@ -139,7 +141,7 @@ func TestClient_Config(t *testing.T) {
 
 	// Act
 	newConfig, err := client.Config(context.TODO())
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, config)
@@ -159,7 +161,7 @@ func TestClient_GetClusterIPs(t *testing.T) {
 	clusterIPs, err := client.GetClusterIPs(context.TODO(), nil, "", FilterExposureAll)
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, clusterIPs)
 	assert.Equal(t, originalClusterIPs, clusterIPs)
 	assert.Equal(t, "", stringBuilder.String())
@@ -176,7 +178,7 @@ func TestClient_GetSortedClusterIPs(t *testing.T) {
 	sortedClusterIPs, err := client.GetSortedClusterIPs(context.TODO(), nil, "test-user", FilterExposureAll)
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, sortedClusterIPs)
 	assert.Equal(t, len(originalClusterIPs), len(sortedClusterIPs.PublicIPs)+len(sortedClusterIPs.PrivateIPs))
 	assert.Equal(t, "", stringBuilder.String())
@@ -191,7 +193,7 @@ func TestClient_GetEc2Client(t *testing.T) {
 
 	// Act
 	ec2Client, err := client.GetEc2Client(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, ec2Client)
@@ -208,7 +210,7 @@ func TestClient_GetIdentity(t *testing.T) {
 
 	// Act
 	callerIdentity, err := client.GetIdentity(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, callerIdentity)
@@ -225,7 +227,7 @@ func TestClient_GetStsClient(t *testing.T) {
 
 	// Act
 	stsClient, err := client.GetStsClient(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, stsClient)

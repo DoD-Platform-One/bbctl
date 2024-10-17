@@ -10,20 +10,24 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	completionUse = `completion [bash|zsh|fish|powershell]`
+// NewCompletionCmd create a new Cobra completion command which generates a completion script
+//
+// Returns a cobra.Command configured to return a completion script for a specified shell environment
+func NewCompletionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		completionUse = `completion [bash|zsh|fish|powershell]`
 
-	completionShort = i18n.T(`Generates a completion script for a specified shell environment.`)
+		completionShort = i18n.T(`Generates a completion script for a specified shell environment.`)
 
-	completionLong = templates.LongDesc(i18n.T(`
+		completionLong = templates.LongDesc(i18n.T(`
 		Generates a completion script for a specified shell environment.
 
 		Following script generation, it must be loaded into that environment in order to enable completions. 
 
 		See command examples for shell-specific instructions on enabling completions.
-	`))
+		`))
 
-	completionExample = templates.Examples(i18n.T(`		
+		completionExample = templates.Examples(i18n.T(`		
 		bash
 
 		# To load completions for single session
@@ -68,12 +72,8 @@ var (
 		# To load completions for every new session, run:
 		PS> bbctl completion powershell > bbctl.ps1
 		# and source this file from your PowerShell profile. `))
-)
+	)
 
-// NewCompletionCmd create a new Cobra completion command which generates a completion script
-//
-// Returns a cobra.Command configured to return a completion script for a specified shell environment
-func NewCompletionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	streams, err := factory.GetIOStream()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get IO streams: %w", err)

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	genericIoOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
@@ -21,6 +22,7 @@ import (
 )
 
 func GetValueFromViper(t *testing.T, v *viper.Viper, key string, arg interface{}) (interface{}, error) {
+	t.Helper()
 	switch arg.(type) {
 	case bool:
 		return v.GetBool(key), nil
@@ -54,13 +56,15 @@ func GetValueFromViper(t *testing.T, v *viper.Viper, key string, arg interface{}
 }
 
 func WriteConfigFile(t *testing.T, dirname string, config schemas.BaseConfiguration) {
+	t.Helper()
 	content, err := yaml.Marshal(config)
-	assert.NoError(t, err)
-	assert.NoError(t, os.MkdirAll(dirname, 0755))
-	assert.NoError(t, os.WriteFile(path.Join(dirname, "config.yaml"), content, 0644))
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(dirname, 0755))
+	require.NoError(t, os.WriteFile(path.Join(dirname, "config.yaml"), content, 0600))
 }
 
 func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
+	t.Helper()
 	return &schemas.GlobalConfiguration{
 		BigBangRepo: "test",
 		DeployBigBangConfiguration: schemas.DeployBigBangConfiguration{
@@ -77,7 +81,7 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 		GitLabConfiguration: schemas.GitLabConfiguration{
 			BaseURL: "https://repo1.dso.mil/api/v4",
 		},
-		K3dSshConfiguration: schemas.K3dSshConfiguration{
+		K3dSSHConfiguration: schemas.K3dSSHConfiguration{
 			User: "test",
 		},
 		LogAddSource: true,
@@ -242,7 +246,7 @@ func TestSetAndBindFlag(t *testing.T) {
 		streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 		var loggingFunc = func(args ...string) {
 			_, err := streams.ErrOut.Write([]byte(args[0]))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 		command := &cobra.Command{}
@@ -257,22 +261,22 @@ func TestSetAndBindFlag(t *testing.T) {
 		primaryErr := SetAndBindFlag(&configClient, name, shortHand, tt.arg, description)
 		err := v.BindPFlags(command.PersistentFlags())
 		// Assert
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, in.String())
 		assert.Empty(t, out.String())
 		assert.Empty(t, errOut.String())
 		if tt.willError {
-			assert.Error(t, primaryErr)
+			require.Error(t, primaryErr)
 			assert.Nil(t, command.PersistentFlags().Lookup(name))
 			result, err = GetValueFromViper(t, v, name, tt.arg)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Nil(t, result)
 		} else {
-			assert.NoError(t, primaryErr)
+			require.NoError(t, primaryErr)
 			assert.Equal(t, name, command.PersistentFlags().Lookup(name).Name)
 			assert.Equal(t, description, command.PersistentFlags().Lookup(name).Usage)
 			result, err = GetValueFromViper(t, v, name, tt.arg)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		}
 	}
@@ -283,7 +287,7 @@ func TestSetAndBindFlagFail(t *testing.T) {
 	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 	var loggingFunc = func(args ...string) {
 		_, err := streams.ErrOut.Write([]byte(args[0]))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 	configClient := ConfigClient{
@@ -292,7 +296,7 @@ func TestSetAndBindFlagFail(t *testing.T) {
 	// Act
 	err := SetAndBindFlag(&configClient, "test", "", map[string]interface{}{"test": "test"}, "test")
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, in.String())
 	assert.Empty(t, out.String())
 	assert.Empty(t, errOut.String())
@@ -342,7 +346,7 @@ func TestGetConfig(t *testing.T) {
 			errorOnBind:          false,
 			errorOnReconcile:     true,
 			errorOnValidation:    false,
-			expectedErrorMessage: "Error reconciling configuration: error reconciling ExampleConfiguration: should error was set",
+			expectedErrorMessage: "error reconciling configuration: error reconciling ExampleConfiguration: should error was set",
 		},
 		{
 			name:                 "error on validation",
@@ -361,7 +365,7 @@ func TestGetConfig(t *testing.T) {
 			streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 			var loggingFunc = func(args ...string) {
 				_, err := streams.ErrOut.Write([]byte(args[0]))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 			v := viper.New()
@@ -377,12 +381,12 @@ func TestGetConfig(t *testing.T) {
 			u := v.Unmarshal
 			b := v.BindPFlags
 			if tc.errorOnUnmarshal {
-				u = func(rawVal interface{}, opts ...viper.DecoderConfigOption) error {
+				u = func(_ interface{}, _ ...viper.DecoderConfigOption) error {
 					return errors.New("test unmarshall error")
 				}
 			}
 			if tc.errorOnBind {
-				b = func(flags *pflag.FlagSet) error {
+				b = func(_ *pflag.FlagSet) error {
 					return errors.New("test bind error")
 				}
 			}
@@ -401,14 +405,14 @@ func TestGetConfig(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, config)
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedErrorMessage)
 			} else {
 				assert.Empty(t, in.String())
 				assert.Empty(t, out.String())
 				assert.Empty(t, errOut.String())
 				assert.NotNil(t, config)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, "test", config.BigBangRepo)
 			}
 		})
@@ -420,7 +424,7 @@ func TestGetConfigFailValidation(t *testing.T) {
 	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 	var loggingFunc = func(args ...string) {
 		_, err := streams.ErrOut.Write([]byte(args[0]))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 	command := &cobra.Command{}
@@ -433,7 +437,7 @@ func TestGetConfigFailValidation(t *testing.T) {
 	// Act
 	_, err := getConfig(&configClient)
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "Error:Field validation for 'BigBangRepo' failed on the 'required' tag") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -447,7 +451,7 @@ func TestReadConfig(t *testing.T) {
 	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 	var loggingFunc = func(args ...string) {
 		_, err := streams.ErrOut.Write([]byte(args[0]))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 	v := viper.New()
@@ -455,13 +459,13 @@ func TestReadConfig(t *testing.T) {
 	// v.AutomaticEnv() // don't set this because it will read from the environment
 	randomString := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	configDir := fmt.Sprintf("/tmp/bbctl-test-%s/", randomString)
-	assert.NoError(t, os.Mkdir(configDir, 0755))
+	require.NoError(t, os.Mkdir(configDir, 0755))
 	originalConfig := GetDefaultConfig(t)
 	WriteConfigFile(t, configDir, originalConfig)
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(configDir)
-	assert.NoError(t, v.ReadInConfig())
+	require.NoError(t, v.ReadInConfig())
 
 	configClient := ConfigClient{
 		getConfig:     getConfig,
@@ -473,7 +477,7 @@ func TestReadConfig(t *testing.T) {
 	resultConfig, err := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, allSettings)
 	assert.FileExists(t, path.Join(configDir, "config.yaml"))
 	assert.Empty(t, in.String())
@@ -487,7 +491,7 @@ func TestReadConfigAndOverride(t *testing.T) {
 	streams, in, out, errOut := genericIoOptions.NewTestIOStreams()
 	var loggingFunc = func(args ...string) {
 		_, err := streams.ErrOut.Write([]byte(args[0]))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	loggingClient := bbTestLog.NewFakeClient(loggingFunc)
 	v := viper.New()
@@ -495,13 +499,13 @@ func TestReadConfigAndOverride(t *testing.T) {
 	v.AutomaticEnv()
 	randomString := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	configDir := fmt.Sprintf("/tmp/bbctl-test-%s/", randomString)
-	assert.NoError(t, os.Mkdir(configDir, 0755))
+	require.NoError(t, os.Mkdir(configDir, 0755))
 	originalConfig := GetDefaultConfig(t)
 	WriteConfigFile(t, configDir, originalConfig)
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
 	v.AddConfigPath(configDir)
-	assert.NoError(t, v.ReadInConfig())
+	require.NoError(t, v.ReadInConfig())
 	v.Set("big-bang-repo", "test2")
 
 	configClient := ConfigClient{
@@ -514,7 +518,7 @@ func TestReadConfigAndOverride(t *testing.T) {
 	resultConfig, err := getConfig(&configClient)
 	// Assert
 	assert.NotNil(t, resultConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, allSettings)
 	assert.FileExists(t, path.Join(configDir, "config.yaml"))
 	assert.Empty(t, in.String())

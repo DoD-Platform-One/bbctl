@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbUtilTestLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
@@ -46,9 +47,9 @@ func TestClientGetter_GetClient(t *testing.T) {
 	for _, test := range tests {
 		// Arrange
 		clientGetter := ClientGetter{}
-		var stringBuilder strings.Builder = strings.Builder{}
-		var loggingClient *bbUtilLog.Client = nil
-		var command *cobra.Command = nil
+		var stringBuilder strings.Builder
+		var loggingClient *bbUtilLog.Client
+		var command *cobra.Command
 		if test.useLog {
 			logFunc := func(args ...string) {
 				for _, arg := range args {
@@ -67,11 +68,11 @@ func TestClientGetter_GetClient(t *testing.T) {
 		// Assert
 		if test.willError {
 			assert.Nil(t, client)
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), test.expectedErr)
 		} else {
 			assert.NotNil(t, client)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		}
 		assert.Empty(t, stringBuilder.String())
 	}

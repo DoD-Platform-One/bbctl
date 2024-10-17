@@ -78,7 +78,7 @@ func TestIstioClientsetPoolAdd(t *testing.T) {
 	// act
 	pool.add(clientset, restConfig)
 	// assert
-	assert.Equal(t, 1, len(pool))
+	assert.Len(t, pool, 1)
 	assert.Equal(t, clientset, pool[0].clientset)
 	assert.Equal(t, restConfig, pool[0].restConfig)
 }

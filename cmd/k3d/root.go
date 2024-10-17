@@ -10,23 +10,20 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
-var (
-	k3dUse = `k3d`
-
-	k3dShort = i18n.T(`Manage k3d cluster`)
-
-	k3dLong = templates.LongDesc(
-		i18n.T(`Manage a minimal k3d cluster for Big Bang development or testing.
-		This command mirrors some of the functionality of the k3d-dev.sh script in the Big Bang product repo.
-	`),
-	)
-
-	k3dExample = templates.Examples(i18n.T(`
-	    # k3d functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
-)
-
 // NewK3dCmd - Returns a minimal parent command for the default k3d commands
 func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		k3dUse   = `k3d`
+		k3dShort = i18n.T(`Manage k3d cluster`)
+		k3dLong  = templates.LongDesc(
+			i18n.T(`Manage a minimal k3d cluster for Big Bang development or testing.
+			This command mirrors some of the functionality of the k3d-dev.sh script in the Big Bang product repo.
+		`),
+		)
+		k3dExample = templates.Examples(i18n.T(`
+			# k3d functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
+	)
+
 	_, err := factory.GetIOStream()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get IOStreams: %w", err)
@@ -36,10 +33,10 @@ func NewK3dCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		Short:   k3dShort,
 		Long:    k3dLong,
 		Example: k3dExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			outputClient, err := factory.GetOutputClient(cmd)
 			if err != nil {
-				return fmt.Errorf("Unable to  create output client: %w", err)
+				return fmt.Errorf("unable to  create output client: %w", err)
 			}
 			outputMap := map[string]interface{}{
 				"Message": "Please provide a subcommand for k3d (see help)",

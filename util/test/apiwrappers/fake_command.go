@@ -1,7 +1,7 @@
 package apiwrappers
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"strings"
 
@@ -48,7 +48,7 @@ func (c *FakeCommandRunner) SetStdin(reader io.Reader) {
 
 func (c *FakeCommandRunner) Run() error {
 	if c.shouldFailToRun {
-		return fmt.Errorf("Failed to run command")
+		return errors.New("failed to run command")
 	}
 	var argsStr strings.Builder
 	for _, arg := range c.args {

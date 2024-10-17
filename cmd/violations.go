@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -25,40 +26,9 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	violationsUse = `violations`
-
-	violationsShort = i18n.T(`List policy violations.`)
-
-	violationsLong = templates.LongDesc(i18n.T(`
-		List policy violations reported by Gatekeeper or Kyverno Policy Engine.
-
-		Note: In case of kyverno, violations are reported using the default namespace for kyverno policy resource
-		of kind ClusterPolicy irrespective of the namespace of the resource that failed the policy. Any violations
-		that occur because of namespace specific policy i.e. kind Policy is reported using the namespace the resource
-		is associated with. If it is desired to see the violations because of ClusterPolicy objects, use the command
-		as follows:
-
-		bbctl violations -n default
-	`))
-
-	violationsExample = templates.Examples(i18n.T(`
-		# Get a list of policy violations resulting in request denial across all namespaces
-		bbctl violations 
-		
-		# Get a list of policy violations resulting in request denial in the given namespace.
-		bbctl violations -n NAMESPACE		
-		
-		# Get a list of policy violations reported by audit process across all namespaces
-		bbctl violations --audit	
-		
-		# Get a list of policy violations reported by audit process in the given namespace
-		bbctl violations --audit --namespace NAMESPACE	
-	`))
-
+const (
 	admissionControllerKyvernoEventSource = "admission-controller"
-
-	policyControllerKyvernoEventSource = "policy-controller"
+	policyControllerKyvernoEventSource    = "policy-controller"
 )
 
 type policyViolation struct {
@@ -124,15 +94,47 @@ func newViolationsCmdHelper(cmd *cobra.Command, factory bbUtil.Factory) (*violat
 
 // NewViolationsCmd - new violations command
 func NewViolationsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		violationsUse = `violations`
+
+		violationsShort = i18n.T(`List policy violations.`)
+
+		violationsLong = templates.LongDesc(i18n.T(`
+		List policy violations reported by Gatekeeper or Kyverno Policy Engine.
+
+		Note: In case of kyverno, violations are reported using the default namespace for kyverno policy resource
+		of kind ClusterPolicy irrespective of the namespace of the resource that failed the policy. Any violations
+		that occur because of namespace specific policy i.e. kind Policy is reported using the namespace the resource
+		is associated with. If it is desired to see the violations because of ClusterPolicy objects, use the command
+		as follows:
+
+		bbctl violations -n default
+		`))
+
+		violationsExample = templates.Examples(i18n.T(`
+		# Get a list of policy violations resulting in request denial across all namespaces
+		bbctl violations 
+		
+		# Get a list of policy violations resulting in request denial in the given namespace.
+		bbctl violations -n NAMESPACE		
+		
+		# Get a list of policy violations reported by audit process across all namespaces
+		bbctl violations --audit	
+		
+		# Get a list of policy violations reported by audit process in the given namespace
+		bbctl violations --audit --namespace NAMESPACE	
+		`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     violationsUse,
 		Short:   violationsShort,
 		Long:    violationsLong,
 		Example: violationsExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			v, err := newViolationsCmdHelper(cmd, factory)
 			if err != nil {
-				return fmt.Errorf("error getting violations helper client: %v", err)
+				return fmt.Errorf("error getting violations helper client: %w", err)
 			}
 
 			return v.getViolations()
@@ -183,14 +185,14 @@ func (v *violationsCmdHelper) getViolations() error {
 	if gkFound {
 		v.logger.Debug("Gatekeeper exists in cluster. Checking for Gatekeeper violations.")
 		if err := v.listGkViolations(namespace, audit); err != nil {
-			errs = append(errs, fmt.Errorf("error listing gatekeeper violations: %v", err))
+			errs = append(errs, fmt.Errorf("error listing gatekeeper violations: %w", err))
 		}
 	}
 
 	if kyvernoFound {
 		v.logger.Debug("Kyverno exists in cluster. Checking for Kyverno violations.")
 		if err := v.listKyvernoViolations(namespace, audit); err != nil {
-			errs = append(errs, fmt.Errorf("error listing kyverno violations: %v", err))
+			errs = append(errs, fmt.Errorf("error listing kyverno violations: %w", err))
 		}
 	}
 
@@ -227,7 +229,6 @@ func (v *violationsCmdHelper) listKyvernoViolations(namespace string, listAuditV
 
 	violationsFound := false
 	for _, event := range events.Items {
-
 		if namespace != "" && event.GetObjectMeta().GetNamespace() != namespace {
 			continue
 		}
@@ -316,7 +317,6 @@ func (v *violationsCmdHelper) listGkDenyViolations(namespace string) error {
 
 	violationsFound := false
 	for _, event := range events.Items {
-
 		if namespace != "" && event.Annotations["resource_namespace"] != namespace {
 			continue
 		}
@@ -378,10 +378,7 @@ func (v *violationsCmdHelper) listGkAuditViolations(namespace string) error {
 			// get violations
 			violations, _ := getGkConstraintViolations(&c)
 			// process violations
-			processErr := v.processGkViolations(namespace, violations, crdName)
-			if processErr != nil {
-				return fmt.Errorf("error processing GK violations: %w", processErr)
-			}
+			v.processGkViolations(namespace, violations, crdName)
 		}
 	}
 
@@ -390,7 +387,7 @@ func (v *violationsCmdHelper) listGkAuditViolations(namespace string) error {
 
 // getGkConstraintViolations queries the cluster using dynamic client to get audit violation information from gatekeeper constraint crds
 func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyViolation, error) {
-	var violationTimestamp string = ""
+	var violationTimestamp string
 	ts, ok, err := unstructured.NestedFieldNoCopy(resource.Object, "status", "auditTimestamp")
 	if err != nil {
 		return nil, err
@@ -424,7 +421,7 @@ func getGkConstraintViolations(resource *unstructured.Unstructured) (*[]policyVi
 }
 
 // processGkViolations filters the violations based on the namespace and parses the message into constraint name
-func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) error {
+func (v *violationsCmdHelper) processGkViolations(namespace string, violations *[]policyViolation, crdName string) {
 	if len(*violations) != 0 {
 		v.logger.Debug("Custom resource definitions: %s", crdName)
 		violationsFound := false
@@ -444,13 +441,12 @@ func (v *violationsCmdHelper) processGkViolations(namespace string, violations *
 			v.logger.Debug("No violations found while processing gatekeeper violation audit.")
 		}
 	}
-	return nil
 }
 
 // parses the violation policy or constraint from the message
 func parseViolation(isPolicy bool, violation *policyViolation) error {
 	if len(violation.message) <= 0 {
-		return fmt.Errorf("nothing to parse from violation message")
+		return errors.New("nothing to parse from violation message")
 	}
 
 	var parsedConstraint bytes.Buffer
@@ -475,7 +471,7 @@ func parseViolation(isPolicy bool, violation *policyViolation) error {
 			return nil
 		}
 		violation.policy = "NA"
-		return fmt.Errorf("error parsing policy name from violation")
+		return errors.New("error parsing policy name from violation")
 	}
 
 	parsers := []struct {
@@ -599,7 +595,7 @@ func parseViolation(isPolicy bool, violation *policyViolation) error {
 		return nil
 	}
 	violation.constraint = "NA"
-	return fmt.Errorf("error parsing constraint name from violation")
+	return errors.New("error parsing constraint name from violation")
 }
 
 // printViolation prints the violation information to the defined client io.Writer

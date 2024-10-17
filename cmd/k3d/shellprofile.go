@@ -12,30 +12,27 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	shellProfileUse = `shellprofile`
-
-	shellProfileShort = i18n.T(`Generates a shell profile for k3d cluster`)
-
-	shellProfileLong = templates.LongDesc(
-		i18n.T(
-			`Generates a shell profile (BASH compatible) to set up your environment for a k3d cluster`,
-		),
-	)
-
-	shellProfileExample = templates.Examples(i18n.T(`
-	    # Generate a profile suitable for inclusion in your ~/.profile
-		bbctl k3d shellprofile`))
-)
-
 // NewShellProfileCmd - Returns a command to generate a shell profile for a k3d cluster using shellProfileCluster
 func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		shellProfileUse   = `shellprofile`
+		shellProfileShort = i18n.T(`Generates a shell profile for k3d cluster`)
+		shellProfileLong  = templates.LongDesc(
+			i18n.T(
+				`Generates a shell profile (BASH compatible) to set up your environment for a k3d cluster`,
+			),
+		)
+		shellProfileExample = templates.Examples(i18n.T(`
+			# Generate a profile suitable for inclusion in your ~/.profile
+			bbctl k3d shellprofile`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     shellProfileUse,
 		Short:   shellProfileShort,
 		Long:    shellProfileLong,
 		Example: shellProfileExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return shellProfileCluster(factory, cmd)
 		},
 	}
@@ -47,7 +44,7 @@ func NewShellProfileCmd(factory bbUtil.Factory) *cobra.Command {
 func shellProfileCluster(factory bbUtil.Factory, cobraCmd *cobra.Command) error {
 	outputClient, err := factory.GetOutputClient(cobraCmd)
 	if err != nil {
-		return fmt.Errorf("Unable to  create output client: %w", err)
+		return fmt.Errorf("unable to  create output client: %w", err)
 	}
 	awsClient, err := factory.GetAWSClient()
 	if err != nil {
@@ -88,9 +85,9 @@ func shellProfileCluster(factory bbUtil.Factory, cobraCmd *cobra.Command) error 
 
 	// Prepare the shell profile output
 	shellProfileOutput := &outputSchema.ShellProfileOutput{
-		KubeConfig:       fmt.Sprintf("~/.kube/%v-dev-config", userInfo.Username),
-		BB_K3D_PUBLICIP:  publicIP,
-		BB_K3D_PRIVATEIP: privateIP,
+		KubeConfig:   fmt.Sprintf("~/.kube/%v-dev-config", userInfo.Username),
+		K3DPublicIP:  publicIP,
+		K3DPrivateIP: privateIP,
 	}
 
 	// Output the data using the outputClient

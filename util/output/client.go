@@ -10,13 +10,13 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
-// OutputFormat defines constants for supported output formats.
-type OutputFormat string
+// Format defines constants for supported output formats.
+type Format string
 
 const (
-	JSON OutputFormat = "json"
-	TEXT OutputFormat = "text"
-	YAML OutputFormat = "yaml"
+	JSON Format = "json"
+	TEXT Format = "text"
+	YAML Format = "yaml"
 )
 
 // Client is the interface that wraps the basic Output method.
@@ -29,15 +29,15 @@ type Client interface {
 // outputClient is the implementation of the Client interface.
 // It manages the output formatting and handles writing data to an io.Writer.
 type outputClient struct {
-	Format OutputFormat // The output format (JSON, YAML, TEXT)
-	Writer io.Writer    // The writer to output the data
+	Format Format    // The output format (JSON, YAML, TEXT)
+	Writer io.Writer // The writer to output the data
 }
 
 // NewOutputClient creates a new output client based on the specified format and io streams.
 //
 // format: The desired output format (JSON, YAML, TEXT)
 // streams: The generic I/O streams for input/output operations.
-func NewOutputClient(format OutputFormat, streams genericIOOptions.IOStreams) Client {
+func NewOutputClient(format Format, streams genericIOOptions.IOStreams) Client {
 	return &outputClient{
 		Format: format,
 		Writer: streams.Out,
@@ -52,9 +52,9 @@ func (oc *outputClient) Output(data Outputable) error {
 	case TEXT:
 		return oc.writeText(data)
 	case JSON:
-		return oc.writeJson(data)
+		return oc.writeJSON(data)
 	case YAML:
-		return oc.writeYaml(data)
+		return oc.writeYAML(data)
 	default:
 		return fmt.Errorf("unsupported format: %s", oc.Format)
 	}
@@ -63,13 +63,13 @@ func (oc *outputClient) Output(data Outputable) error {
 // WriteJson writes the given data as JSON to the client's io.Writer.
 //
 // data: The data to be written, which must implement the Outputable interface.
-func (o *outputClient) writeJson(data Outputable) error {
-	jsonData, err := data.MarshalJson()
+func (oc *outputClient) writeJSON(data Outputable) error {
+	jsonData, err := data.EncodeJSON()
 	if err != nil {
 		return errors.Wrap(err, "unable to write JSON output")
 	}
 
-	_, err = o.Writer.Write(jsonData)
+	_, err = oc.Writer.Write(jsonData)
 	if err != nil {
 		return errors.Wrap(err, "unable to write JSON output")
 	}
@@ -80,13 +80,13 @@ func (o *outputClient) writeJson(data Outputable) error {
 // WriteYaml writes the given data as YAML to the client's io.Writer.
 //
 // data: The data to be written, which must implement the Outputable interface.
-func (o *outputClient) writeYaml(data Outputable) error {
-	yamlData, err := data.MarshalYaml()
+func (oc *outputClient) writeYAML(data Outputable) error {
+	yamlData, err := data.EncodeYAML()
 	if err != nil {
 		return errors.Wrap(err, "unable to write YAML output")
 	}
 
-	_, err = o.Writer.Write(yamlData)
+	_, err = oc.Writer.Write(yamlData)
 	if err != nil {
 		return errors.Wrap(err, "unable to write YAML output")
 	}
@@ -97,13 +97,13 @@ func (o *outputClient) writeYaml(data Outputable) error {
 // WriteText writes the given data as human-readable text to the client's io.Writer.
 //
 // data: The data to be written, which must implement the Outputable interface.
-func (o *outputClient) writeText(data Outputable) error {
-	output, err := data.MarshalHumanReadable()
+func (oc *outputClient) writeText(data Outputable) error {
+	output, err := data.EncodeText()
 	if err != nil {
 		return errors.Wrap(err, "unable to write human-readable output")
 	}
 
-	_, err = fmt.Fprintln(o.Writer, string(output))
+	_, err = fmt.Fprintln(oc.Writer, string(output))
 	if err != nil {
 		return errors.Wrap(err, "unable to write human-readable output")
 	}

@@ -35,8 +35,7 @@ func (c *FakeClient) GetFile(repository string, path string, branch string) ([]b
 	}
 
 	if branch != "main" {
-		return nil, fmt.Errorf("Failed to download file from GitLab branch: %v", branch)
+		return nil, fmt.Errorf("failed to download file from GitLab branch: %v", branch)
 	}
 	return []byte("String file contents"), nil
-
 }

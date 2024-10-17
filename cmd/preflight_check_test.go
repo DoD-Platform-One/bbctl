@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	coreV1 "k8s.io/api/core/v1"
 	storageV1 "k8s.io/api/storage/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,7 +34,7 @@ import (
 func pod(app string, ns string, phase coreV1.PodPhase) *coreV1.Pod {
 	pod := &coreV1.Pod{
 		ObjectMeta: metaV1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-fequ", app),
+			Name:      app + "-fequ",
 			Namespace: ns,
 			Labels: map[string]string{
 				"app": app,
@@ -61,6 +62,7 @@ func ns(name string, phase coreV1.NamespacePhase) *coreV1.Namespace {
 }
 
 func checkOutput(t *testing.T, expected []string, actual []string) {
+	t.Helper()
 	for _, value := range expected {
 		if !assert.Contains(t, actual, value) {
 			t.Errorf("\n\nexpected:\n%s\n\nactual:\n%s\n\n", value, strings.Join(actual, "\n"))
@@ -243,8 +245,8 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
 			if test.failListStorageClass {
-				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
-					return true, nil, fmt.Errorf("testing error")
+				failFunc := func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
 					clientset.StorageV1().StorageClasses().(*fakeTyped.FakeStorageClasses).Fake.PrependReactor("list", "storageclasses", failFunc)
@@ -356,8 +358,8 @@ func TestCheckFluxController(t *testing.T) {
 			factory.SetFail.GetK8sClientset = test.failGetClientset
 
 			if test.failListPods {
-				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
-					return true, nil, fmt.Errorf("testing error")
+				failFunc := func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
 					clientset.CoreV1().Pods("flux-system").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", failFunc)
@@ -556,7 +558,6 @@ func TestCheckSystemParameters(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-
 			// Arrange
 			pfcNs := ns("preflight-check", coreV1.NamespaceActive)
 			pfcPod := pod("pfc", pfcNs.Name, coreV1.PodRunning)
@@ -566,22 +567,22 @@ func TestCheckSystemParameters(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
 			configClient, err := factory.GetConfigClient(command)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			viperInstance, _ := factory.GetViper()
-			assert.Nil(t, configClient.SetAndBindFlag("big-bang-repo", "", "/tmp", "Location on the filesystem where the bigbang product repo is checked out"))
-			assert.Nil(t, configClient.SetAndBindFlag("registryserver", "", "registry.foo", "Image registry server url"))
-			assert.Nil(t, configClient.SetAndBindFlag("registryusername", "", "user", "Image registry username"))
-			assert.Nil(t, configClient.SetAndBindFlag("registrypassword", "", "pass", "Image registry password"))
-			assert.Nil(t, viperInstance.BindPFlags(command.Flags()))
+			require.NoError(t, configClient.SetAndBindFlag("big-bang-repo", "", "/tmp", "Location on the filesystem where the bigbang product repo is checked out"))
+			require.NoError(t, configClient.SetAndBindFlag("registryserver", "", "registry.foo", "Image registry server url"))
+			require.NoError(t, configClient.SetAndBindFlag("registryusername", "", "user", "Image registry username"))
+			require.NoError(t, configClient.SetAndBindFlag("registrypassword", "", "pass", "Image registry password"))
+			require.NoError(t, viperInstance.BindPFlags(command.Flags()))
 
 			config, configErr := configClient.GetConfig()
-			assert.NoError(t, configErr)
+			require.NoError(t, configErr)
 			config.OutputConfiguration.Format = "text"
 			config.PreflightCheckConfiguration.RegistryServer = "registry.foo"
 			config.PreflightCheckConfiguration.RegistryUsername = "user"
 			config.PreflightCheckConfiguration.RegistryPassword = "pass"
 			executor, err := factory.GetFakeCommandExecutor()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			if test.failDeleteNamespace {
 				factory.SetObjects([]runtime.Object{pfcPod})
 			} else {
@@ -674,7 +675,7 @@ func TestSupportedMetricsAPIVersionAvailable(t *testing.T) {
 	}
 }
 
-func TestCreateResourcesForCommandExecution(t *testing.T) {
+func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 	podToFind := &coreV1.Pod{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: "preflightcheck",
@@ -861,8 +862,8 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			config.PreflightCheckConfiguration.RetryDelay = 1
 
 			if test.failCreateNamespace {
-				failFunc := func(action k8sTesting.Action) (bool, runtime.Object, error) {
-					return true, nil, fmt.Errorf("failed to create namespace")
+				failFunc := func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("failed to create namespace")
 				}
 				modFunc := func(clientset *fake.Clientset) {
 					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("create", "namespaces", failFunc)
@@ -871,14 +872,14 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 			if test.failGetPod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("failed to get pod")
+					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("failed to get pod")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			} else if !test.failTimeoutPod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, &coreV1.PodList{
 							Items: []coreV1.Pod{
 								*podToFind,
@@ -895,15 +896,15 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 			if test.failDeleteNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("namespaces \"preflight-check\" not found")
+					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("namespaces \"preflight-check\" not found")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			}
 			if test.failTimeoutNamespace || test.failDeleteNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("create", "namespaces", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("create", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, k8sErrors.NewAlreadyExists(schema.GroupResource{Group: "", Resource: "namespaces"}, "preflight-check")
 					})
 				}
@@ -911,7 +912,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 			if test.failTimeoutNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, &coreV1.Namespace{}, nil
 					})
 				}
@@ -919,8 +920,8 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			}
 			if test.failCreatePod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.BatchV1().Jobs("preflight-check").(*fakeTypedBatchV1.FakeJobs).Fake.PrependReactor("create", "jobs", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("failed to create pod")
+					clientset.BatchV1().Jobs("preflight-check").(*fakeTypedBatchV1.FakeJobs).Fake.PrependReactor("create", "jobs", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("failed to create pod")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
@@ -932,16 +933,16 @@ func TestCreateResourcesForCommandExecution(t *testing.T) {
 			// Assert
 			checkOutput(t, test.expectedOut, msgs)
 			if !(test.failGetClientset || test.failCreateNamespace || test.failCreateSecret || test.failGetPod || test.failTimeoutPod || test.failDeleteNamespace || test.failTimeoutNamespace || test.failCreatePod) {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, pod)
 				assert.Equal(t, podToFind, pod)
 			} else {
 				// do more testing on these
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Nil(t, pod)
 			}
 			if test.failTimeoutNamespace || test.failTimeoutPod {
-				assert.True(t, time.Since(startTime) > time.Duration(config.PreflightCheckConfiguration.RetryCount)*time.Second)
+				assert.Greater(t, time.Since(startTime), time.Duration(config.PreflightCheckConfiguration.RetryCount)*time.Second)
 			}
 		})
 	}
@@ -981,20 +982,20 @@ func TestDeleteResourcesForCommandExecution(t *testing.T) {
 
 			// Assert
 			if !test.failGetClientset {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, "testing error", err.Error())
 			}
 		})
 	}
 }
 
-func makeOutputSummary(checks []preflightCheck, format output.OutputFormat) string {
+func makeOutputSummary(checks []preflightCheck, format output.Format) string {
 	steps := []outputSchemas.CheckStepOutput{}
 
 	for _, value := range checks {
-		message := "System Error Occured - Execute command again to retry"
+		message := "System Error Occurred - Execute command again to retry"
 		if value.status == passed {
 			message = value.successMessage
 		} else if value.status == failed {
@@ -1014,19 +1015,19 @@ func makeOutputSummary(checks []preflightCheck, format output.OutputFormat) stri
 	result := ""
 	switch format {
 	case output.TEXT:
-		byteSummary, _ := summary.MarshalHumanReadable()
+		byteSummary, _ := summary.EncodeText()
 		result = string(byteSummary) + "\n"
 	case output.JSON:
-		byteSummary, _ := summary.MarshalJson()
+		byteSummary, _ := summary.EncodeJSON()
 		result = string(byteSummary)
 	case output.YAML:
-		byteSummary, _ := summary.MarshalYaml()
+		byteSummary, _ := summary.EncodeYAML()
 		result = string(byteSummary)
 	}
 	return result
 }
 
-func fakeCheckFn(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+func fakeCheckFn(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 	return []string{}, passed
 }
 
@@ -1132,10 +1133,10 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 			assert.Empty(t, in.String())
 			assert.Empty(t, errOut.String())
 			if !test.failWritingOutput {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, test.expected, out.String())
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
 			}
@@ -1144,15 +1145,15 @@ func TestPrintPreflightCheckSummary(t *testing.T) {
 }
 
 func TestPreflightCheck(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	passFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	failFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	unknFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, unknown
 	}
 
@@ -1215,7 +1216,7 @@ func TestPreflightCheck(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			command := &cobra.Command{}
 			err := bbPreflightCheck(nil, factory, command, []preflightCheck{test.check})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output := buf.String()
 			assert.Contains(t, output, test.expected[0])
 			assert.Contains(t, output, test.expected[1])
@@ -1225,15 +1226,15 @@ func TestPreflightCheck(t *testing.T) {
 }
 
 func TestPreflightCheckCmd(t *testing.T) {
-	passFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	passFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, passed
 	}
 
-	failFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	failFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, failed
 	}
 
-	unknFunc := func(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+	unknFunc := func(_ *cobra.Command, _ bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 		return []string{}, unknown
 	}
 
@@ -1267,16 +1268,16 @@ func TestPreflightCheckCmd(t *testing.T) {
 	v.Set("big-bang-repo", "/tmp")
 	v.Set("output-config.format", "text")
 	cmd, cmdError := NewPreflightCheckCmd(factory)
-	assert.NoError(t, cmdError)
+	require.NoError(t, cmdError)
 	err := cmd.Execute()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "Status: Failed")
 	assert.Contains(t, output, "Foo Service Down")
 	assert.Contains(t, output, "Status: Passed")
 	assert.Contains(t, output, "Bar Service Up")
 	assert.Contains(t, output, "Status: Unknown")
-	assert.Contains(t, output, "System Error Occured - Execute command again to retry")
+	assert.Contains(t, output, "System Error Occurred - Execute command again to retry")
 }
 
 func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
@@ -1291,7 +1292,7 @@ func TestGetPreflightCheckCmdConfigClientError(t *testing.T) {
 	cmd, cmdError := NewPreflightCheckCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, cmdError)
+	require.Error(t, cmdError)
 	if !assert.Contains(t, cmdError.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", cmdError.Error())
 	}
@@ -1304,10 +1305,10 @@ func TestPreflightCheckFailToGetConfig(t *testing.T) {
 	cmd, _ := NewPreflightCheckCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	factory.SetConfigClient(client)
@@ -1316,7 +1317,7 @@ func TestPreflightCheckFailToGetConfig(t *testing.T) {
 	err := cmd.Execute()
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -1335,7 +1336,7 @@ func TestBBPreflightCheckConfigClientError(t *testing.T) {
 	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -1345,7 +1346,7 @@ func TestOutputFormatting(t *testing.T) {
 	checks := getFakeChecks(passed, failed, unknown)
 	var tests = []struct {
 		desc     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -1377,7 +1378,7 @@ func TestOutputFormatting(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			v.Set("output-config.format", string(test.format))
 			err := printPreflightCheckSummary(nil, factory, checks)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, buf.String())
 			buf.Reset()
 		})

@@ -2,11 +2,12 @@ package k3d
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -22,7 +23,7 @@ func TestK3d_RootUsage(t *testing.T) {
 	assert.Equal(t, "k3d", cmd.Use)
 	commandsList := cmd.Commands()
 	assert.Len(t, commandsList, 5)
-	var commandUseNamesList []string
+	var commandUseNamesList = make([]string, len(commandsList))
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
@@ -40,7 +41,7 @@ func TestK3d_RootIOStreamError(t *testing.T) {
 
 	viperInstance, _ := factory.GetViper()
 	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+	require.NoError(t, os.MkdirAll(bigBangRepoLocation, 0755))
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	factory.SetFail.GetIOStreams = 1
@@ -51,7 +52,7 @@ func TestK3d_RootIOStreamError(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get IOStreams:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -64,7 +65,7 @@ func TestK3d_RootNoSubcommand(t *testing.T) {
 
 	viperInstance, _ := factory.GetViper()
 	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+	require.NoError(t, os.MkdirAll(bigBangRepoLocation, 0755))
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	viperInstance.Set("output-config.format", "text")
@@ -76,7 +77,7 @@ func TestK3d_RootNoSubcommand(t *testing.T) {
 	// Act
 	cmd, _ := NewK3dCmd(factory)
 	// Assert
-	assert.Nil(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 	assert.Empty(t, in.String())
 	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), "Please provide a subcommand for k3d (see help)")
@@ -86,13 +87,13 @@ func TestK3d_RootSshError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	viperInstance, viperErr := factory.GetViper()
-	assert.Nil(t, viperErr)
+	require.NoError(t, viperErr)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 	viperInstance.Set("output-config.format", "text")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, name string, _ string, _ interface{}, _ string) error {
 		if name == "ssh-username" {
 			return expectedError
 		}
@@ -100,9 +101,9 @@ func TestK3d_RootSshError(t *testing.T) {
 	}
 
 	logClient, logClientErr := factory.GetLoggingClient()
-	assert.Nil(t, logClientErr)
+	require.NoError(t, logClientErr)
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act
@@ -119,13 +120,13 @@ func TestK3d_RootHostsError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	viperInstance, viperErr := factory.GetViper()
-	assert.Nil(t, viperErr)
+	require.NoError(t, viperErr)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("output-config.format", "text")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, name string, _ string, _ interface{}, _ string) error {
 		if name == "private-ip" {
 			return expectedError
 		}
@@ -133,9 +134,9 @@ func TestK3d_RootHostsError(t *testing.T) {
 	}
 
 	logClient, logClientErr := factory.GetLoggingClient()
-	assert.Nil(t, logClientErr)
+	require.NoError(t, logClientErr)
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act

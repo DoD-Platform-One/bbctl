@@ -26,7 +26,6 @@ func BuildKubeConfig(bbConfig *bbConfig.GlobalConfiguration) (*restClient.Config
 	}
 
 	if kubeConfig == "" {
-
 		if home := homeDir.HomeDir(); home != "" {
 			kubeConfig = filepath.Join(home, ".kube", "config")
 		}

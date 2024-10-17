@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
@@ -33,7 +34,7 @@ func TestViolationsOutputFormat(t *testing.T) {
 	violationsOutput.Violations = append(violationsOutput.Violations, *v2)
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -44,7 +45,7 @@ func TestViolationsOutputFormat(t *testing.T) {
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: "{\"Name\":\"Violations Test Output\",\"Violations\":[{\"Name\":\"b\",\"Kind\":\"c\",\"Namespace\":\"d\",\"Policy\":\"f\",\"Constraint\":\"e\",\"Message\":\"g\",\"Action\":\"h\",\"Timestamp\":\"a\"},{\"Name\":\"j\",\"Kind\":\"k\",\"Namespace\":\"l\",\"Policy\":\"n\",\"Constraint\":\"m\",\"Message\":\"o\",\"Action\":\"p\",\"Timestamp\":\"i\"}]}",
+			expected: "{\"name\":\"Violations Test Output\",\"violations\":[{\"name\":\"b\",\"kind\":\"c\",\"namespace\":\"d\",\"policy\":\"f\",\"constraint\":\"e\",\"message\":\"g\",\"action\":\"h\",\"timestamp\":\"a\"},{\"name\":\"j\",\"kind\":\"k\",\"namespace\":\"l\",\"policy\":\"n\",\"constraint\":\"m\",\"message\":\"o\",\"action\":\"p\",\"timestamp\":\"i\"}]}",
 		},
 		{
 			name:     "Text Output",
@@ -57,16 +58,16 @@ func TestViolationsOutputFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.format {
 			case output.YAML:
-				actual, err := violationsOutput.MarshalYaml()
-				assert.NoError(t, err)
+				actual, err := violationsOutput.EncodeYAML()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.JSON:
-				actual, err := violationsOutput.MarshalJson()
-				assert.NoError(t, err)
+				actual, err := violationsOutput.EncodeJSON()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.TEXT:
-				actual, err := violationsOutput.MarshalHumanReadable()
-				assert.NoError(t, err)
+				actual, err := violationsOutput.EncodeText()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			}
 		})
@@ -87,7 +88,7 @@ func TestViolationFormat(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -98,7 +99,7 @@ func TestViolationFormat(t *testing.T) {
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: "{\n  \"Name\": \"b\",\n  \"Kind\": \"c\",\n  \"Namespace\": \"d\",\n  \"Policy\": \"f\",\n  \"Constraint\": \"e\",\n  \"Message\": \"g\",\n  \"Action\": \"h\",\n  \"Timestamp\": \"a\"\n}",
+			expected: "{\"name\":\"b\",\"kind\":\"c\",\"namespace\":\"d\",\"policy\":\"f\",\"constraint\":\"e\",\"message\":\"g\",\"action\":\"h\",\"timestamp\":\"a\"}",
 		},
 		{
 			name:     "Text Output",
@@ -111,16 +112,16 @@ func TestViolationFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.format {
 			case output.YAML:
-				actual, err := v1.MarshalYaml()
-				assert.NoError(t, err)
+				actual, err := v1.EncodeYAML()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.JSON:
-				actual, err := v1.MarshalJson()
-				assert.NoError(t, err)
+				actual, err := v1.EncodeJSON()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.TEXT:
-				actual, err := v1.MarshalHumanReadable()
-				assert.NoError(t, err)
+				actual, err := v1.EncodeText()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			}
 		})

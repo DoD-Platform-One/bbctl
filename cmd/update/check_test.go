@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
@@ -26,6 +27,6 @@ func TestUpdateCheck(t *testing.T) {
 	// Assert
 	var args []string
 	err := cmd.RunE(cmd, args)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Not Implemented")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not implemented")
 }

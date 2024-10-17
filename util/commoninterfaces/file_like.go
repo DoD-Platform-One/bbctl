@@ -1,4 +1,4 @@
-package commonInterfaces
+package commoninterfaces
 
 import (
 	"io"
@@ -14,13 +14,13 @@ type FileLike interface {
 	Close() error
 	Fd() uintptr
 	Name() string
-	Read(b []byte) (n int, err error)
-	ReadAt(b []byte, off int64) (n int, err error)
+	Read(b []byte) (int, error)
+	ReadAt(b []byte, off int64) (int, error)
 	ReadDir(n int) ([]fs.DirEntry, error)
-	ReadFrom(r io.Reader) (n int64, err error)
+	ReadFrom(r io.Reader) (int64, error)
 	Readdir(n int) ([]fs.FileInfo, error)
-	Readdirnames(n int) (names []string, err error)
-	Seek(offset int64, whence int) (ret int64, err error)
+	Readdirnames(n int) ([]string, error)
+	Seek(offset int64, whence int) (int64, error)
 	SetDeadline(t time.Time) error
 	SetReadDeadline(t time.Time) error
 	SetWriteDeadline(t time.Time) error
@@ -28,8 +28,8 @@ type FileLike interface {
 	Sync() error
 	SyscallConn() (syscall.RawConn, error)
 	Truncate(size int64) error
-	Write(b []byte) (n int, err error)
-	WriteAt(b []byte, off int64) (n int, err error)
-	WriteString(s string) (n int, err error)
-	WriteTo(w io.Writer) (n int64, err error)
+	Write(b []byte) (int, error)
+	WriteAt(b []byte, off int64) (int, error)
+	WriteString(s string) (int, error)
+	WriteTo(w io.Writer) (int64, error)
 }

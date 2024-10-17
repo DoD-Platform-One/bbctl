@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,7 +15,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
-	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -226,10 +227,10 @@ type FakeFactory struct {
 // GetCredentialHelper - get credential helper
 func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
 	if f.SetFail.GetCredentialHelper {
-		return nil, fmt.Errorf("failed to get credential helper")
+		return nil, errors.New("failed to get credential helper")
 	}
 	if f.credentialHelper == nil {
-		f.credentialHelper = func(arg1 string, arg2 string) (string, error) {
+		f.credentialHelper = func(_ string, _ string) (string, error) {
 			return "", nil
 		}
 	}
@@ -243,7 +244,7 @@ func (f *FakeFactory) SetCredentialHelper(credentialHelper bbUtil.CredentialHelp
 // GetAWSClient constructs a fake AWS client
 func (f *FakeFactory) GetAWSClient() (bbAws.Client, error) {
 	if f.SetFail.GetAWSClient {
-		return nil, fmt.Errorf("failed to get AWS client")
+		return nil, errors.New("failed to get AWS client")
 	}
 	fakeClient, err := fakeAws.NewFakeClient(
 		f.clusterIPs,
@@ -268,7 +269,7 @@ func (f *FakeFactory) SetGitLabGetFileFunc(getFileFunc fakeGitLab.GetFileFunc) {
 func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
 	// Fail if the GetGitLabClient function has been called with a set fail
 	if f.SetFail.GetGitLabClient {
-		return nil, fmt.Errorf("failed to get GitLab client")
+		return nil, errors.New("failed to get GitLab client")
 	}
 
 	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com", "", f.gitlab.getFileFunc)
@@ -279,9 +280,9 @@ func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
 }
 
 // GetHelmClient - get helm client
-func (f *FakeFactory) GetHelmClient(cmd *cobra.Command, namespace string) (helm.Client, error) {
+func (f *FakeFactory) GetHelmClient(_ *cobra.Command, _ string) (helm.Client, error) {
 	if f.SetFail.GetHelmClient {
-		return nil, fmt.Errorf("failed to get helm client")
+		return nil, errors.New("failed to get helm client")
 	}
 
 	return fakeHelm.NewFakeClient(
@@ -301,7 +302,7 @@ func (f *FakeFactory) GetClientSet() (kubernetes.Interface, error) {
 // GetOutputClient
 func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error) {
 	if f.SetFail.GetOutputClient {
-		return nil, fmt.Errorf("failed to get output client")
+		return nil, errors.New("failed to get output client")
 	}
 	streams, err := f.GetIOStream()
 	if err != nil {
@@ -322,9 +323,9 @@ func (f *FakeFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, erro
 }
 
 // GetK8sClientset - get k8s clientset
-func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error) {
+func (f *FakeFactory) GetK8sClientset(_ *cobra.Command) (kubernetes.Interface, error) {
 	if f.SetFail.GetK8sClientset {
-		return nil, fmt.Errorf("testing error")
+		return nil, errors.New("testing error")
 	}
 	cs := fake.NewSimpleClientset(f.objects...)
 	if f.resources != nil {
@@ -339,9 +340,9 @@ func (f *FakeFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface,
 }
 
 // GetK8sDynamicClient - get k8s dynamic client
-func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error) {
+func (f *FakeFactory) GetK8sDynamicClient(_ *cobra.Command) (dynamic.Interface, error) {
 	if f.SetFail.GetK8sDynamicClient {
-		return nil, fmt.Errorf("failed to get K8sDynamicClient client")
+		return nil, errors.New("failed to get K8sDynamicClient client")
 	}
 
 	if f.SetFail.GetPolicyClient {
@@ -381,26 +382,26 @@ func (f *FakeFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface
 // GetLoggingClient - get logging client
 func (f *FakeFactory) GetLoggingClient() (bbLog.Client, error) {
 	if f.SetFail.GetLoggingClient {
-		return nil, fmt.Errorf("failed to get logging client")
+		return nil, errors.New("failed to get logging client")
 	}
 	return f.GetLoggingClientWithLogger(nil)
 }
 
 // GetLoggingClientWithLogger - get logging client providing logger
-func (f *FakeFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error) {
+func (f *FakeFactory) GetLoggingClientWithLogger(_ *slog.Logger) (bbLog.Client, error) {
 	client := fakeLog.NewFakeClient(f.loggingFunc)
 	return client, nil
 }
 
 // GetRestConfig - get rest config
-func (f *FakeFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error) {
+func (f *FakeFactory) GetRestConfig(_ *cobra.Command) (*rest.Config, error) {
 	return &rest.Config{}, nil
 }
 
 // GetRuntimeClient - get runtime client
 func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, error) {
 	if f.SetFail.GetRuntimeClient {
-		return nil, fmt.Errorf("test error")
+		return nil, errors.New("test error")
 	}
 	cb := fakeControllerClient.NewClientBuilder()
 	rc := cb.WithScheme(scheme).Build()
@@ -409,15 +410,15 @@ func (f *FakeFactory) GetRuntimeClient(scheme *runtime.Scheme) (client.Client, e
 
 // GetCommandExecutor - execute command in a Pod
 func (f *FakeFactory) GetCommandExecutor(
-	cmd *cobra.Command,
-	pod *coreV1.Pod,
-	container string,
+	_ *cobra.Command,
+	_ *coreV1.Pod,
+	_ string,
 	command []string,
-	stdout io.Writer,
-	stderr io.Writer,
+	_ io.Writer,
+	_ io.Writer,
 ) (remoteCommand.Executor, error) {
 	if f.SetFail.GetCommandExecutor {
-		return nil, fmt.Errorf("testing error")
+		return nil, errors.New("testing error")
 	}
 	f.fakeCommandExecutor.Command = strings.Join(command, " ")
 	return f.fakeCommandExecutor, nil
@@ -426,7 +427,7 @@ func (f *FakeFactory) GetCommandExecutor(
 // GetFakeCommandExecutor - get fake command executor
 func (f *FakeFactory) GetFakeCommandExecutor() (*FakeCommandExecutor, error) {
 	if f.SetFail.GetCommandExecutor {
-		return nil, fmt.Errorf("testing error")
+		return nil, errors.New("testing error")
 	}
 	return f.fakeCommandExecutor, nil
 }
@@ -447,7 +448,7 @@ func (f *FakeCommandExecutor) Stream(options remoteCommand.StreamOptions) error 
 
 // StreamWithContext - stream command result with given context
 func (f *FakeCommandExecutor) StreamWithContext(
-	ctx context.Context,
+	_ context.Context,
 	options remoteCommand.StreamOptions,
 ) error {
 	stdout := options.Stdout
@@ -462,7 +463,7 @@ func (f *FakeFactory) GetCommandWrapper(
 	args ...string,
 ) (*bbUtilApiWrappers.Command, error) {
 	if f.SetFail.GetCommandWrapper {
-		return nil, fmt.Errorf("failed to get command wrapper")
+		return nil, errors.New("failed to get command wrapper")
 	}
 	wrapper := fakeApiWrappers.NewFakeCommand(name, f.SetFail.SetCommandWrapperRunError, args...)
 	streams, err := f.GetIOStream()
@@ -476,11 +477,9 @@ func (f *FakeFactory) GetCommandWrapper(
 }
 
 // GetIstioClientSet - get istio clientset
-func (f *FakeFactory) GetIstioClientSet(
-	cfg *rest.Config,
-) (bbUtilApiWrappers.IstioClientset, error) {
+func (f *FakeFactory) GetIstioClientSet(_ *rest.Config) (bbUtilApiWrappers.IstioClientset, error) {
 	if f.SetFail.GetIstioClient {
-		return nil, fmt.Errorf("failed to get istio clientset")
+		return nil, errors.New("failed to get istio clientset")
 	}
 	return fakeApiWrappers.NewFakeIstioClientSet(f.virtualServiceList, f.SetFail.Istio), nil
 }
@@ -501,7 +500,7 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 	}
 	f.SetFail.getConfigClientCount++
 	if f.SetFail.GetConfigClient > 0 && f.SetFail.getConfigClientCount >= f.SetFail.GetConfigClient {
-		return nil, fmt.Errorf("failed to get config client")
+		return nil, errors.New("failed to get config client")
 	}
 	clientGetter := bbConfig.ClientGetter{}
 	loggingClient, err := f.GetLoggingClient()
@@ -520,7 +519,7 @@ func (f *FakeFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigC
 func (f *FakeFactory) GetViper() (*viper.Viper, error) {
 	f.SetFail.GetViperCount++
 	if f.SetFail.GetViper > 0 && f.SetFail.GetViperCount >= f.SetFail.GetViper {
-		return nil, fmt.Errorf("failed to get viper")
+		return nil, errors.New("failed to get viper")
 	}
 	return f.viperInstance, nil
 }
@@ -533,8 +532,8 @@ func (f *FakeFactory) SetViper(v *viper.Viper) error {
 
 // Temporary Singleton for IO Streams until implementation of bbctl #214
 var (
-	streams   *genericIOOptions.IOStreams
-	oneStream sync.Once
+	streams   *genericIOOptions.IOStreams //nolint:gochecknoglobals
+	oneStream sync.Once                   //nolint:gochecknoglobals
 )
 
 // ResetIOStream resets the IOStreams singleton
@@ -547,7 +546,7 @@ func (f *FakeFactory) ResetIOStream() {
 func (f *FakeFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 	f.SetFail.getIOStreamsCount++
 	if f.SetFail.GetIOStreams > 0 && f.SetFail.getIOStreamsCount >= f.SetFail.GetIOStreams {
-		return nil, fmt.Errorf("failed to get streams")
+		return nil, errors.New("failed to get streams")
 	}
 	oneStream.Do(func() {
 		streams = &genericIOOptions.IOStreams{
@@ -566,14 +565,14 @@ func (f *FakeFactory) SetIOStream(stream *genericIOOptions.IOStreams) {
 // GetPipe - get the pipe reader and writer
 func (f *FakeFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error) {
 	if f.SetFail.GetPipe {
-		return nil, nil, fmt.Errorf("failed to get pipe")
+		return nil, nil, errors.New("failed to get pipe")
 	}
 	if f.pipeReader != nil && f.pipeWriter != nil {
 		return f.pipeReader, f.pipeWriter, nil
 	}
 	r, w, err := os.Pipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Unable to get pipe: %w", err)
+		return nil, nil, fmt.Errorf("unable to get pipe: %w", err)
 	}
 	err = f.SetPipe(r, w)
 	return r, w, err
@@ -582,7 +581,7 @@ func (f *FakeFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.Fil
 // SetPipe - set the pipe reader and writer
 func (f *FakeFactory) SetPipe(reader commonInterfaces.FileLike, writer commonInterfaces.FileLike) error {
 	if reader == nil || writer == nil {
-		return fmt.Errorf("reader and writer must not be nil")
+		return errors.New("reader and writer must not be nil")
 	}
 	f.pipeReader = reader
 	f.pipeWriter = writer

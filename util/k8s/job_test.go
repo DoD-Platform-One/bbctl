@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -25,7 +25,7 @@ func TestCreateJob(t *testing.T) {
 	cs := fake.NewSimpleClientset(objects...)
 
 	_, err := CreateJob(cs, "default", jobDesc)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	job, _ := cs.BatchV1().Jobs("default").Get(context.TODO(), "foo", metaV1.GetOptions{})
 

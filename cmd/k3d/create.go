@@ -15,27 +15,27 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	createUse   = `create`
-	createShort = i18n.T(`Creates a k3d cluster`)
-	createLong  = templates.LongDesc(
-		i18n.T(`Creates a minimal k3d cluster in AWS for development or testing.
-	This is a wrapper around the k3d-dev.sh script. It must be checked out at --big-bang-repo location.
-	Any command line arguments following -- are passed to k3d-dev.sh (including --help).`),
-	)
-	createExample = templates.Examples(i18n.T(`
-	    # Create a default k3d cluster in AWS
-		bbctl k3d create
-
-		# Get the full help message from k3d-dev.sh
-		bbctl k3d create -- --help
-		
-		# Create a k3d cluster in AWS on a BIG M5 with a private IP and metalLB installed
-		bbctl k3d create -- -b -p -m`))
-)
-
 // NewCreateClusterCmd - Returns a command to create the k3d cluster using createCluster
 func NewCreateClusterCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		createUse   = `create`
+		createShort = i18n.T(`Creates a k3d cluster`)
+		createLong  = templates.LongDesc(
+			i18n.T(`Creates a minimal k3d cluster in AWS for development or testing.
+		This is a wrapper around the k3d-dev.sh script. It must be checked out at --big-bang-repo location.
+		Any command line arguments following -- are passed to k3d-dev.sh (including --help).`),
+		)
+		createExample = templates.Examples(i18n.T(`
+			# Create a default k3d cluster in AWS
+			bbctl k3d create
+	
+			# Get the full help message from k3d-dev.sh
+			bbctl k3d create -- --help
+			
+			# Create a k3d cluster in AWS on a BIG M5 with a private IP and metalLB installed
+			bbctl k3d create -- -b -p -m`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     createUse,
 		Short:   createShort,
@@ -50,7 +50,7 @@ func NewCreateClusterCmd(factory bbUtil.Factory) *cobra.Command {
 }
 
 // createCluster - Passes through the global configurations, the path to the script, and command line arguments to the k3d-dev script to create the k3d dev cluster
-func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) (err error) {
+func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []string) error {
 	streams, err := factory.GetIOStream()
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []strin
 	}
 	outputClient, err := factory.GetOutputClient(cobraCmd)
 	if err != nil {
-		return fmt.Errorf("Unable to create output client: %w", err)
+		return fmt.Errorf("unable to create output client: %w", err)
 	}
 
 	command := path.Join(config.BigBangRepo,
@@ -103,7 +103,7 @@ func createCluster(factory bbUtil.Factory, cobraCmd *cobra.Command, args []strin
 			if err == nil {
 				err = fmt.Errorf("(sole deferred error: %w)", newErr)
 			} else {
-				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+				err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 			}
 		}
 	}()

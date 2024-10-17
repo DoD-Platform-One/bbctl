@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
@@ -15,7 +16,7 @@ func TestGetClient(t *testing.T) {
 		marshaler Outputable
 		writer    io.Writer
 		data      interface{}
-		format    OutputFormat
+		format    Format
 		expected  string
 		wantErr   bool
 	}{
@@ -27,7 +28,7 @@ func TestGetClient(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "HumanReadableOutput",
+			name:     "TextOutput",
 			data:     map[string]string{"key": "value"},
 			format:   "text",
 			expected: "Vals: map[key:value]\n",
@@ -48,7 +49,7 @@ func TestGetClient(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:      "HumanReadable_MarshalError",
+			name:      "Text_MarshalError",
 			data:      map[string]string{"key": "value"},
 			marshaler: &errorOutput{},
 			format:    "text",
@@ -72,7 +73,7 @@ func TestGetClient(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:     "HumanReadable_WriterError",
+			name:     "Text_WriterError",
 			data:     map[string]string{"key": "value"},
 			writer:   &errorWriter{},
 			format:   "text",
@@ -120,14 +121,13 @@ func TestGetClient(t *testing.T) {
 
 			err := client.Output(data)
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, tt.expected)
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expected)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, streams.Out.(*bytes.Buffer).String())
-
 		})
 	}
 }

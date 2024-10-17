@@ -16,20 +16,17 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
-var (
-	sshUse = `ssh`
-
-	sshShort = i18n.T(`SSH to the k3d cluster`)
-
-	sshLong = templates.LongDesc(i18n.T(`SSH to the primary instance of your k3d cluster`))
-
-	sshExample = templates.Examples(i18n.T(`
-	    # Open an SSH session to your K3d cluster
-		bbctl k3d ssh`))
-)
-
 // NewSSHCmd - Returns a command to ssh to your k3d cluster using sshToK3dCluster
 func NewSSHCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		sshUse     = `ssh`
+		sshShort   = i18n.T(`SSH to the k3d cluster`)
+		sshLong    = templates.LongDesc(i18n.T(`SSH to the primary instance of your k3d cluster`))
+		sshExample = templates.Examples(i18n.T(`
+	    # Open an SSH session to your K3d cluster
+		bbctl k3d ssh`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     sshUse,
 		Short:   sshShort,
@@ -126,7 +123,7 @@ func sshToK3dCluster(factory bbUtil.Factory, command *cobra.Command, args []stri
 		"UserKnownHostsFile=/dev/null",
 		"-o",
 		"StrictHostKeyChecking=no",
-		fmt.Sprintf("%v@%v", config.K3dSshConfiguration.User, *ips[0].IP),
+		fmt.Sprintf("%v@%v", config.K3dSSHConfiguration.User, *ips[0].IP),
 	)
 	loggingClient.Debug(fmt.Sprintf("Running ssh command: %v", strings.Join(sshOpts, " ")))
 	cmd := exec.Command("ssh", sshOpts...)

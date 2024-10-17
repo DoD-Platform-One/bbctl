@@ -10,12 +10,12 @@ import (
 
 // Client holds the method signatures for an AWS client.
 type Client interface {
-	Config(context.Context) (*aws.Config, error)
-	GetClusterIPs(context.Context, DescribeInstancesAPI, string, FilterExposure) ([]ClusterIP, error)
-	GetSortedClusterIPs(context.Context, DescribeInstancesAPI, string, FilterExposure) (SortedClusterIPs, error)
-	GetEc2Client(context.Context, *aws.Config) (*ec2.Client, error)
-	GetIdentity(context.Context, GetCallerIdentityAPI) (*CallerIdentity, error)
-	GetStsClient(context.Context, *aws.Config) (*sts.Client, error)
+	Config(ctx context.Context) (*aws.Config, error)
+	GetClusterIPs(ctx context.Context, descInstanceAPI DescribeInstancesAPI, username string, filterExp FilterExposure) ([]ClusterIP, error)
+	GetSortedClusterIPs(ctx context.Context, descInstanceAPI DescribeInstancesAPI, username string, filterExp FilterExposure) (SortedClusterIPs, error)
+	GetEc2Client(ctx context.Context, config *aws.Config) (*ec2.Client, error)
+	GetIdentity(ctx context.Context, callerIDAPI GetCallerIdentityAPI) (*CallerIdentity, error)
+	GetStsClient(ctx context.Context, config *aws.Config) (*sts.Client, error)
 }
 
 // ConfigFunc type

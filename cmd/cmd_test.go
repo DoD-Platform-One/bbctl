@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -23,7 +24,7 @@ func TestGetHelpUsage(t *testing.T) {
 
 	commandsList := cmd.Commands()
 	assert.Len(t, commandsList, 12)
-	var commandUseNamesList []string
+	var commandUseNamesList = make([]string, len(commandsList))
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
@@ -123,7 +124,7 @@ func TestNewRootCmdErrors(t *testing.T) {
 			cmd, err := NewRootCmd(factory)
 			// Assert
 			assert.Nil(t, cmd)
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
 		})
 	}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/rest"
 	clientCmdApi "k8s.io/client-go/tools/clientcmd/api"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -40,11 +41,11 @@ func TestToRESTConfig(t *testing.T) {
 			// Assert
 			if tc.shouldErr {
 				assert.Nil(t, config)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, "test error", err.Error())
 			} else {
 				assert.Equal(t, restConfig.Host, config.Host)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -90,15 +91,15 @@ func TestToDiscoveryClient(t *testing.T) {
 			// Assert
 			if tc.shouldErrOnRESTConfig {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, "test error", err.Error())
 			} else if tc.shouldErrOnDiscoveryClient {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, "execProvider and authProvider cannot be used in combination", err.Error())
 			} else {
 				assert.NotNil(t, client)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, restConfig.Host, client.RESTClient().Delete().URL().Host)
 			}
 		})
@@ -133,11 +134,11 @@ func TestToRestMapper(t *testing.T) {
 			// Assert
 			if tc.shouldErr {
 				assert.Nil(t, mapper)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, "test error", err.Error())
 			} else {
 				assert.NotNil(t, mapper)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

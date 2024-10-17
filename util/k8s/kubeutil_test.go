@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbUtilConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -71,8 +72,8 @@ func TestBuildKubeConfig(t *testing.T) {
 			// Arrange
 			tempDir := t.TempDir()
 			if tt.homedir {
-				assert.NoError(t, os.Setenv("HOME", tempDir))
-				assert.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
+				t.Setenv("HOME", tempDir)
+				require.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
 			}
 			cmd := &cobra.Command{}
 			v := viper.New()
@@ -90,8 +91,8 @@ func TestBuildKubeConfig(t *testing.T) {
 				} else {
 					v.Set("kubeconfig", "")
 					data, err := os.ReadFile(kubeconfig[0])
-					assert.Nil(t, err)
-					assert.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0644))
+					require.NoError(t, err)
+					require.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0600))
 				}
 				config, _ := configClient.GetConfig()
 
@@ -100,11 +101,11 @@ func TestBuildKubeConfig(t *testing.T) {
 
 				// Assert
 				if tt.shouldErr {
-					assert.NotNil(t, err)
+					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.errorString)
 					assert.Nil(t, client)
 				} else {
-					assert.Nil(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, kubeconfig[1], client.Host)
 				}
 			}
@@ -153,8 +154,8 @@ func TestBuildDynamicClient(t *testing.T) {
 			// Arrange
 			tempDir := t.TempDir()
 			if tt.homedir {
-				assert.NoError(t, os.Setenv("HOME", tempDir))
-				assert.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
+				t.Setenv("HOME", tempDir)
+				require.NoError(t, os.MkdirAll(path.Join(tempDir, ".kube"), 0755))
 			}
 			v := viper.New()
 			v.Set("big-bang-repo", "test")
@@ -164,8 +165,8 @@ func TestBuildDynamicClient(t *testing.T) {
 				} else {
 					v.Set("kubeconfig", "")
 					data, err := os.ReadFile(kubeconfig[0])
-					assert.Nil(t, err)
-					assert.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0644))
+					require.NoError(t, err)
+					require.NoError(t, os.WriteFile(path.Join(tempDir, ".kube", "config"), data, 0600))
 				}
 				cmd := &cobra.Command{}
 				stream := &bytes.Buffer{}
@@ -181,11 +182,11 @@ func TestBuildDynamicClient(t *testing.T) {
 
 				// Assert
 				if tt.shouldErr {
-					assert.NotNil(t, err)
+					require.Error(t, err)
 					assert.Contains(t, err.Error(), tt.errorString)
 					assert.Nil(t, client)
 				} else {
-					assert.Nil(t, err)
+					require.NoError(t, err)
 					assert.NotNil(t, client)
 				}
 			}
@@ -196,11 +197,11 @@ func TestBuildDynamicClient(t *testing.T) {
 func TestGetKubeConfigFromPathList(t *testing.T) {
 	configPaths := "../test/data/kube-config.yaml"
 	client, err := GetKubeConfigFromPathList(configPaths)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)
 
 	configPaths = "../test/data/kube-config.yaml:no-kube-config.yaml"
 	client, err = GetKubeConfigFromPathList(configPaths)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "https://test.com:6443", client.Host)
 }

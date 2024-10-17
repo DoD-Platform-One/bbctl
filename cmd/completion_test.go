@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
@@ -42,7 +43,7 @@ func TestAllCompletions(t *testing.T) {
 
 		t.Run(test.desc, func(t *testing.T) {
 			cmd, err := NewCompletionCmd(factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			err = cmd.RunE(cmd, []string{test.shell})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
@@ -63,11 +64,11 @@ func TestInvalidShellCompletion(t *testing.T) {
 	buf := streams.Out.(*bytes.Buffer)
 
 	cmd, err := NewCompletionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	err = cmd.RunE(cmd, []string{"foo"})
 
 	assert.Empty(t, buf.String())
-	assert.Equal(t, err.Error(), "unknown shell: foo")
+	assert.Equal(t, "unknown shell: foo", err.Error())
 }
 
 func TestNewCompletionCmdErrorOnIOStreams(t *testing.T) {
@@ -79,6 +80,6 @@ func TestNewCompletionCmdErrorOnIOStreams(t *testing.T) {
 	cmd, err := NewCompletionCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "unable to get IO streams: failed to get streams", err.Error())
 }

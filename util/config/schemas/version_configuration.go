@@ -22,6 +22,6 @@ func (v *VersionConfiguration) ReconcileConfiguration(instance *viper.Viper) err
 }
 
 // getSubConfigurations returns the sub-configurations.
-func (p *VersionConfiguration) getSubConfigurations() []BaseConfiguration {
+func (v *VersionConfiguration) getSubConfigurations() []BaseConfiguration {
 	return []BaseConfiguration{}
 }

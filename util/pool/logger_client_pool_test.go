@@ -78,6 +78,6 @@ func TestLoggerClientPoolAdd(t *testing.T) {
 	// act
 	pool.add(client, logger)
 	// assert
-	assert.Equal(t, 1, len(pool))
+	assert.Len(t, pool, 1)
 	assert.Equal(t, instance, pool[0])
 }

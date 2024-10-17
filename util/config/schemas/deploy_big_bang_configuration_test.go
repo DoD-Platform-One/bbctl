@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_DeployBigBangConfiguration(t *testing.T) {
@@ -62,11 +63,11 @@ func TestReconcileConfiguration_DeployBigBangConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if tt.setK3d {
 				assert.Equal(t, tt.k3d, tt.arg.K3d)
 			} else {
-				assert.Equal(t, false, tt.arg.K3d)
+				assert.False(t, tt.arg.K3d)
 			}
 			if tt.setAddon {
 				assert.Equal(t, tt.addon, tt.arg.Addon)

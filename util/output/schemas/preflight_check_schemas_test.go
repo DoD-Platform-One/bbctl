@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckStepOutput_Marshall(t *testing.T) {
@@ -28,10 +29,10 @@ func TestCheckStepOutput_Marshall(t *testing.T) {
 				Output: []string{"output1", "output2"},
 				Status: "pass",
 			},
-			expected: "{\"Name\":\"test\",\"Output\":[\"output1\",\"output2\"],\"Status\":\"pass\"}",
+			expected: "{\"name\":\"test\",\"output\":[\"output1\",\"output2\"],\"status\":\"pass\"}",
 		},
 		{
-			name: "HumanReadable",
+			name: "Text",
 			input: &CheckStepOutput{
 				Name:   "test",
 				Output: []string{"output1", "output2"},
@@ -49,14 +50,14 @@ func TestCheckStepOutput_Marshall(t *testing.T) {
 			var err error
 			switch test.name {
 			case "YAML":
-				actual, err = test.input.MarshalYaml()
+				actual, err = test.input.EncodeYAML()
 			case "JSON":
-				actual, err = test.input.MarshalJson()
-			case "HumanReadable":
-				actual, err = test.input.MarshalHumanReadable()
+				actual, err = test.input.EncodeJSON()
+			case "Text":
+				actual, err = test.input.EncodeText()
 			}
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, string(actual))
 		})
 	}
@@ -94,10 +95,10 @@ func TestPreflightCheckOutput_Marshall(t *testing.T) {
 					},
 				},
 			},
-			expected: "{\"Name\":\"test\",\"Steps\":[{\"Name\":\"test\",\"Output\":[\"output1\",\"output2\"],\"Status\":\"pass\"}]}",
+			expected: "{\"name\":\"test\",\"steps\":[{\"name\":\"test\",\"output\":[\"output1\",\"output2\"],\"status\":\"pass\"}]}",
 		},
 		{
-			name: "HumanReadable",
+			name: "Text",
 			input: &PreflightCheckOutput{
 				Name: "test",
 				Steps: []CheckStepOutput{
@@ -120,14 +121,14 @@ func TestPreflightCheckOutput_Marshall(t *testing.T) {
 			var err error
 			switch test.name {
 			case "YAML":
-				actual, err = test.input.MarshalYaml()
+				actual, err = test.input.EncodeYAML()
 			case "JSON":
-				actual, err = test.input.MarshalJson()
-			case "HumanReadable":
-				actual, err = test.input.MarshalHumanReadable()
+				actual, err = test.input.EncodeJSON()
+			case "Text":
+				actual, err = test.input.EncodeText()
 			}
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, string(actual))
 		})
 	}

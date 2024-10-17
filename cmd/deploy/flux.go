@@ -16,20 +16,18 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	fluxUse   = `flux`
-	fluxShort = i18n.T(`Deploy flux to your kubernetes cluster`)
-	fluxLong  = templates.LongDesc(
-		i18n.T(
-			`Deploy flux to your kubernetes cluster in a way specifically designed to support the deployment of Big Bang`,
-		),
-	)
-	fluxExample = templates.Examples(i18n.T(`# Deploy flux to your cluster
-		bbctl deploy flux`))
-)
-
 // NewDeployFluxCmd - parent for deploy commands
 func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		fluxUse   = `flux`
+		fluxShort = i18n.T(`Deploy flux to your kubernetes cluster`)
+		fluxLong  = templates.LongDesc(i18n.T(
+			`Deploy flux to your kubernetes cluster in a way specifically designed to support the deployment of Big Bang`,
+		))
+		fluxExample = templates.Examples(i18n.T(`# Deploy flux to your cluster
+			bbctl deploy flux`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     fluxUse,
 		Short:   fluxShort,
@@ -43,7 +41,7 @@ func NewDeployFluxCmd(factory bbUtil.Factory) *cobra.Command {
 	return cmd
 }
 
-func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) (err error) {
+func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []string) error {
 	configClient, err := factory.GetConfigClient(command)
 	if err != nil {
 		return err
@@ -111,7 +109,7 @@ func deployFluxToCluster(factory bbUtil.Factory, command *cobra.Command, args []
 			if err == nil {
 				err = fmt.Errorf("(sole deferred error: %w)", newErr)
 			} else {
-				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+				err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 			}
 		}
 	}()

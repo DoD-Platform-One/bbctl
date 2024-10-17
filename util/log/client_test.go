@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClientNilLoggerPass(t *testing.T) {
@@ -49,14 +50,14 @@ func TestClientDebugPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "DEBUG", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.debug")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -85,14 +86,14 @@ func TestClientDebugContextPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "DEBUG", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.debugContext")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -144,11 +145,11 @@ func TestClientErrorPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "ERROR", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.errorOut")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -164,11 +165,11 @@ func TestClientErrorContextPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "ERROR", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.errorContext")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -195,14 +196,14 @@ func TestClientInfoPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "INFO", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.info")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -231,14 +232,14 @@ func TestClientInfoContextPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "INFO", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.infoContext")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -268,14 +269,14 @@ func TestClientLogPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "INFO", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.log")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -305,14 +306,14 @@ func TestClientLogAttrsPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "INFO", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.logAttrs")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -341,14 +342,14 @@ func TestClientWarnPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "WARN", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.warn")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 
@@ -377,14 +378,14 @@ func TestClientWarnContextPass(t *testing.T) {
 	jsonResult := stringBuilder.String()
 	var jsonObject TestLog
 	err := json.Unmarshal([]byte(jsonResult), &jsonObject)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	logTime, err := time.Parse(time.RFC3339, jsonObject.Time)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.False(t, logTime.Before(startTime))
 	assert.Equal(t, "WARN", jsonObject.Level)
 	assert.Contains(t, jsonObject.Source.Function, "util/log.warnContext")
 	assert.Contains(t, jsonObject.Source.File, "util/log/client_functions.go")
-	assert.Greater(t, jsonObject.Source.Line, 0)
+	assert.Positive(t, jsonObject.Source.Line, 0)
 	assert.Equal(t, "test", jsonObject.Message)
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -23,7 +24,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 				ExampleConfiguration:              ExampleConfiguration{},
 				GitLabConfiguration:               GitLabConfiguration{},
-				K3dSshConfiguration:               K3dSshConfiguration{},
+				K3dSSHConfiguration:               K3dSSHConfiguration{},
 				OutputConfiguration:               OutputConfiguration{},
 				PolicyConfiguration:               PolicyConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -41,7 +42,7 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 				DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 				ExampleConfiguration:              ExampleConfiguration{},
 				GitLabConfiguration:               GitLabConfiguration{},
-				K3dSshConfiguration:               K3dSshConfiguration{},
+				K3dSSHConfiguration:               K3dSSHConfiguration{},
 				OutputConfiguration:               OutputConfiguration{},
 				PolicyConfiguration:               PolicyConfiguration{},
 				PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -76,22 +77,22 @@ func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
 			if tt.willError {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMessage)
 				// we can't check the values because we don't know what they are because we don't know where it errored
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, "test1", tt.arg.BigBangRepo)
-				assert.Equal(t, true, tt.arg.DeployBigBangConfiguration.K3d)
-				assert.Equal(t, "test2", tt.arg.K3dSshConfiguration.User)
+				assert.True(t, tt.arg.DeployBigBangConfiguration.K3d)
+				assert.Equal(t, "test2", tt.arg.K3dSSHConfiguration.User)
 				assert.Equal(t, "token", tt.arg.GitLabConfiguration.Token)
 				assert.Equal(t, "json", string(tt.arg.OutputConfiguration.Format))
-				assert.Equal(t, true, tt.arg.PolicyConfiguration.Gatekeeper)
+				assert.True(t, tt.arg.PolicyConfiguration.Gatekeeper)
 				assert.Equal(t, "test3", tt.arg.PreflightCheckConfiguration.RegistryServer)
 				assert.Equal(t, "test4", tt.arg.UtilCredentialHelperConfiguration.FilePath)
 				assert.Equal(t, "test", tt.arg.UtilK8sConfiguration.Kubeconfig)
-				assert.Equal(t, true, tt.arg.VersionConfiguration.Client)
-				assert.Equal(t, true, tt.arg.ViolationsConfiguration.Audit)
+				assert.True(t, tt.arg.VersionConfiguration.Client)
+				assert.True(t, tt.arg.ViolationsConfiguration.Audit)
 			}
 		})
 	}
@@ -103,7 +104,7 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 		DeployBigBangConfiguration:        DeployBigBangConfiguration{},
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
-		K3dSshConfiguration:               K3dSshConfiguration{},
+		K3dSSHConfiguration:               K3dSSHConfiguration{},
 		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -115,11 +116,11 @@ func TestGetSubConfigurations_GlobalConfiguration(t *testing.T) {
 	// Act
 	result := arg.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 11, len(result))
+	assert.Len(t, result, 11)
 	assert.Equal(t, &arg.DeployBigBangConfiguration, result[0])
 	assert.Equal(t, &arg.ExampleConfiguration, result[1])
 	assert.Equal(t, &arg.GitLabConfiguration, result[2])
-	assert.Equal(t, &arg.K3dSshConfiguration, result[3])
+	assert.Equal(t, &arg.K3dSSHConfiguration, result[3])
 	assert.Equal(t, &arg.OutputConfiguration, result[4])
 	assert.Equal(t, &arg.PolicyConfiguration, result[5])
 	assert.Equal(t, &arg.PreflightCheckConfiguration, result[6])
@@ -140,7 +141,7 @@ func TestGetYamlMarshalling(t *testing.T) {
 		DeployBigBangConfiguration:        bbConfig,
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
-		K3dSshConfiguration:               K3dSshConfiguration{},
+		K3dSSHConfiguration:               K3dSSHConfiguration{},
 		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -150,12 +151,12 @@ func TestGetYamlMarshalling(t *testing.T) {
 		ViolationsConfiguration:           ViolationsConfiguration{},
 	}
 	// Act
-	result, _ := arg.MarshalYaml()
+	result, _ := arg.EncodeYAML()
 	var unmarshalled GlobalConfiguration
 	err := yaml.Unmarshal(result, &unmarshalled)
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, arg.BigBangRepo, unmarshalled.BigBangRepo)
 	assert.Equal(t, bbConfig, unmarshalled.DeployBigBangConfiguration)
 }
@@ -171,7 +172,7 @@ func TestGetJsonMarshalling(t *testing.T) {
 		DeployBigBangConfiguration:        bbConfig,
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
-		K3dSshConfiguration:               K3dSshConfiguration{},
+		K3dSSHConfiguration:               K3dSSHConfiguration{},
 		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -181,12 +182,12 @@ func TestGetJsonMarshalling(t *testing.T) {
 		ViolationsConfiguration:           ViolationsConfiguration{},
 	}
 	// Act
-	result, _ := arg.MarshalJson()
+	result, _ := arg.EncodeJSON()
 	var unmarshalled GlobalConfiguration
-	err := json.Unmarshal(result, &unmarshalled)
+	err := json.Unmarshal(result, &unmarshalled) //nolint:musttag
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, arg.BigBangRepo, unmarshalled.BigBangRepo)
 	assert.Equal(t, bbConfig, unmarshalled.DeployBigBangConfiguration)
 }
@@ -202,7 +203,7 @@ func TestGetTextMarshalling(t *testing.T) {
 		DeployBigBangConfiguration:        bbConfig,
 		ExampleConfiguration:              ExampleConfiguration{},
 		GitLabConfiguration:               GitLabConfiguration{},
-		K3dSshConfiguration:               K3dSshConfiguration{},
+		K3dSSHConfiguration:               K3dSSHConfiguration{},
 		OutputConfiguration:               OutputConfiguration{},
 		PolicyConfiguration:               PolicyConfiguration{},
 		PreflightCheckConfiguration:       PreflightCheckConfiguration{},
@@ -212,9 +213,9 @@ func TestGetTextMarshalling(t *testing.T) {
 		ViolationsConfiguration:           ViolationsConfiguration{},
 	}
 	// Act
-	result, err := arg.MarshalHumanReadable()
+	result, err := arg.EncodeText()
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%#v", arg), string(result))
 }

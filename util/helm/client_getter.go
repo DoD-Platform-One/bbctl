@@ -1,7 +1,7 @@
 package helm
 
 import (
-	"fmt"
+	"errors"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
@@ -38,7 +38,7 @@ func NewRESTClientGetter(restConfig *rest.Config, namespace string, warningHandl
 // ToRESTConfig returns a REST config build from a given kubeconfig
 func (c *RESTClientGetter) ToRESTConfig() (*rest.Config, error) {
 	if c.toRESTConfigShouldErr {
-		return nil, fmt.Errorf("test error")
+		return nil, errors.New("test error")
 	}
 	return c.restConfig, nil
 }

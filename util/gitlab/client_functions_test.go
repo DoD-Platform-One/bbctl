@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetValidFile(t *testing.T) {
@@ -34,7 +35,8 @@ func TestGetValidFile(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fileResponse))
+		_, err := w.Write([]byte(fileResponse))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -45,15 +47,16 @@ func TestGetValidFile(t *testing.T) {
 	file, err := client.GetFile("12345", "FILE", "main")
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "String file contents", string(file))
 }
 
 func TestGetFileNotFound(t *testing.T) {
 	// Arrange
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("404 Not Found"))
+		_, err := w.Write([]byte("404 Not Found"))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -65,7 +68,7 @@ func TestGetFileNotFound(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, file)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "error downloading file from gitlab: 404 Not Found", err.Error())
 }
 
@@ -85,9 +88,10 @@ func TestGetFileEncodingError(t *testing.T) {
 		"execute_filemode": false
 	}`
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fileResponse))
+		_, err := w.Write([]byte(fileResponse))
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
@@ -99,6 +103,6 @@ func TestGetFileEncodingError(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, file)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "illegal base64 data at input byte 17", err.Error())
 }

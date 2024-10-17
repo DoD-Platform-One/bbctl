@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -21,7 +22,7 @@ func TestRoot_NewDeployCmd(t *testing.T) {
 	assert.Equal(t, "deploy", cmd.Use)
 	commandsList := cmd.Commands()
 	assert.Len(t, commandsList, 2)
-	var commandUseNamesList []string
+	var commandUseNamesList = make([]string, len(commandsList))
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
@@ -40,7 +41,7 @@ func TestRoot_NewDeployCmd_NoSubcommand(t *testing.T) {
 	errOut := streams.ErrOut.(*bytes.Buffer)
 	// Act
 	cmd, _ := NewDeployCmd(factory)
-	assert.Nil(t, cmd.RunE(cmd, []string{}))
+	require.NoError(t, cmd.RunE(cmd, []string{}))
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "deploy", cmd.Use)
@@ -57,8 +58,8 @@ func TestRoot_NewDeployBigBang_CommandError(t *testing.T) {
 	cmd, err := NewDeployCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Error retrieving BigBang Command:") {
+	require.Error(t, err)
+	if !assert.Contains(t, err.Error(), "error retrieving BigBang Command:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -74,17 +75,17 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 		{
 			name:                 "LoggingClient",
 			errorOnLoggingClient: true,
-			expectedError:        "Unable to get logging client",
+			expectedError:        "unable to get logging client",
 		},
 		{
 			name:          "Write",
 			errorOnWrite:  true,
-			expectedError: "Unable to write to output stream",
+			expectedError: "unable to write to output stream",
 		},
 		{
 			name:          "Help",
 			errorOnHelp:   true,
-			expectedError: "Unable to write to output stream",
+			expectedError: "unable to write to output stream",
 		},
 	}
 
@@ -103,8 +104,8 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 				factory.SetIOStream(streams)
 			}
 			if tc.errorOnHelp {
-				cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-					panic("Unable to write to output stream")
+				cmd.SetHelpFunc(func(_ *cobra.Command, _ []string) {
+					panic("unable to write to output stream")
 				})
 			}
 			// Act
@@ -120,9 +121,9 @@ func TestRoot_NewDeployCmd_NoSubcommand_Error(t *testing.T) {
 			assert.NotNil(t, cmd)
 			assert.Equal(t, "deploy", cmd.Use)
 			if tc.errorOnWrite || tc.errorOnHelp {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedError)
 			}
 		})

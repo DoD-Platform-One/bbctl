@@ -2,7 +2,7 @@ package aws
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -51,9 +51,9 @@ type FakeClient struct {
 }
 
 // Config returns the configured client config object
-func (c *FakeClient) Config(ctx context.Context) (*aws.Config, error) {
+func (c *FakeClient) Config(_ context.Context) (*aws.Config, error) {
 	if c.setFail.Config {
-		return nil, fmt.Errorf("failed to get AWS config")
+		return nil, errors.New("failed to get AWS config")
 	}
 	return c.config, nil
 }
@@ -61,9 +61,9 @@ func (c *FakeClient) Config(ctx context.Context) (*aws.Config, error) {
 // GetClusterIPs returns the configured client clusterIPs object
 //
 // Cannot return an error
-func (c *FakeClient) GetClusterIPs(ctx context.Context, api bbAws.DescribeInstancesAPI, username string, filterExposure bbAws.FilterExposure) ([]bbAws.ClusterIP, error) {
+func (c *FakeClient) GetClusterIPs(_ context.Context, _ bbAws.DescribeInstancesAPI, _ string, _ bbAws.FilterExposure) ([]bbAws.ClusterIP, error) {
 	if c.setFail.GetClusterIPs {
-		return nil, fmt.Errorf("failed to get cluster IPs")
+		return nil, errors.New("failed to get cluster IPs")
 	}
 	return c.clusterIPs, nil
 }
@@ -71,10 +71,10 @@ func (c *FakeClient) GetClusterIPs(ctx context.Context, api bbAws.DescribeInstan
 // GetSortedClusterIPs returns the configured client cluster IPs divded into private and public
 //
 // Cannot return an error
-func (c *FakeClient) GetSortedClusterIPs(ctx context.Context, api bbAws.DescribeInstancesAPI, username string, filterExposure bbAws.FilterExposure) (bbAws.SortedClusterIPs, error) {
+func (c *FakeClient) GetSortedClusterIPs(_ context.Context, _ bbAws.DescribeInstancesAPI, _ string, _ bbAws.FilterExposure) (bbAws.SortedClusterIPs, error) {
 	var publicIPs, privateIPs []bbAws.ClusterIP
 	if c.setFail.GetSortedClusterIPs {
-		return bbAws.SortedClusterIPs{}, fmt.Errorf("failed to get sorted cluster IPs")
+		return bbAws.SortedClusterIPs{}, errors.New("failed to get sorted cluster IPs")
 	}
 	for _, ip := range c.clusterIPs {
 		if ip.IsPublic {
@@ -90,25 +90,25 @@ func (c *FakeClient) GetSortedClusterIPs(ctx context.Context, api bbAws.Describe
 }
 
 // GetEc2Client returns the configured client ec2Client object
-func (c *FakeClient) GetEc2Client(ctx context.Context, awsConfig *aws.Config) (*ec2.Client, error) {
+func (c *FakeClient) GetEc2Client(_ context.Context, _ *aws.Config) (*ec2.Client, error) {
 	if c.setFail.GetEc2Client {
-		return nil, fmt.Errorf("failed to get EC2 client")
+		return nil, errors.New("failed to get EC2 client")
 	}
 	return c.ec2Client, nil
 }
 
 // GetIdentity returns the configured client identity object
-func (c *FakeClient) GetIdentity(ctx context.Context, api bbAws.GetCallerIdentityAPI) (*bbAws.CallerIdentity, error) {
+func (c *FakeClient) GetIdentity(_ context.Context, _ bbAws.GetCallerIdentityAPI) (*bbAws.CallerIdentity, error) {
 	if c.setFail.GetIdentity {
-		return nil, fmt.Errorf("failed to get AWS identity")
+		return nil, errors.New("failed to get AWS identity")
 	}
 	return c.identity, nil
 }
 
 // GetStsClient returns the configured client stsClient object
-func (c *FakeClient) GetStsClient(ctx context.Context, awsConfig *aws.Config) (*sts.Client, error) {
+func (c *FakeClient) GetStsClient(_ context.Context, _ *aws.Config) (*sts.Client, error) {
 	if c.setFail.GetStsClient {
-		return nil, fmt.Errorf("failed to get STS client")
+		return nil, errors.New("failed to get STS client")
 	}
 	return c.stsClient, nil
 }

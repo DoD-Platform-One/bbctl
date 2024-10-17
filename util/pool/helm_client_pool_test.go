@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/release"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
 )
@@ -35,7 +36,7 @@ func TestHelmClientPoolContains(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// arrange
 			client, err := helm.NewFakeClient(func(string) (*release.Release, error) { return nil, nil }, func() ([]*release.Release, error) { return nil, nil }, func(string) (map[string]interface{}, error) { return nil, nil }, nil)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			pool := helmClientPool{}
 			if !tc.empty {
 				pool = append(pool, &helmClientInstance{
@@ -66,7 +67,7 @@ func TestHelmClientPoolContains(t *testing.T) {
 func TestHelmClientPoolAdd(t *testing.T) {
 	// arrange
 	client, err := helm.NewFakeClient(func(string) (*release.Release, error) { return nil, nil }, func() ([]*release.Release, error) { return nil, nil }, func(string) (map[string]interface{}, error) { return nil, nil }, nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	pool := helmClientPool{}
 	// act
 	pool.add(client, "test")

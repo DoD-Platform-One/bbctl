@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_ViolationsConfiguration(t *testing.T) {
@@ -34,7 +35,7 @@ func TestReconcileConfiguration_ViolationsConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.AuditMode, tt.arg.Audit)
 		})
 	}
@@ -45,9 +46,9 @@ func TestReconcileConfigurationDefaults_ViolationsConfiguration(t *testing.T) {
 	violationsConfiguration := &ViolationsConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, violationsConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, violationsConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, false, violationsConfiguration.Audit)
+	assert.False(t, violationsConfiguration.Audit)
 }
 
 func TestGetSubConfigurations_ViolationsConfiguration(t *testing.T) {
@@ -56,5 +57,5 @@ func TestGetSubConfigurations_ViolationsConfiguration(t *testing.T) {
 	// Act
 	subConfigurations := violationsConfiguration.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 0, len(subConfigurations))
+	assert.Empty(t, subConfigurations)
 }

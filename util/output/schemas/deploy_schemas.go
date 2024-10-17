@@ -9,29 +9,29 @@ import (
 )
 
 type HelmOutput struct {
-	Message      string
-	Name         string
-	LastDeployed string
-	Namespace    string
-	Status       string
-	Revision     string
-	TestSuite    string
-	Notes        string
+	Message      string `json:"message"      yaml:"message"`
+	Name         string `json:"name"         yaml:"name"`
+	LastDeployed string `json:"lastDeployed" yaml:"lastDeployed"`
+	Namespace    string `json:"namespace"    yaml:"namespace"`
+	Status       string `json:"status"       yaml:"status"`
+	Revision     string `json:"revision"     yaml:"revision"`
+	TestSuite    string `json:"testSuite"    yaml:"testSuite"`
+	Notes        string `json:"notes"        yaml:"notes"`
 }
 
 type BigbangOutput struct {
 	Data HelmOutput
 }
 
-func (o *BigbangOutput) MarshalYaml() ([]byte, error) {
+func (o *BigbangOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(o.Data)
 }
 
-func (o *BigbangOutput) MarshalJson() ([]byte, error) {
+func (o *BigbangOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(o.Data)
 }
 
-func (o *BigbangOutput) MarshalHumanReadable() ([]byte, error) {
+func (o *BigbangOutput) EncodeText() ([]byte, error) {
 	return []byte(o.String()), nil
 }
 
@@ -49,24 +49,24 @@ func (o *BigbangOutput) String() string {
 }
 
 type Output struct {
-	GeneralInfo map[string]string `json:"general_info" yaml:"general_info"`
-	Actions     []string          `json:"actions"      yaml:"actions"`
-	Warnings    []string          `json:"warnings"     yaml:"warnings"`
+	GeneralInfo map[string]string `json:"generalInfo" yaml:"generalInfo"`
+	Actions     []string          `json:"actions"     yaml:"actions"`
+	Warnings    []string          `json:"warnings"    yaml:"warnings"`
 }
 
 type FluxOutput struct {
 	Data Output
 }
 
-func (fo *FluxOutput) MarshalYaml() ([]byte, error) {
+func (fo *FluxOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(fo.Data)
 }
 
-func (fo *FluxOutput) MarshalJson() ([]byte, error) {
+func (fo *FluxOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(fo.Data)
 }
 
-func (fo *FluxOutput) MarshalHumanReadable() ([]byte, error) {
+func (fo *FluxOutput) EncodeText() ([]byte, error) {
 	return []byte(fo.String()), nil
 }
 

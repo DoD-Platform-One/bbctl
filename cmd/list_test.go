@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	mock "repo1.dso.mil/big-bang/product/packages/bbctl/mocks/repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
@@ -64,7 +65,7 @@ func TestListHelmReleases_HappyPath(t *testing.T) {
 
 	cmd := NewReleasesCmd(factory)
 	err := cmd.RunE(cmd, []string{})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	response := strings.Split(buf.String(), "\n")
 
@@ -94,13 +95,13 @@ func TestListHelmReleases_NoList(t *testing.T) {
 
 	// when
 	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
-		return nil, fmt.Errorf(errorMessage)
+		return nil, errors.New(errorMessage)
 	})
-	error := listHelmReleases(cmd, factory, static.DefaultClient)
+	err := listHelmReleases(cmd, factory, static.DefaultClient)
 
 	// then
-	assert.NotNil(t, error)
-	assert.Equal(t, "error getting helm releases in namespace bigbang: "+errorMessage, error.Error())
+	require.Error(t, err)
+	assert.Equal(t, "error getting helm releases in namespace bigbang: "+errorMessage, err.Error())
 }
 
 func TestListHelmReleases_NoHelmClient(t *testing.T) {
@@ -113,16 +114,16 @@ func TestListHelmReleases_NoHelmClient(t *testing.T) {
 
 	// when
 	factory.SetFail.GetHelmClient = true
-	error := listHelmReleases(cmd, factory, static.DefaultClient)
+	err := listHelmReleases(cmd, factory, static.DefaultClient)
 
 	// then
-	assert.NotNil(t, error)
-	assert.Equal(t, "failed to get helm client", error.Error())
+	require.Error(t, err)
+	assert.Equal(t, "failed to get helm client", err.Error())
 }
 
 func TestListHelmReleases_NoConstants(t *testing.T) {
 	// given
-	expectedError := fmt.Errorf("failed to get constants")
+	expectedError := errors.New("failed to get constants")
 
 	factory := bbTestUtil.GetFakeFactory()
 	factory.ResetIOStream()
@@ -132,10 +133,10 @@ func TestListHelmReleases_NoConstants(t *testing.T) {
 	// when
 	constantsClient := mock.MockConstantsClient{}
 	constantsClient.On("GetConstants").Return(static.Constants{BigBangNamespace: "bigbang"}, expectedError)
-	error := listHelmReleases(cmd, factory, &constantsClient)
+	err := listHelmReleases(cmd, factory, &constantsClient)
 
 	// then
-	assert.NotNil(t, error)
+	require.Error(t, err)
 }
 
 func TestListHelmReleases_OutputClientError(t *testing.T) {

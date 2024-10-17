@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_UtilCredentialHelperConfiguration(t *testing.T) {
@@ -54,7 +55,7 @@ func TestReconcileConfiguration_UtilCredentialHelperConfiguration(t *testing.T) 
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			if tt.setFilePath {
 				assert.Equal(t, filePath, tt.arg.FilePath)
 			} else {

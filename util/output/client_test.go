@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
@@ -19,7 +20,7 @@ func TestOutputClient(t *testing.T) {
 		marshaler Outputable
 		writer    io.Writer
 		data      interface{}
-		format    OutputFormat
+		format    Format
 		expected  string
 		wantErr   bool
 	}{
@@ -31,7 +32,7 @@ func TestOutputClient(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "HumanReadableOutput",
+			name:     "TextOutput",
 			data:     map[string]string{"key": "value"},
 			format:   "text",
 			expected: "Vals: map[key:value]\n",
@@ -52,7 +53,7 @@ func TestOutputClient(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:      "HumanReadable_MarshalError",
+			name:      "Text_MarshalError",
 			data:      map[string]string{"key": "value"},
 			marshaler: &errorOutput{},
 			format:    "text",
@@ -76,7 +77,7 @@ func TestOutputClient(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:     "HumanReadable_WriterError",
+			name:     "Text_WriterError",
 			data:     map[string]string{"key": "value"},
 			writer:   &errorWriter{},
 			format:   "text",
@@ -123,14 +124,13 @@ func TestOutputClient(t *testing.T) {
 
 			err := client.Output(data)
 			if tt.wantErr {
-				assert.Error(t, err)
-				assert.ErrorContains(t, err, tt.expected)
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expected)
 				return
 			}
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, string(streams.Out.(*bytes.Buffer).String()))
-
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, streams.Out.(*bytes.Buffer).String())
 		})
 	}
 }
@@ -139,33 +139,31 @@ type errorOutput struct {
 	Vals interface{}
 }
 
-func (to *errorOutput) MarshalYaml() ([]byte, error) {
+func (to *errorOutput) EncodeYAML() ([]byte, error) {
 	return nil, errors.New("unable to marshal data")
 }
 
-func (to *errorOutput) MarshalJson() ([]byte, error) {
+func (to *errorOutput) EncodeJSON() ([]byte, error) {
 	return nil, errors.New("unable to marshal data")
-
 }
 
-func (to *errorOutput) MarshalHumanReadable() ([]byte, error) {
+func (to *errorOutput) EncodeText() ([]byte, error) {
 	return nil, errors.New("unable to marshal data")
-
 }
 
 type testOutput struct {
 	Vals interface{}
 }
 
-func (to *testOutput) MarshalYaml() ([]byte, error) {
+func (to *testOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(to.Vals)
 }
 
-func (to *testOutput) MarshalJson() ([]byte, error) {
+func (to *testOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(to.Vals)
 }
 
-func (to *testOutput) MarshalHumanReadable() ([]byte, error) {
+func (to *testOutput) EncodeText() ([]byte, error) {
 	return []byte(to.String()), nil
 }
 
@@ -175,6 +173,6 @@ func (to *testOutput) String() string {
 
 type errorWriter struct{}
 
-func (w *errorWriter) Write(p []byte) (n int, err error) {
+func (w *errorWriter) Write(_ []byte) (int, error) {
 	return 0, errors.New("data is bad")
 }

@@ -17,20 +17,18 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	bigBangUse = `bigbang`
-
-	bigBangShort = i18n.T(`Deploy Big Bang components to your cluster`)
-
-	bigBangLong = templates.LongDesc(
-		i18n.T(`Deploy Big Bang and optional Big Bang addons to your cluster.
+// NewDeployBigBangCmd - deploy Big Bang to your cluster
+func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		bigBangUse   = `bigbang`
+		bigBangShort = i18n.T(`Deploy Big Bang components to your cluster`)
+		bigBangLong  = templates.LongDesc(
+			i18n.T(`Deploy Big Bang and optional Big Bang addons to your cluster.
 		This command invokes the helm command, so arguments after -- are passed to the underlying helm command.
 
 		Note: deployment of Big Bang requires Flux to have been deployed to your cluster. See "bbctl deploy flux" for more information.
-	`),
-	)
-
-	bigBangExample = templates.Examples(i18n.T(`
+		`))
+		bigBangExample = templates.Examples(i18n.T(`
 	    # Deploy Big Bang to your cluster
 		bbctl deploy bigbang
 
@@ -40,10 +38,8 @@ var (
 		# Deploy Big Bang with a helm overrides file. All arguments after -- are passed to the underlying helm command
 		bbctl deploy bigbang -- -f ../path/to/overrides/values.yaml
 		`))
-)
+	)
 
-// NewDeployBigBangCmd - deploy Big Bang to your cluster
-func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd := &cobra.Command{
 		Use:     bigBangUse,
 		Short:   bigBangShort,
@@ -66,7 +62,7 @@ func NewDeployBigBangCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Include some boilerplate suitable for deploying into k3d",
 	)
 	if k3dFlagError != nil {
-		return nil, fmt.Errorf("Error setting k3d flag: %w", k3dFlagError)
+		return nil, fmt.Errorf("error setting k3d flag: %w", k3dFlagError)
 	}
 
 	addOnFlagError := configClient.SetAndBindFlag(
@@ -122,7 +118,7 @@ func insertHelmOptForRelativeChart(
 	)
 }
 
-func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) (err error) {
+func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args []string) error {
 	loggingClient, err := factory.GetLoggingClient()
 	if err != nil {
 		return err
@@ -227,7 +223,7 @@ func deployBigBangToCluster(command *cobra.Command, factory bbUtil.Factory, args
 			if err == nil {
 				err = fmt.Errorf("(sole deferred error: %w)", newErr)
 			} else {
-				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+				err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 			}
 		}
 	}()

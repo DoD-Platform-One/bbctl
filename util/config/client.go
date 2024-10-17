@@ -12,7 +12,7 @@ import (
 // Client interface
 type Client[C schemas.BaseConfiguration] interface {
 	GetConfig() C
-	SetAndBindFlag(string, string, any, string) error
+	SetAndBindFlag(name string, shorthand string, value any, description string) error
 }
 
 // GetConfigFunc type
@@ -22,7 +22,7 @@ type GetConfigFunc func(*ConfigClient) (*schemas.GlobalConfiguration, error)
 type SetAndBindFlagFunc func(*ConfigClient, string, string, any, string) error
 
 // ConfigClient is composed of functions to interact with configuration.
-type ConfigClient struct {
+type ConfigClient struct { //nolint:revive
 	getConfig      GetConfigFunc
 	setAndBindFlag SetAndBindFlagFunc
 	loggingClient  *bbLog.Client
