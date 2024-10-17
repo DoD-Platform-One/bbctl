@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 type HelmOutput struct {
@@ -24,7 +24,7 @@ type BigbangOutput struct {
 }
 
 func (o *BigbangOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(o.Data)
+	return yamler.Marshal(o.Data)
 }
 
 func (o *BigbangOutput) EncodeJSON() ([]byte, error) {
@@ -59,7 +59,7 @@ type FluxOutput struct {
 }
 
 func (fo *FluxOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(fo.Data)
+	return yamler.Marshal(fo.Data)
 }
 
 func (fo *FluxOutput) EncodeJSON() ([]byte, error) {

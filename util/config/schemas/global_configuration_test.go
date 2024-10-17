@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestReconcileConfiguration_GlobalConfiguration(t *testing.T) {
@@ -153,7 +154,7 @@ func TestGetYamlMarshalling(t *testing.T) {
 	// Act
 	result, _ := arg.EncodeYAML()
 	var unmarshalled GlobalConfiguration
-	err := yaml.Unmarshal(result, &unmarshalled)
+	err := yamler.Unmarshal(result, &unmarshalled)
 
 	// Assert
 	require.NoError(t, err)

@@ -326,22 +326,22 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 		Items: []unstructured.Unstructured{*constraint},
 	}
 
-	violation1 := `- name: r1
-  kind: k1
-  namespace: ns1
-  policy: ""
-  constraint: NA
-  message: invalid config
-  action: '%!s(<nil>)'
-  timestamp: "2021-11-27T23:55:33Z"`
-	violation2 := `- name: r2
-  kind: k2
-  namespace: ns2
-  policy: ""
-  constraint: NA
-  message: invalid config
-  action: '%!s(<nil>)'
-  timestamp: "2021-11-27T23:55:33Z"`
+	violation1 := `  - name: r1
+    kind: k1
+    namespace: ns1
+    policy: ""
+    constraint: NA
+    message: invalid config
+    action: '%!s(<nil>)'
+    timestamp: "2021-11-27T23:55:33Z"`
+	violation2 := `  - name: r2
+    kind: k2
+    namespace: ns2
+    policy: ""
+    constraint: NA
+    message: invalid config
+    action: '%!s(<nil>)'
+    timestamp: "2021-11-27T23:55:33Z"`
 
 	var tests = []struct {
 		desc       string
@@ -437,22 +437,22 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 
 	evt1 := eventGK("foo", "k1", "ns1", "FailedAdmission", "abc", ts)
 	evt2 := eventGK("bar", "k2", "ns2", "FailedAdmission", "xyz", ts)
-	violation1 := `- name: foo
-  kind: k1
-  namespace: ns1
-  policy: ""
-  constraint: NA
-  message: abc
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
-	violation2 := `- name: bar
-  kind: k2
-  namespace: ns2
-  policy: ""
-  constraint: NA
-  message: xyz
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
+	violation1 := `  - name: foo
+    kind: k1
+    namespace: ns1
+    policy: ""
+    constraint: NA
+    message: abc
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `  - name: bar
+    kind: k2
+    namespace: ns2
+    policy: ""
+    constraint: NA
+    message: xyz
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
 
 	var tests = []struct {
 		desc       string
@@ -552,22 +552,22 @@ func TestKyvernoAuditViolations(t *testing.T) {
 	evt1 := eventKyverno("foo", "k1", "ns1", "policy-controller", "FailedAdmission", ts)
 	evt2 := eventKyverno("bar", "k2", "ns2", "policy-controller", "FailedAdmission", ts)
 
-	violation1 := `- name: foo
-  kind: k1
-  namespace: ns1
-  policy: NA
-  constraint: ""
-  message: FailedAdmission
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
-	violation2 := `- name: bar
-  kind: k2
-  namespace: ns2
-  policy: NA
-  constraint: ""
-  message: FailedAdmission
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
+	violation1 := `  - name: foo
+    kind: k1
+    namespace: ns1
+    policy: NA
+    constraint: ""
+    message: FailedAdmission
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `  - name: bar
+    kind: k2
+    namespace: ns2
+    policy: NA
+    constraint: ""
+    message: FailedAdmission
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
 
 	var tests = []struct {
 		desc       string
@@ -667,22 +667,22 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 	evt1 := eventKyverno("foo", "po", "ns1", "admission-controller", "FailedAdmission", ts)
 	evt2 := eventKyverno("bar", "cp", "ns2", "admission-controller", "FailedAdmission", ts)
 
-	violation1 := `- name: NA
-  kind: po
-  namespace: ns1
-  policy: foo
-  constraint: ""
-  message: FailedAdmission
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
-	violation2 := `- name: NA
-  kind: cp
-  namespace: ns2
-  policy: bar
-  constraint: ""
-  message: FailedAdmission
-  action: ""
-  timestamp: "2021-12-01T20:01:05Z"`
+	violation1 := `  - name: NA
+    kind: po
+    namespace: ns1
+    policy: foo
+    constraint: ""
+    message: FailedAdmission
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
+	violation2 := `  - name: NA
+    kind: cp
+    namespace: ns2
+    policy: bar
+    constraint: ""
+    message: FailedAdmission
+    action: ""
+    timestamp: "2021-12-01T20:01:05Z"`
 
 	var tests = []struct {
 		desc       string
@@ -992,20 +992,20 @@ func TestKyvernoExists(t *testing.T) {
 }
 
 func TestListKyvernoViolations(t *testing.T) {
-	violation1 := `- name: NA
-  kind: k1
-  namespace: ns1
-  policy: foo
-  constraint: ""
-  message: FailedAdmission
-  action: ""`
-	violation2 := `- name: bar
-  kind: k2
-  namespace: ns1
-  policy: NA
-  constraint: ""
-  message: FailedAudit
-  action: ""`
+	violation1 := `  - name: NA
+    kind: k1
+    namespace: ns1
+    policy: foo
+    constraint: ""
+    message: FailedAdmission
+    action: ""`
+	violation2 := `  - name: bar
+    kind: k2
+    namespace: ns1
+    policy: NA
+    constraint: ""
+    message: FailedAudit
+    action: ""`
 
 	tests := []struct {
 		desc              string
@@ -1166,13 +1166,13 @@ func TestGatekeeperExists(t *testing.T) {
 // listGkViolations tested in previous tests
 
 func TestListGkDenyViolations(t *testing.T) {
-	violation1 := `- name: foo
-  kind: k1
-  namespace: ns1
-  policy: ""
-  constraint: NA
-  message: abc
-  action: ""`
+	violation1 := `  - name: foo
+    kind: k1
+    namespace: ns1
+    policy: ""
+    constraint: NA
+    message: abc
+    action: ""`
 	tests := []struct {
 		desc              string
 		expected          string
@@ -1252,13 +1252,13 @@ func TestListGkDenyViolations(t *testing.T) {
 }
 
 func TestListGkAuditViolations(t *testing.T) {
-	violation1 := `- name: foo
-  kind: k1
-  namespace: ns1
-  policy: ""
-  constraint: NA
-  message: FailedAdmission
-  action: deny`
+	violation1 := `  - name: foo
+    kind: k1
+    namespace: ns1
+    policy: ""
+    constraint: NA
+    message: FailedAdmission
+    action: deny`
 	tests := []struct {
 		desc                   string
 		expected               string

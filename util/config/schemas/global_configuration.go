@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
 )
 
 type GlobalConfiguration struct {
@@ -83,7 +84,7 @@ func (g *GlobalConfiguration) getSubConfigurations() []BaseConfiguration {
 }
 
 func (g *GlobalConfiguration) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(g)
+	return yamler.Marshal(g)
 }
 
 func (g *GlobalConfiguration) EncodeJSON() ([]byte, error) {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 type PolicyOutput struct {
@@ -28,7 +28,7 @@ type PolicyListOutput struct {
 }
 
 func (plo *PolicyListOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(plo)
+	return yamler.Marshal(plo)
 }
 
 func (plo *PolicyListOutput) EncodeJSON() ([]byte, error) {

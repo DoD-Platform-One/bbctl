@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
-
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
@@ -136,7 +136,7 @@ func TestSet_SetConfigValue(t *testing.T) {
 				if tc.errorOnGetViper {
 					configContents, _ := os.ReadFile(dir + "/config.yaml")
 					obj := map[string]interface{}{}
-					require.NoError(t, yaml.Unmarshal(configContents, &obj))
+					require.NoError(t, yamler.Unmarshal(configContents, &obj))
 					assert.Equal(t, "test", obj["big-bang-repo"])
 					assert.Len(t, obj, 1)
 				} else {
@@ -147,7 +147,7 @@ func TestSet_SetConfigValue(t *testing.T) {
 				assert.Equal(t, "stuff", v.GetString("test"))
 				configContents, _ := os.ReadFile(dir + "/config.yaml")
 				obj := map[string]interface{}{}
-				require.NoError(t, yaml.Unmarshal(configContents, &obj))
+				require.NoError(t, yamler.Unmarshal(configContents, &obj))
 				assert.Equal(t, "stuff", obj["test"])
 				assert.Equal(t, "test", obj["big-bang-repo"])
 				assert.Len(t, obj, 2)

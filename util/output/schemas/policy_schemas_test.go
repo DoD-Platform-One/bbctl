@@ -43,9 +43,29 @@ func TestPolicyListOutput_Marshal(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "YAML",
-			marshal:  testObject.EncodeYAML,
-			expected: "messages:\n- Test message 1\n- Test message 2\ncrdPolicies:\n- crdName: restricted-test-toleration\n  policies:\n  - name: restricted-test-toleration\n    namespace: test\n    kind: RestrictedTest\n    description: Test policy description\n    action: deny\n  - name: Name-test\n    namespace: \"\"\n    kind: Kindtest\n    description: Policy test description\n    action: deny\n  message: No constraints found for CRD\n- crdName: test-crd\n  policies: []\n  message: \"\"\n",
+			name:    "YAML",
+			marshal: testObject.EncodeYAML,
+			expected: `messages:
+  - Test message 1
+  - Test message 2
+crdPolicies:
+  - crdName: restricted-test-toleration
+    policies:
+      - name: restricted-test-toleration
+        namespace: test
+        kind: RestrictedTest
+        description: Test policy description
+        action: deny
+      - name: Name-test
+        namespace: ""
+        kind: Kindtest
+        description: Policy test description
+        action: deny
+    message: No constraints found for CRD
+  - crdName: test-crd
+    policies: []
+    message: ""
+`,
 		},
 		{
 			name:     "JSON",

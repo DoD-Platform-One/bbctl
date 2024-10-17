@@ -85,7 +85,7 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With Components YAML",
 			format:         "yaml",
 			args:           []string{"--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With Components JSON",
@@ -103,7 +103,7 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With K3d YAML",
 			format:         "yaml",
 			args:           []string{"--k3d"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With K3d JSON",
@@ -121,7 +121,7 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With K3d and Components YAML",
 			format:         "yaml",
 			args:           []string{"--k3d", "--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With K3d and Components JSON",

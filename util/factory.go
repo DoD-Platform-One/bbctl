@@ -9,10 +9,11 @@ import (
 	"os/exec"
 	"path"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xanzy/go-gitlab"
-	"gopkg.in/yaml.v2"
 	"helm.sh/helm/v3/pkg/action"
 	"istio.io/client-go/pkg/clientset/versioned"
 
@@ -111,7 +112,7 @@ type Credentials struct {
 // Errors when the credentials file cannot be accessed or parsed, component value is invalid,
 // and when uri is not found in credentials list
 func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (string, error) {
-	return f.readCredentialsFile(component, uri, yaml.Unmarshal)
+	return f.readCredentialsFile(component, uri, yamler.Unmarshal)
 }
 
 // See ReadCredentialsFile

@@ -203,7 +203,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 				assert.Empty(t, errOut.String())
 				assert.Empty(t, in.String())
 				// hosts:\n  192.192.192.192:\n  - test1\n  - test2\n
-				assert.Equal(t, fmt.Sprintf("hosts:\n  %v:\n  - %v\n  - %v\n", privateIP, vs.Spec.GetHosts()[0], vs.Spec.GetHosts()[1]), out.String())
+				assert.Equal(t, fmt.Sprintf("hosts:\n  %v:\n    - %v\n    - %v\n", privateIP, vs.Spec.GetHosts()[0], vs.Spec.GetHosts()[1]), out.String())
 			}
 		})
 	}

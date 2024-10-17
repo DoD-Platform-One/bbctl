@@ -65,7 +65,7 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 			name:   "YAML",
 			format: "yaml",
 			expectedOutput: fmt.Sprintf(
-				"generalInfo: {}\nactions:\n- 'Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d'\nwarnings: []\n",
+				"generalInfo: {}\nactions:\n  - 'Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d'\nwarnings: []\n",
 				bigBangRepoLocation,
 			),
 		},

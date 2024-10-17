@@ -8,9 +8,10 @@ import (
 	"io"
 	"testing"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 )
 
@@ -156,7 +157,7 @@ type testOutput struct {
 }
 
 func (to *testOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(to.Vals)
+	return yamler.Marshal(to.Vals)
 }
 
 func (to *testOutput) EncodeJSON() ([]byte, error) {
