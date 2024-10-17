@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbUtilLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
@@ -18,7 +19,7 @@ import (
 func TestClientGetConfig(t *testing.T) {
 	// Arrange
 	expected := "test"
-	getConfigFunc := func(client *ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
 		}, nil
@@ -32,14 +33,14 @@ func TestClientGetConfig(t *testing.T) {
 
 	// Assert
 	assert.NotNil(t, actual)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual.BigBangRepo)
 }
 
 func TestClientSetAndBindFlag(t *testing.T) {
 	// Arrange
 	expected := "test"
-	setAndBindFlagFunc := func(client *ConfigClient, name string, shortHand string, value interface{}, description string) error {
+	setAndBindFlagFunc := func(_ *ConfigClient, _ string, _ string, _ interface{}, _ string) error {
 		return errors.New(expected)
 	}
 	client := &ConfigClient{
@@ -50,7 +51,7 @@ func TestClientSetAndBindFlag(t *testing.T) {
 	actual := client.SetAndBindFlag("", "", "", "")
 
 	// Assert
-	assert.NotNil(t, actual)
+	require.Error(t, actual)
 	assert.Equal(t, expected, actual.Error())
 }
 
@@ -99,7 +100,7 @@ func TestNewClient(t *testing.T) {
 				loggingFunc := func(msgs ...string) {
 					for _, msg := range msgs {
 						_, err := output.WriteString(msg)
-						assert.Nil(t, err)
+						require.NoError(t, err)
 					}
 				}
 				rawLoggingClient := bbUtilTestLog.NewFakeClient(loggingFunc)
@@ -111,12 +112,12 @@ func TestNewClient(t *testing.T) {
 
 			// Assert
 			if tc.shouldFail {
-				assert.NotNil(t, actualErr)
+				require.Error(t, actualErr)
 				assert.Equal(t, tc.expected, actualErr.Error())
 				assert.Nil(t, actual)
 				assert.Empty(t, output.String())
 			} else {
-				assert.Nil(t, actualErr)
+				require.NoError(t, actualErr)
 				assert.NotNil(t, actual)
 				assert.Empty(t, output.String())
 			}

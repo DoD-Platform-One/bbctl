@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -43,7 +43,7 @@ func (b *badClient) Resource(resource schema.GroupVersionResource) dynamic.Names
 	return mockResource
 }
 
-func GetBadClient() *badClient {
+func GetBadClient() *badClient { //nolint:revive
 	client := &badClient{}
 	return client
 }
@@ -56,38 +56,38 @@ type badResource struct {
 	DescriptorType     string
 }
 
-func (b badResource) Namespace(name string) dynamic.ResourceInterface {
+func (b badResource) Namespace(_ string) dynamic.ResourceInterface {
 	return b
 }
 
-func (badResource) Apply(ctx context.Context, name string, obj *unstructured.Unstructured, options metaV1.ApplyOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Apply() not implemented")
+func (badResource) Apply(_ context.Context, _ string, _ *unstructured.Unstructured, _ metaV1.ApplyOptions, _ ...string) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, Apply() not implemented")
 }
 
-func (badResource) ApplyStatus(ctx context.Context, name string, obj *unstructured.Unstructured, options metaV1.ApplyOptions) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, ApplyStatus() not implemented")
+func (badResource) ApplyStatus(_ context.Context, _ string, _ *unstructured.Unstructured, _ metaV1.ApplyOptions) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, ApplyStatus() not implemented")
 }
 
-func (badResource) Create(ctx context.Context, obj *unstructured.Unstructured, options metaV1.CreateOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Create() not implemented")
+func (badResource) Create(_ context.Context, _ *unstructured.Unstructured, _ metaV1.CreateOptions, _ ...string) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, Create() not implemented")
 }
 
-func (badResource) Delete(ctx context.Context, name string, options metaV1.DeleteOptions, subresources ...string) error {
-	return fmt.Errorf("Intentional error for testing, Delete() not implemented")
+func (badResource) Delete(_ context.Context, _ string, _ metaV1.DeleteOptions, _ ...string) error {
+	return errors.New("intentional error for testing, Delete() not implemented")
 }
 
-func (badResource) DeleteCollection(ctx context.Context, options metaV1.DeleteOptions, listOptions metaV1.ListOptions) error {
-	return fmt.Errorf("Intentional error for testing, DeleteCollection() not implemented")
+func (badResource) DeleteCollection(_ context.Context, _ metaV1.DeleteOptions, _ metaV1.ListOptions) error {
+	return errors.New("intentional error for testing, DeleteCollection() not implemented")
 }
 
-func (badResource) Get(ctx context.Context, name string, options metaV1.GetOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Get() not implemented")
+func (badResource) Get(_ context.Context, _ string, _ metaV1.GetOptions, _ ...string) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, Get() not implemented")
 }
 
-func (b badResource) List(ctx context.Context, opts metaV1.ListOptions) (*unstructured.UnstructuredList, error) {
+func (b badResource) List(_ context.Context, _ metaV1.ListOptions) (*unstructured.UnstructuredList, error) {
 	if b.MockCrds {
 		crdList := b.MockCrd()
-		b.MockCrds = false
+		b.MockCrds = false //nolint:staticcheck
 		return crdList, nil
 	}
 	if b.MockConstraints {
@@ -108,8 +108,8 @@ func (b badResource) List(ctx context.Context, opts metaV1.ListOptions) (*unstru
 		if b.MockPolicyNotFound {
 			// To do a partial failure, one call needs to return an error and the next needs to return success
 			// so the value of MockPolicyNotFound gets reset to false after the first failure
-			b.MockPolicyNotFound = false
-			return nil, fmt.Errorf("the server could not find the requested resource")
+			b.MockPolicyNotFound = false //nolint:staticcheck
+			return nil, errors.New("the server could not find the requested resource")
 		}
 
 		var policyList *unstructured.UnstructuredList
@@ -127,23 +127,23 @@ func (b badResource) List(ctx context.Context, opts metaV1.ListOptions) (*unstru
 		}
 		return policyList, nil
 	}
-	return nil, fmt.Errorf("Intentional error for testing, List() not implemented")
+	return nil, errors.New("intentional error for testing, List() not implemented")
 }
 
-func (badResource) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, options metaV1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Patch() not implemented")
+func (badResource) Patch(_ context.Context, _ string, _ types.PatchType, _ []byte, _ metaV1.PatchOptions, _ ...string) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, Patch() not implemented")
 }
 
-func (badResource) Update(ctx context.Context, obj *unstructured.Unstructured, options metaV1.UpdateOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Update() not implemented")
+func (badResource) Update(_ context.Context, _ *unstructured.Unstructured, _ metaV1.UpdateOptions, _ ...string) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, Update() not implemented")
 }
 
-func (badResource) UpdateStatus(ctx context.Context, obj *unstructured.Unstructured, options metaV1.UpdateOptions) (*unstructured.Unstructured, error) {
-	return nil, fmt.Errorf("Intentional error for testing, UpdateStatus() not implemented")
+func (badResource) UpdateStatus(_ context.Context, _ *unstructured.Unstructured, _ metaV1.UpdateOptions) (*unstructured.Unstructured, error) {
+	return nil, errors.New("intentional error for testing, UpdateStatus() not implemented")
 }
 
-func (badResource) Watch(ctx context.Context, opts metaV1.ListOptions) (watch.Interface, error) {
-	return nil, fmt.Errorf("Intentional error for testing, Watch() not implemented")
+func (badResource) Watch(_ context.Context, _ metaV1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("intentional error for testing, Watch() not implemented")
 }
 
 func (badResource) MockCrd() *unstructured.UnstructuredList {

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testReader struct {
@@ -14,7 +15,7 @@ type testReader struct {
 	hasBeenRead bool
 }
 
-func (r *testReader) Read(p []byte) (n int, err error) {
+func (r *testReader) Read(p []byte) (int, error) {
 	if r.hasBeenRead {
 		return 0, io.EOF
 	}
@@ -55,7 +56,7 @@ func TestCommandNewExecRunnerRunEcho(t *testing.T) {
 	cmd.SetStdout(&stdout)
 	cmd.SetStderr(&stderr)
 	cmd.SetStdin(&stdin)
-	assert.Nil(t, cmd.Run())
+	require.NoError(t, cmd.Run())
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, msg, strings.TrimSpace(stdout.String()))

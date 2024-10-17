@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -56,7 +57,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	// setup the init logger
 	streams, err := factory.GetIOStream()
 	if err != nil {
-		fmt.Printf("Error getting IO streams: %v", err.Error())
+		fmt.Printf("error getting IO streams: %v", err.Error()) //nolint:forbidigo
 		os.Exit(1)
 	}
 	initSlogHandlerOptions := slog.HandlerOptions{
@@ -67,7 +68,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	initLogger := slog.New(slog.NewJSONHandler(streams.ErrOut, &initSlogHandlerOptions))
 	viperInstance, err := factory.GetViper()
 	if err != nil {
-		initLogger.Error(fmt.Sprintf("Error getting viper: %v", err.Error()))
+		initLogger.Error(fmt.Sprintf("error getting viper: %v", err.Error()))
 		os.Exit(1)
 	}
 
@@ -79,7 +80,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 
 		homeDirname, err := os.UserHomeDir()
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error getting user home directory: %v", err.Error()))
+			initLogger.Error(fmt.Sprintf("error getting user home directory: %v", err.Error()))
 			os.Exit(1)
 		}
 		viperInstance.SetConfigName("config")
@@ -98,29 +99,30 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 		viperInstance.AddConfigPath("/etc/bbctl")
 
 		if err := viperInstance.ReadInConfig(); err != nil {
-			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			fileNotFoundError := &viper.ConfigFileNotFoundError{}
+			if errors.As(err, fileNotFoundError) {
 				// Config file not found; ignore error if desired
 				initLogger.Warn("Config file not found (~/.bbctl/config, /etc/bbctl/config, or ./config).")
 			} else {
 				// Config file was found but another error was produced
-				initLogger.Error(fmt.Sprintf("Error reading config file: %v", err.Error()))
+				initLogger.Error(fmt.Sprintf("error reading config file: %v", err.Error()))
 				os.Exit(1)
 			}
 		}
 
 		err = viperInstance.BindPFlags(flags)
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error binding flags to viper: %v", err.Error()))
+			initLogger.Error(fmt.Sprintf("error binding flags to viper: %v", err.Error()))
 			os.Exit(1)
 		}
 		configClient, err := factory.GetConfigClient(nil)
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error getting config client: %v", err.Error()))
+			initLogger.Error(fmt.Sprintf("error getting config client: %v", err.Error()))
 			os.Exit(1)
 		}
 		config, configErr := configClient.GetConfig()
 		if configErr != nil {
-			initLogger.Error(fmt.Sprintf("Error getting config: %v", configErr.Error()))
+			initLogger.Error(fmt.Sprintf("error getting config: %v", configErr.Error()))
 			os.Exit(1)
 		}
 		logger, err := setupSlog(initLogger,
@@ -132,13 +134,13 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 			config.LogOutput,
 		)
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error setting up logger: %v", err.Error()))
+			initLogger.Error(fmt.Sprintf("error setting up logger: %v", err.Error()))
 			os.Exit(1)
 		}
 		logger.Debug("Logger setup complete")
 		allSettings, err := json.Marshal(viperInstance.AllSettings())
 		if err != nil {
-			logger.Error(fmt.Sprintf("Error marshalling all settings: %v", err.Error()))
+			logger.Error(fmt.Sprintf("error marshalling all settings: %v", err.Error()))
 			os.Exit(1)
 		}
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
@@ -146,7 +148,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 
 	bbctlCmd, rootCmdError := cmd.NewRootCmd(factory)
 	if rootCmdError != nil {
-		initLogger.Error(fmt.Sprintf("Error retrieving root command: %v", rootCmdError.Error()))
+		initLogger.Error(fmt.Sprintf("error retrieving root command: %v", rootCmdError.Error()))
 		os.Exit(1)
 	}
 
@@ -164,14 +166,14 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 
 	logger, err := factory.GetLoggingClient()
 	if err != nil {
-		initLogger.Error(fmt.Sprintf("Error getting logging client: %v", err.Error()))
+		initLogger.Error(fmt.Sprintf("error getting logging client: %v", err.Error()))
 		os.Exit(1)
 	}
 
 	// Bind the flags to viper
 	err = viperInstance.BindPFlags(flags)
 	if err != nil {
-		initLogger.Error(fmt.Sprintf("Error binding flags to viper: %v", err.Error()))
+		initLogger.Error(fmt.Sprintf("error binding flags to viper: %v", err.Error()))
 		os.Exit(1)
 	}
 
@@ -179,7 +181,7 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	logger.Debug(fmt.Sprintf("Global Flags: %v", flags.Args()))
 	err = bbctlCmd.Execute()
 	if err != nil {
-		initLogger.Error(fmt.Sprintf("Error executing command: %v", err.Error()))
+		initLogger.Error(fmt.Sprintf("error executing command: %v", err.Error()))
 		os.Exit(1)
 	}
 }
@@ -193,7 +195,7 @@ func setupSlog(
 	logFormatString string,
 	logLevelString string,
 	logOutputString string,
-) (logger *slog.Logger, err error) {
+) (*slog.Logger, error) {
 	// log level
 	var logLevel slog.Level
 	switch ll := logLevelString; ll {
@@ -225,11 +227,11 @@ func setupSlog(
 	case "file":
 		if logFileString == "" {
 			initLogger.Error("Log file not defined")
-			return nil, fmt.Errorf("log file not defined")
+			return nil, errors.New("log file not defined")
 		}
 		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
-			initLogger.Error(fmt.Sprintf("Error opening log file: %v", err.Error()))
+			initLogger.Error(fmt.Sprintf("error opening log file: %v", err.Error()))
 			return nil, err
 		}
 		defer func() {
@@ -237,7 +239,7 @@ func setupSlog(
 				if err == nil {
 					err = fmt.Errorf("(sole deferred error: %w)", newErr)
 				} else {
-					err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+					err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 				}
 			}
 		}()
@@ -250,12 +252,13 @@ func setupSlog(
 		writer = streams.ErrOut
 		initLogger.Warn("No log output defined, defaulting to stderr")
 	default:
-		err = fmt.Errorf("Invalid log output: %v", logOutputString)
+		var err = fmt.Errorf("invalid log output: %v", logOutputString)
 		initLogger.Error(err.Error())
 		return nil, err
 	}
 
 	// logger
+	var logger *slog.Logger
 	switch lf := logFormatString; lf {
 	case "json":
 		logger = slog.New(slog.NewJSONHandler(writer, &slogHandlerOptions))
@@ -265,7 +268,7 @@ func setupSlog(
 		logger = slog.New(slog.NewTextHandler(writer, &slogHandlerOptions))
 		initLogger.Warn("No log format defined, defaulting to text")
 	default:
-		err = fmt.Errorf("Invalid log format: %v", logFormatString)
+		var err = fmt.Errorf("invalid log format: %v", logFormatString)
 		initLogger.Error(err.Error())
 		return nil, err
 	}

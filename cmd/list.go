@@ -12,34 +12,31 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	listUse = `list`
-
-	listShort = i18n.T(`List all the helm releases deployed by Big Bang.`)
-
-	listLong = templates.LongDesc(i18n.T(`List all the helm releases deployed by Big Bang.
-
-	This command queries the cluster and displays information about all helm releases in the bigbang namespace.
-
-	It displays information including Name, Namespace, Revision, Status, Chart, and Appversion.
-	`))
-
-	listExample = templates.Examples(i18n.T(`
-		# Get a list of helm releases in bigbang namespace 
-		# (equivalent of helm -n bigbang ls)
-		bbctl list`))
-)
-
 // NewReleasesCmd creates a new command for listing new releases.
 //
 // Returns a cobra.Command configured to list releases.
 func NewReleasesCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		listUse   = `list`
+		listShort = i18n.T(`List all the helm releases deployed by Big Bang.`)
+		listLong  = templates.LongDesc(i18n.T(`List all the helm releases deployed by Big Bang.
+	
+		This command queries the cluster and displays information about all helm releases in the bigbang namespace.
+	
+		It displays information including Name, Namespace, Revision, Status, Chart, and Appversion.
+		`))
+		listExample = templates.Examples(i18n.T(`
+			# Get a list of helm releases in bigbang namespace 
+			# (equivalent of helm -n bigbang ls)
+			bbctl list`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     listUse,
 		Short:   listShort,
 		Long:    listLong,
 		Example: listExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return listHelmReleases(cmd, factory, static.DefaultClient)
 		},
 	}

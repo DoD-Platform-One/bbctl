@@ -2,11 +2,12 @@ package config
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
@@ -53,8 +54,8 @@ func TestSet_NewSetCmd(t *testing.T) {
 			v, _ := factory.GetViper()
 			v.AddConfigPath(dir)
 			v.SetConfigName("config")
-			assert.Nil(t, os.WriteFile(dir+"/config.yaml", []byte("big-bang-repo: test"), 0644))
-			assert.Nil(t, v.ReadInConfig())
+			assert.NoError(t, os.WriteFile(dir+"/config.yaml", []byte("big-bang-repo: test"), 0600))
+			assert.NoError(t, v.ReadInConfig())
 			if tc.errorOnGetClient {
 				factory.SetFail.GetOutputClient = true
 			}
@@ -73,13 +74,13 @@ func TestSet_NewSetCmd(t *testing.T) {
 			assert.Equal(t, "Set a configuration value", cmd.Short)
 			assert.Equal(t, "Example usage: bbctl config set KEY VALUE", cmd.Long)
 			if tc.errorOnGetClient || tc.errorOnSetConfigValue || tc.errorOnOutput {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedOutput)
 				assert.Empty(t, in)
 				assert.Empty(t, out)
 				assert.Empty(t, errOut)
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, in)
 				assert.Empty(t, errOut)
 				assert.Contains(t, out.String(), tc.expectedOutput)
@@ -123,30 +124,30 @@ func TestSet_SetConfigValue(t *testing.T) {
 			if !tc.errorOnWriteConfig {
 				v.AddConfigPath(dir)
 				v.SetConfigName("config")
-				assert.Nil(t, os.WriteFile(dir+"/config.yaml", []byte("big-bang-repo: test"), 0644))
-				assert.Nil(t, v.ReadInConfig())
+				assert.NoError(t, os.WriteFile(dir+"/config.yaml", []byte("big-bang-repo: test"), 0600))
+				assert.NoError(t, v.ReadInConfig())
 			}
 			// Act
 			err := setConfigValue(factory, "test", "stuff", "")
 			// Assert
 			if tc.errorOnGetViper || tc.errorOnWriteConfig {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedOutput)
 				if tc.errorOnGetViper {
 					configContents, _ := os.ReadFile(dir + "/config.yaml")
 					obj := map[string]interface{}{}
-					assert.Nil(t, yaml.Unmarshal(configContents, &obj))
+					require.NoError(t, yaml.Unmarshal(configContents, &obj))
 					assert.Equal(t, "test", obj["big-bang-repo"])
 					assert.Len(t, obj, 1)
 				} else {
 					assert.NoFileExists(t, dir+"/config")
 				}
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, "stuff", v.GetString("test"))
 				configContents, _ := os.ReadFile(dir + "/config.yaml")
 				obj := map[string]interface{}{}
-				assert.Nil(t, yaml.Unmarshal(configContents, &obj))
+				require.NoError(t, yaml.Unmarshal(configContents, &obj))
 				assert.Equal(t, "stuff", obj["test"])
 				assert.Equal(t, "test", obj["big-bang-repo"])
 				assert.Len(t, obj, 2)
@@ -161,7 +162,7 @@ func TestConfigSetErrorBindingFlags(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
+	expectedError := errors.New("failed to set and bind flag")
 	logClient, _ := factory.GetLoggingClient()
 
 	tests := []struct {
@@ -174,14 +175,14 @@ func TestConfigSetErrorBindingFlags(t *testing.T) {
 			flagName:       "output",
 			failOnCallNum:  1,
 			expectedCmd:    false,
-			expectedErrMsg: fmt.Sprintf("error setting and binding output flag: %s", expectedError.Error()),
+			expectedErrMsg: "error setting and binding output flag: " + expectedError.Error(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.flagName, func(t *testing.T) {
 			callCount := 0
-			setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value any, description string) error {
+			setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, _ string, _ string, _ any, _ string) error {
 				callCount++
 				if callCount == tt.failOnCallNum {
 					return expectedError
@@ -190,7 +191,7 @@ func TestConfigSetErrorBindingFlags(t *testing.T) {
 			}
 
 			configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.SetConfigClient(configClient)
 
 			// Act
@@ -204,10 +205,10 @@ func TestConfigSetErrorBindingFlags(t *testing.T) {
 			}
 
 			if tt.expectedErrMsg != "" {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectedErrMsg, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

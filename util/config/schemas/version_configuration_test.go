@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_VersionConfiguration(t *testing.T) {
@@ -34,7 +35,7 @@ func TestReconcileConfiguration_VersionConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.setClient, tt.arg.Client)
 		})
 	}
@@ -45,9 +46,9 @@ func TestReconcileConfigurationDefaults_VersionConfiguration(t *testing.T) {
 	policyConfiguration := &VersionConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, policyConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, policyConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, false, policyConfiguration.Client)
+	assert.False(t, policyConfiguration.Client)
 }
 
 func TestGetSubConfigurations_VersionConfiguration(t *testing.T) {
@@ -56,5 +57,5 @@ func TestGetSubConfigurations_VersionConfiguration(t *testing.T) {
 	// Act
 	subConfigurations := versionConfiguration.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 0, len(subConfigurations))
+	assert.Empty(t, subConfigurations)
 }

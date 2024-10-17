@@ -2,7 +2,7 @@ package util
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"log/slog"
 	"os"
 	"path"
@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	gitlab "github.com/xanzy/go-gitlab"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -116,8 +117,8 @@ func TestReadCredentialsFile(t *testing.T) {
 			shouldErrorOnUnmarshal:    false,
 			shouldErrorOnBadURI:       false,
 			shouldErrorOnBadComponent: false,
-			usernameErrorMessage:      "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
-			passwordErrorMessage:      "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			usernameErrorMessage:      "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			passwordErrorMessage:      "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 		{
 			name:                      "should error on home dir",
@@ -168,7 +169,7 @@ func TestReadCredentialsFile(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -178,17 +179,17 @@ func TestReadCredentialsFile(t *testing.T) {
 			if tc.useDefaultPath {
 				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "")
 				homeDir, err := os.UserHomeDir()
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				credentialsDir := path.Join(homeDir, ".bbctl")
 				credentialsPath := path.Join(credentialsDir, "credentials.yaml")
 				if _, err := os.Stat(credentialsPath); err != nil {
 					err := os.MkdirAll(credentialsDir, os.ModePerm)
-					assert.Nil(t, err)
+					require.NoError(t, err)
 					_, err = os.Create(credentialsPath)
-					assert.Nil(t, err)
+					require.NoError(t, err)
 					defer func() {
 						err := os.Remove(credentialsPath)
-						assert.Nil(t, err)
+						require.NoError(t, err)
 					}()
 				}
 			}
@@ -201,15 +202,16 @@ func TestReadCredentialsFile(t *testing.T) {
 				viperInstance.Set("big-bang-repo", "")
 			}
 			if tc.shouldErrorOnHomeDir {
-				assert.Nil(t, os.Setenv("HOME", ""))
+				t.Setenv("HOME", "")
+				assert.Empty(t, os.Getenv("HOME"))
 			}
 			if tc.shouldErrorOnFindFile {
 				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/missing-credentials.yaml")
 			}
-			var unmarshallFunc func(in []byte, out interface{}) (err error)
+			var unmarshallFunc func(in []byte, out interface{}) error
 			if tc.shouldErrorOnUnmarshal {
-				unmarshallFunc = func(in []byte, out interface{}) (err error) {
-					return fmt.Errorf("test failure")
+				unmarshallFunc = func(_ []byte, _ interface{}) error {
+					return errors.New("test failure")
 				}
 			}
 			host := "https://test.com:6443"
@@ -236,15 +238,15 @@ func TestReadCredentialsFile(t *testing.T) {
 			if tc.shouldFail {
 				assert.Empty(t, username)
 				assert.Empty(t, password)
-				assert.NotNil(t, usernameErr)
-				assert.NotNil(t, passwordErr)
+				require.Error(t, usernameErr)
+				require.Error(t, passwordErr)
 				assert.Contains(t, usernameErr.Error(), tc.usernameErrorMessage)
 				assert.Contains(t, passwordErr.Error(), tc.passwordErrorMessage)
 			} else {
-				assert.Nil(t, usernameErr)
-				assert.Nil(t, passwordErr)
-				assert.Equal(t, username, "username")
-				assert.Equal(t, password, "password")
+				require.NoError(t, usernameErr)
+				require.NoError(t, passwordErr)
+				assert.Equal(t, "username", username)
+				assert.Equal(t, "password", password)
 			}
 		})
 	}
@@ -312,7 +314,7 @@ func TestGetCredentialHelper(t *testing.T) {
 			credentialHelper: "credentials-file",
 			field:            "username",
 			expected:         "",
-			error:            "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			error:            "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 		{
 			name:             "BadCredentialsFilePath",
@@ -328,7 +330,7 @@ func TestGetCredentialHelper(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -354,13 +356,13 @@ func TestGetCredentialHelper(t *testing.T) {
 			}
 			// Act
 			helper, err := factory.GetCredentialHelper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			value, err := helper(test.field, uri)
 			// Assert
 			if test.error != "" {
 				assert.Equal(t, test.error, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 
 			assert.Equal(t, test.expected, strings.TrimSuffix(value, "\n"))
@@ -376,7 +378,7 @@ func TestGetAWSClient(t *testing.T) {
 	var err error
 	client, err = factory.GetAWSClient()
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -386,7 +388,7 @@ func TestGetLoggingClient(t *testing.T) {
 	// Act
 	client, err := factory.GetLoggingClient()
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -396,7 +398,7 @@ func TestGetLoggingClientWithNilLogger(t *testing.T) {
 	// Act
 	client, err := factory.GetLoggingClientWithLogger(nil)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -407,7 +409,7 @@ func TestGetLoggingClientWithLogger(t *testing.T) {
 	// Act
 	client, err := factory.GetLoggingClientWithLogger(logger)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 	assert.Equal(t, client.Logger(), logger)
 }
@@ -416,7 +418,7 @@ func TestGetHelmConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -429,7 +431,7 @@ func TestGetHelmConfig(t *testing.T) {
 		Short:   "testShort",
 		Long:    "testLong",
 		Example: "testExample",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return nil
 		},
 	}
@@ -438,7 +440,7 @@ func TestGetHelmConfig(t *testing.T) {
 	config.Log("debug") // Required to cover the closure on line 277
 	// Assert
 	assert.NotNil(t, config)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetHelmConfigBadConfig(t *testing.T) {
@@ -451,7 +453,7 @@ func TestGetHelmConfigBadConfig(t *testing.T) {
 	config, err := factory.getHelmConfig(nil, "helmconfigtest")
 	// Assert
 	assert.Nil(t, config)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "viper instance is required", err.Error())
 }
 
@@ -459,18 +461,18 @@ func TestGetCommandWrapper(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	wrapper, err := factory.GetCommandWrapper("go", "help")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	// Act				factory.getViperFunction = func() (*viper.Viper, error) {
 	err = wrapper.Run()
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetIstioClientSet(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -480,8 +482,8 @@ func TestGetIstioClientSet(t *testing.T) {
 	config, configErr := factory.GetRestConfig(nil)
 	client, clientErr := factory.GetIstioClientSet(config)
 	// Assert
-	assert.Nil(t, configErr)
-	assert.Nil(t, clientErr)
+	require.NoError(t, configErr)
+	require.NoError(t, clientErr)
 	assert.NotNil(t, client)
 }
 
@@ -526,11 +528,11 @@ func TestGetConfigClient(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.expectedErrorMessage, err.Error())
 			} else {
 				// Actual contents of config are checked in the Client tests
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, client)
 			}
 		})
@@ -596,8 +598,8 @@ func TestGetGitLabClient(t *testing.T) {
 				v.Set("big-bang-repo", "")
 			}
 			if tc.errorOnGetGitLab {
-				clientOptionsFuncs = append(clientOptionsFuncs, func(c *gitlab.Client) error {
-					return fmt.Errorf("error")
+				clientOptionsFuncs = append(clientOptionsFuncs, func(_ *gitlab.Client) error {
+					return errors.New("error")
 				})
 			}
 			var client bbGitlab.Client
@@ -612,10 +614,10 @@ func TestGetGitLabClient(t *testing.T) {
 			// Assert
 			if tc.errorOnConfigClient || tc.errorOnGetConfig || tc.errorOnGetGitLab {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 			} else {
 				assert.NotNil(t, client)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -656,7 +658,7 @@ func TestGetHelmClient(t *testing.T) {
 			errorOnConfig:        true,
 			errorOnLoggingClient: false,
 			errorOnKubeConfig:    false,
-			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			expectedErrorMessage: "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 		{
 			name:                 "should error on kube config",
@@ -674,7 +676,7 @@ func TestGetHelmClient(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -696,10 +698,10 @@ func TestGetHelmClient(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.expectedErrorMessage, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, client.GetList)
 				assert.NotNil(t, client.GetRelease)
 				assert.NotNil(t, client.GetValues)
@@ -712,7 +714,7 @@ func TestGetK8sClientset(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -721,7 +723,7 @@ func TestGetK8sClientset(t *testing.T) {
 	// Act
 	client, err := factory.GetK8sClientset(nil)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
 
@@ -729,7 +731,7 @@ func TestGetK8sClientsetBadConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -739,7 +741,7 @@ func TestGetK8sClientsetBadConfig(t *testing.T) {
 	client, err := factory.GetK8sClientset(nil)
 	// Assert
 	assert.Nil(t, client)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "stat no-kube-config.yaml: no such file or directory", err.Error())
 }
 
@@ -778,7 +780,7 @@ func TestGetK8sDynamicClient(t *testing.T) {
 			errorOnConfig:        true,
 			errorOnMissingConfig: false,
 			errorOnBadConfig:     false,
-			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			expectedErrorMessage: "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 		{
 			name:                 "should error on missing config",
@@ -805,7 +807,7 @@ func TestGetK8sDynamicClient(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -830,10 +832,10 @@ func TestGetK8sDynamicClient(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.expectedErrorMessage, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, client)
 			}
 		})
@@ -894,7 +896,7 @@ func TestGetOutputClient(t *testing.T) {
 			shouldErrorOnIOStreams:    false,
 			shouldErrorOnConfigClient: false,
 			shouldErrorOnConfig:       true,
-			expectedErrorMessage:      "Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			expectedErrorMessage:      "error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 	}
 
@@ -908,13 +910,13 @@ func TestGetOutputClient(t *testing.T) {
 				Short:   "testShort",
 				Long:    "testLong",
 				Example: "testExample",
-				RunE: func(cmd *cobra.Command, args []string) error {
+				RunE: func(_ *cobra.Command, _ []string) error {
 					return nil
 				},
 			}
 			// Set the "output" format using Viper
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -933,10 +935,10 @@ func TestGetOutputClient(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, client)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.expectedErrorMessage, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, client)
 				assert.NotNil(t, client.Output)
 			}
@@ -979,7 +981,7 @@ func TestGetRestConfig(t *testing.T) {
 			errorOnConfig:        true,
 			errorOnMissingConfig: false,
 			errorOnBadConfig:     false,
-			expectedErrorMessage: "unable to get client: Error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
+			expectedErrorMessage: "unable to get client: error during validation for configuration: Key: 'GlobalConfiguration.BigBangRepo' Error:Field validation for 'BigBangRepo' failed on the 'required' tag",
 		},
 		{
 			name:                 "should error on missing config",
@@ -1006,7 +1008,7 @@ func TestGetRestConfig(t *testing.T) {
 			// Arrange
 			factory := NewFactory(nil)
 			viperInstance, err := factory.GetViper()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			factory.getViperFunction = func() (*viper.Viper, error) {
 				return viperInstance, nil
 			}
@@ -1031,10 +1033,10 @@ func TestGetRestConfig(t *testing.T) {
 			// Assert
 			if tc.shouldFail {
 				assert.Nil(t, config)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tc.expectedErrorMessage, err.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, config)
 			}
 		})
@@ -1045,7 +1047,7 @@ func TestGetCommandExecutor(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -1068,7 +1070,7 @@ func TestGetCommandExecutor(t *testing.T) {
 		&stderr,
 	)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, executor)
 }
 
@@ -1076,7 +1078,7 @@ func TestGetCommandExecutorMissingConfig(t *testing.T) {
 	// Arrange
 	factory := NewFactory(nil)
 	viperInstance, err := factory.GetViper()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.getViperFunction = func() (*viper.Viper, error) {
 		return viperInstance, nil
 	}
@@ -1086,7 +1088,7 @@ func TestGetCommandExecutorMissingConfig(t *testing.T) {
 	executor, err := factory.GetCommandExecutor(nil, nil, "", nil, nil, nil)
 	// Assert
 	assert.Nil(t, executor)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "stat no-kube-config.yaml: no such file or directory", err.Error())
 }
 
@@ -1100,7 +1102,7 @@ func TestGetCommandExecutorBadConfig(t *testing.T) {
 	executor, err := factory.GetCommandExecutor(nil, nil, "", nil, nil, nil)
 	// Assert
 	assert.Nil(t, executor)
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "viper instance is required", err.Error())
 }
 
@@ -1136,19 +1138,19 @@ func TestGetRuntimeClient(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Act
-			os.Setenv("KUBECONFIG", test.kubeconfig)
+			t.Setenv("KUBECONFIG", test.kubeconfig)
 			client, err := factory.GetRuntimeClient(test.scheme)
 			// Assert
 			if test.expectedErrorMsg != "" {
-				assert.NotNil(t, err)
-				assert.Equal(t, err.Error(), test.expectedErrorMsg)
+				require.Error(t, err)
+				assert.Equal(t, test.expectedErrorMsg, err.Error())
 			} else {
 				assert.NotNil(t, client)
 			}
 		})
 	}
 	// Cleanup
-	os.Setenv("KUBECONFIG", "")
+	t.Setenv("KUBECONFIG", "")
 }
 
 func TestGetIOStreams(t *testing.T) {
@@ -1158,7 +1160,7 @@ func TestGetIOStreams(t *testing.T) {
 	var ios *genericIOOptions.IOStreams
 	ios, err = factory.GetIOStream()
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, os.Stdin, ios.In)
 	assert.Equal(t, os.Stdout, ios.Out)
 	assert.Equal(t, os.Stderr, ios.ErrOut)
@@ -1172,7 +1174,7 @@ func TestGetPipe(t *testing.T) {
 	r, w, err := factory.GetPipe()
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, r)
 	assert.NotNil(t, w)
 
@@ -1184,6 +1186,7 @@ func TestGetPipe(t *testing.T) {
 	}()
 
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, readError := buf.ReadFrom(r)
+	require.NoError(t, readError)
 	assert.Equal(t, testMessage, buf.String())
 }

@@ -26,33 +26,32 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	statusUse = `status`
-
-	statusShort = i18n.T(`Show the deployment status of the Big Bang deployment and its subcomponents.`)
-
-	statusLong = templates.LongDesc(i18n.T(`Show the deployment status of Big Bang deployment and its subcomponents.
-		This command queries the cluster and returns the deplyoment status of all Big Bang-controlled resources.
-	`))
-
-	statusExample = templates.Examples(i18n.T(`
-		# Get the overall Big Bang status
-		bbctl status`))
-)
-
 const (
-	statusString = "namespace: %s, name: %s, status: %s\n"
-	commandHelp  = "Command Help:\n"
+	statusString   = "namespace: %s, name: %s, status: %s\n"
+	commandHelp    = "Command Help:\n"
+	readyState     = "Ready"
+	availableState = "True"
 )
 
 // NewStatusCmd - new status command
 func NewStatusCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		statusUse   = `status`
+		statusShort = i18n.T(`Show the deployment status of the Big Bang deployment and its subcomponents.`)
+		statusLong  = templates.LongDesc(i18n.T(`Show the deployment status of Big Bang deployment and its subcomponents.
+			This command queries the cluster and returns the deployment status of all Big Bang-controlled resources.
+		`))
+		statusExample = templates.Examples(i18n.T(`
+			# Get the overall Big Bang status
+			bbctl status`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     statusUse,
 		Short:   statusShort,
 		Long:    statusLong,
 		Example: statusExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return bbStatus(cmd, factory)
 		},
 		SilenceUsage:  true,
@@ -124,13 +123,13 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
 	// get client-go client
 	clientset, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return fmt.Errorf("Failed to get k8s clientset: %w", err)
+		return fmt.Errorf("failed to get k8s clientset: %w", err)
 	}
 
-	//get output client
+	// get output client
 	outputClient, err := factory.GetOutputClient(cmd)
 	if err != nil {
-		return fmt.Errorf("Failed to get output client: %w", err)
+		return fmt.Errorf("failed to get output client: %w", err)
 	}
 
 	// get runtime controller client
@@ -142,7 +141,7 @@ func bbStatus(cmd *cobra.Command, factory bbUtil.Factory) error {
 
 	fluxClient, err := factory.GetRuntimeClient(scheme)
 	if err != nil {
-		return fmt.Errorf("Failed to get runtime client: %w", err)
+		return fmt.Errorf("failed to get runtime client: %w", err)
 	}
 
 	// get constants
@@ -262,7 +261,7 @@ func getFluxKustomizations(fc client.Client) []string {
 		fluxKZDataObj.name = fkzObj.ObjectMeta.Name
 
 		for _, condition := range fkzObj.Status.Conditions {
-			if condition.Type == "Ready" && condition.Status != "True" {
+			if condition.Type == readyState && condition.Status != availableState {
 				fluxKZDataObj.status = condition.Message
 				// add to list of not ready flux kustomizations
 				fluxKZs = append(fluxKZs, fluxKZDataObj)
@@ -313,7 +312,7 @@ func getFluxGitRepositories(fluxClient client.Client) []string {
 		fluxGRDataObj.name = fluxGR.ObjectMeta.Name
 
 		for _, condition := range fluxGR.Status.Conditions {
-			if condition.Type == "Ready" && condition.Status != "True" {
+			if condition.Type == readyState && condition.Status != availableState {
 				fluxGRDataObj.status = condition.Message
 				// add to list of not ready flux git repositories
 				fluxGRs = append(fluxGRs, fluxGRDataObj)
@@ -365,7 +364,7 @@ func getFluxHelmReleases(fluxClient client.Client) []string {
 		fluxHRDataObj.name = fluxHRObj.ObjectMeta.Name
 
 		for _, condition := range fluxHRObj.Status.Conditions {
-			if condition.Type == "Ready" && condition.Status != "True" {
+			if condition.Type == readyState && condition.Status != availableState {
 				fluxHRDataObj.status = condition.Message
 				// add to list of not ready flux helm releases
 				fluxHRs = append(fluxHRs, fluxHRDataObj)
@@ -441,7 +440,7 @@ func getDaemonSetsStatus(clientset k8sClient.Interface) []string {
 // getDeploymentStatus queries the Kubernetes cluster for Deployment resources and returns a string with the Status of
 // the Deployments. If the Deployments are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getDeploymentStatus(clientset k8sClient.Interface) []string {
+func getDeploymentStatus(clientset k8sClient.Interface) []string { //nolint:dupl // this cannot be easily deduplicated without generic structure type support
 	outputMessages := []string{}
 
 	deploymentList, err := clientset.AppsV1().Deployments("").List(context.Background(), metaV1.ListOptions{})
@@ -488,7 +487,7 @@ func getDeploymentStatus(clientset k8sClient.Interface) []string {
 // getStatefulSetStatus queries the Kubernetes cluster for StatefulSet resources and returns a string with the Status of
 // the StatefulSets. If the StatefulSets are not available, the status is reported as "Not Available" and manual debugging
 // steps are provided.
-func getStatefulSetStatus(clientset k8sClient.Interface) []string {
+func getStatefulSetStatus(clientset k8sClient.Interface) []string { //nolint:dupl // this cannot be easily deduplicated without generic structure type support
 	outputMessages := []string{}
 
 	statefulSetList, err := clientset.AppsV1().StatefulSets("").List(context.Background(), metaV1.ListOptions{})
@@ -556,7 +555,7 @@ func getPodStatus(clientset k8sClient.Interface) []string {
 
 		// add bad pods to slice of podData
 		// there are 5 possible phases: Pending, Running, Succeeded, Failed, Unknown
-		switch podObj.Status.Phase {
+		switch podObj.Status.Phase { //nolint:exhaustive
 		case "Running":
 			// check if all containers are ready
 			getContainerStatus(podObj.Status.ContainerStatuses, &podDataObj, &podReady, false)

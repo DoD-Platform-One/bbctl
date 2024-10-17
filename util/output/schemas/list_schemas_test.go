@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHelmReleaseTableOuput_Marshal(t *testing.T) {
@@ -11,11 +12,11 @@ func TestHelmReleaseTableOuput_Marshal(t *testing.T) {
 		Releases: []HelmReleaseOutput{
 			{
 				Name:       "test",
-				Namespace:  "test",
+				Namespace:  "test-ns",
 				Revision:   1,
-				Status:     "test",
-				Chart:      "test",
-				AppVersion: "test",
+				Status:     "test-status",
+				Chart:      "test-chart",
+				AppVersion: "test-version",
 			},
 		},
 	}
@@ -26,32 +27,26 @@ func TestHelmReleaseTableOuput_Marshal(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "YAML",
-			marshal: func() ([]byte, error) {
-				return testObject.MarshalYaml()
-			},
-			expected: "releases:\n- name: test\n  namespace: test\n  revision: 1\n  status: test\n  chart: test\n  appversion: test\n",
+			name:     "YAML",
+			marshal:  testObject.EncodeYAML,
+			expected: "releases:\n- name: test\n  namespace: test-ns\n  revision: 1\n  status: test-status\n  chart: test-chart\n  appVersion: test-version\n",
 		},
 		{
-			name: "JSON",
-			marshal: func() ([]byte, error) {
-				return testObject.MarshalJson()
-			},
-			expected: "{\"Releases\":[{\"Name\":\"test\",\"Namespace\":\"test\",\"Revision\":1,\"Status\":\"test\",\"Chart\":\"test\",\"AppVersion\":\"test\"}]}",
+			name:     "JSON",
+			marshal:  testObject.EncodeJSON,
+			expected: "{\"releases\":[{\"name\":\"test\",\"namespace\":\"test-ns\",\"revision\":1,\"status\":\"test-status\",\"chart\":\"test-chart\",\"appVersion\":\"test-version\"}]}",
 		},
 		{
-			name: "HumanReadable",
-			marshal: func() ([]byte, error) {
-				return testObject.MarshalHumanReadable()
-			},
-			expected: "NAME\tNAMESPACE\tREVISION\tSTATUS\tCHART\tAPPVERSION\ntest\ttest     \t1       \ttest  \ttest \ttest      ",
+			name:     "Text",
+			marshal:  testObject.EncodeText,
+			expected: "NAME\tNAMESPACE\tREVISION\tSTATUS     \tCHART     \tAPPVERSION  \ntest\ttest-ns  \t1       \ttest-status\ttest-chart\ttest-version",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			actual, err := test.marshal()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, string(actual))
 		})
 	}

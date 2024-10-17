@@ -11,25 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"helm.sh/helm/v3/cmd/helm/require"
-	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
-)
-
-var (
-	valuesUse = `values RELEASE_NAME`
-
-	valuesShort = i18n.T(`Get all the values for a given release deployed by Big Bang.`)
-
-	valuesLong = templates.LongDesc(i18n.T(`Get all the values for a given release deployed by Big Bang.
-		Running this comamnd is the equivalent of running "helm -n bigbang get values RELEASE_NAME".
-
-		This command only looks for releases in the namespace in which the Big Bang umbrella chart is deployed.
-	`))
-
-	valuesExample = templates.Examples(i18n.T(`
-		# Get values for a helm release deployed by Big Bang
-		bbctl values RELEASE_NAME`))
 )
 
 // valuesCmdHelper is a structure for storing shared clients, values, and methods used in the values command
@@ -70,6 +53,19 @@ func newValuesCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCli
 
 // NewValuesCmd returns a new values command
 func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		valuesUse   = `values RELEASE_NAME`
+		valuesShort = i18n.T(`Get all the values for a given release deployed by Big Bang.`)
+		valuesLong  = templates.LongDesc(i18n.T(`Get all the values for a given release deployed by Big Bang.
+			Running this comamnd is the equivalent of running "helm -n bigbang get values RELEASE_NAME".
+	
+			This command only looks for releases in the namespace in which the Big Bang umbrella chart is deployed.
+		`))
+		valuesExample = templates.Examples(i18n.T(`
+			# Get values for a helm release deployed by Big Bang
+			bbctl values RELEASE_NAME`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     valuesUse,
 		Short:   valuesShort,
@@ -91,15 +87,11 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 			return v.matchingReleaseNames(hint)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			streams, err := factory.GetIOStream()
-			if err != nil {
-				return fmt.Errorf("error getting IO streams: %w", err)
-			}
 			v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 			if err != nil {
 				return err
 			}
-			return v.getHelmValues(streams, args[0])
+			return v.getHelmValues(args[0])
 		},
 	}
 
@@ -107,7 +99,7 @@ func NewValuesCmd(factory bbUtil.Factory) *cobra.Command {
 }
 
 // getHelmValues queries the cluster using the helm module to get information on big bang release values
-func (v *valuesCmdHelper) getHelmValues(streams *genericIOOptions.IOStreams, name string) error {
+func (v *valuesCmdHelper) getHelmValues(name string) error {
 	// use helm get values to get release values
 	releases, err := v.helmClient.GetValues(name)
 	if err != nil {
@@ -125,7 +117,7 @@ func (v *valuesCmdHelper) matchingReleaseNames(hint string) ([]string, cobra.She
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var matches []string = make([]string, 0)
+	var matches = make([]string, 0)
 
 	for _, r := range releases {
 		if strings.HasPrefix(r.Name, hint) {

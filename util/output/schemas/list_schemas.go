@@ -8,27 +8,27 @@ import (
 )
 
 type HelmReleaseOutput struct {
-	Name       string
-	Namespace  string
-	Revision   int
-	Status     string
-	Chart      string
-	AppVersion string
+	Name       string `json:"name"       yaml:"name"`
+	Namespace  string `json:"namespace"  yaml:"namespace"`
+	Revision   int    `json:"revision"   yaml:"revision"`
+	Status     string `json:"status"     yaml:"status"`
+	Chart      string `json:"chart"      yaml:"chart"`
+	AppVersion string `json:"appVersion" yaml:"appVersion"`
 }
 
 type HelmReleaseTableOutput struct {
-	Releases []HelmReleaseOutput
+	Releases []HelmReleaseOutput `json:"releases" yaml:"releases"`
 }
 
-func (hrto *HelmReleaseTableOutput) MarshalYaml() ([]byte, error) {
+func (hrto *HelmReleaseTableOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(hrto)
 }
 
-func (hrto *HelmReleaseTableOutput) MarshalJson() ([]byte, error) {
+func (hrto *HelmReleaseTableOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(hrto)
 }
 
-func (hrto *HelmReleaseTableOutput) MarshalHumanReadable() ([]byte, error) {
+func (hrto *HelmReleaseTableOutput) EncodeText() ([]byte, error) {
 	table := uitable.New()
 	table.AddRow("NAME", "NAMESPACE", "REVISION", "STATUS", "CHART", "APPVERSION")
 

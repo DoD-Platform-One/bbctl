@@ -2,12 +2,14 @@ package k3d
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
@@ -27,7 +29,7 @@ func TestK3d_SshUsage(t *testing.T) {
 	cmd.SetArgs([]string{"-h"})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Nil(t, sshCmdError)
+	require.NoError(t, sshCmdError)
 	assert.Equal(t, "ssh", cmd.Use)
 	assert.Empty(t, errOut.String())
 }
@@ -79,8 +81,8 @@ func TestK3d_SshDryRun(t *testing.T) {
 	cmd.SetArgs([]string{"--dry-run"})
 	// Assert
 	assert.Equal(t, "ssh", cmd.Use)
-	assert.Nil(t, cmd.Execute())
-	assert.Nil(t, sshCmdError)
+	require.NoError(t, cmd.Execute())
+	require.NoError(t, sshCmdError)
 	assert.Empty(t, in.String())
 	assert.Empty(t, errOut.String())
 	assert.Contains(
@@ -135,10 +137,10 @@ func TestK3d_SshBadArgs(t *testing.T) {
 	cmd.SetArgs([]string{"--ssh-username="})
 	result := cmd.Execute()
 	// Assert
-	assert.Nil(t, sshCmdError)
-	assert.Error(t, result)
-	if exiterr, ok := result.(*exec.ExitError); ok {
-		assert.Equal(t, exiterr.ExitCode(), 255)
+	require.NoError(t, sshCmdError)
+	require.Error(t, result)
+	if exiterr, ok := result.(*exec.ExitError); ok { //nolint:errorlint // ExitError doesn't support unwrapping
+		assert.Equal(t, 255, exiterr.ExitCode())
 	}
 }
 
@@ -155,7 +157,7 @@ func TestK3d_SshErrorGettingConfigClient(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, sshCmdError)
+	require.Error(t, sshCmdError)
 	assert.Equal(t, "unable to get config client: failed to get config client", sshCmdError.Error())
 }
 
@@ -166,14 +168,14 @@ func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, _ string, _ string, _ interface{}, _ string) error {
 		return expectedError
 	}
 
 	logClient, _ := factory.GetLoggingClient()
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act
@@ -181,10 +183,10 @@ func TestK3d_SshErrorSettingSSHUsername(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, sshCmdError)
+	require.Error(t, sshCmdError)
 	assert.Equal(
 		t,
-		fmt.Sprintf("unable to bind flags: %s", expectedError.Error()),
+		"unable to bind flags: "+expectedError.Error(),
 		sshCmdError.Error(),
 	)
 }
@@ -196,8 +198,8 @@ func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortName string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, name string, _ string, _ interface{}, _ string) error {
 		if name == "dry-run" {
 			return expectedError
 		}
@@ -206,7 +208,7 @@ func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 
 	logClient, _ := factory.GetLoggingClient()
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act
@@ -214,10 +216,10 @@ func TestK3d_SshErrorSettingDryRun(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, sshCmdError)
+	require.Error(t, sshCmdError)
 	assert.Equal(
 		t,
-		fmt.Sprintf("unable to bind flags: %s", expectedError.Error()),
+		"unable to bind flags: "+expectedError.Error(),
 		sshCmdError.Error(),
 	)
 }
@@ -312,7 +314,7 @@ func TestK3d_sshToK3dClusterErrors(t *testing.T) {
 			cmd := NewShellProfileCmd(factory)
 			err := sshToK3dCluster(factory, cmd, nil)
 
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.Equal(t, test.errmsg, err.Error())
 		})
 	}
@@ -326,10 +328,10 @@ func TestSSHFailToGetConfig(t *testing.T) {
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 
 	logClient, _ := factory.GetLoggingClient()
@@ -340,7 +342,7 @@ func TestSSHFailToGetConfig(t *testing.T) {
 	err := sshToK3dCluster(factory, cmd, []string{})
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}

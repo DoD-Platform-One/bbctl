@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
@@ -106,7 +107,7 @@ func TestReconcileConfiguration_PreflightCheckConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			if tt.setRegistryServer {
 				assert.Equal(t, registryServer, instance.GetString("registryserver"))
 				assert.Equal(t, registryServer, tt.arg.RegistryServer)
@@ -152,5 +153,5 @@ func TestGetSubConfigurations_PreflightCheckConfiguration(t *testing.T) {
 	// Act
 	subConfigurations := preflightCheckConfiguration.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 0, len(subConfigurations))
+	assert.Empty(t, subConfigurations)
 }

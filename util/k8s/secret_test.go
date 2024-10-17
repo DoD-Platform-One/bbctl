@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,10 +19,10 @@ func TestCreateRegistrySecret(t *testing.T) {
 	cs := fake.NewSimpleClientset(objects...)
 
 	_, err := CreateRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	secret, err := cs.CoreV1().Secrets("ns1").Get(context.TODO(), "foo", metaV1.GetOptions{})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	if secret.Name != "foo" {
 		t.Errorf("unexpected output: %s", secret.Name)
@@ -59,9 +60,9 @@ func TestDeleteRegistrySecret(t *testing.T) {
 	cs := fake.NewSimpleClientset(objects...)
 
 	_, err := CreateRegistrySecret(cs, "ns1", "foo", "https://bar.com", "user", "pass")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = DeleteRegistrySecret(cs, "ns1", "foo")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	secret, err := cs.CoreV1().Secrets("ns1").Get(context.TODO(), "foo", metaV1.GetOptions{})
 
@@ -76,11 +77,11 @@ func TestCreateRegistrySecretError(t *testing.T) {
 
 	// Create a secret
 	_, err := CreateRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Create the same secret again
 	_, err = CreateRegistrySecret(cs, "ns1", "foo", "bar.com", "user", "pass")
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "secrets \"foo\" already exists")
 }
 
@@ -95,7 +96,7 @@ func TestCreateRegistrySecretJSONMarshallError(t *testing.T) {
 	})
 
 	// Assert
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Nil(t, secret)
 	assert.Contains(t, err.Error(), "assert.AnError general error for testing")
 }

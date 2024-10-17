@@ -3,6 +3,7 @@ package gitlab
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
 
 	gitlab "github.com/xanzy/go-gitlab"
 )
@@ -22,7 +23,7 @@ func getFile(client *gitlab.Client, repository string, path string, branch strin
 		return nil, fmt.Errorf("error downloading file from gitlab: %w", err)
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("error downloading file from gitlab: %s", response.Status)
 	}
 

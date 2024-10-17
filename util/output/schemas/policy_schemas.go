@@ -9,33 +9,33 @@ import (
 )
 
 type PolicyOutput struct {
-	Name        string
-	Namespace   string
-	Kind        string
-	Description string
-	Action      string
+	Name        string `json:"name"        yaml:"name"`
+	Namespace   string `json:"namespace"   yaml:"namespace"`
+	Kind        string `json:"kind"        yaml:"kind"`
+	Description string `json:"description" yaml:"description"`
+	Action      string `json:"action"      yaml:"action"`
 }
 
 type CrdPolicyOutput struct {
-	CrdName  string
-	Policies []PolicyOutput
-	Message  string
+	CrdName  string         `json:"crdName"  yaml:"crdName"`
+	Policies []PolicyOutput `json:"policies" yaml:"policies"`
+	Message  string         `json:"message"  yaml:"message"`
 }
 
 type PolicyListOutput struct {
-	Messages    []string
-	CrdPolicies []CrdPolicyOutput
+	Messages    []string          `json:"messages"    yaml:"messages"`
+	CrdPolicies []CrdPolicyOutput `json:"crdPolicies" yaml:"crdPolicies"`
 }
 
-func (plo *PolicyListOutput) MarshalYaml() ([]byte, error) {
+func (plo *PolicyListOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(plo)
 }
 
-func (plo *PolicyListOutput) MarshalJson() ([]byte, error) {
+func (plo *PolicyListOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(plo)
 }
 
-func (plo *PolicyListOutput) MarshalHumanReadable() ([]byte, error) {
+func (plo *PolicyListOutput) EncodeText() ([]byte, error) {
 	var output strings.Builder
 
 	for _, message := range plo.Messages {
@@ -58,7 +58,7 @@ func (plo *PolicyListOutput) MarshalHumanReadable() ([]byte, error) {
 				}
 			}
 		} else {
-			output.WriteString(fmt.Sprintf("\n%s", crdPolicy.Message))
+			output.WriteString("\n" + crdPolicy.Message)
 		}
 		output.WriteString("\n\n\n")
 	}

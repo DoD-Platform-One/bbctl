@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +19,7 @@ import (
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
-	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -46,7 +47,7 @@ type Factory interface {
 	GetK8sClientset(cmd *cobra.Command) (kubernetes.Interface, error)
 	GetLoggingClient() (bbLog.Client, error)
 	GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.Client, error)
-	GetRuntimeClient(*runtime.Scheme) (runtimeClient.Client, error)
+	GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error)
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
@@ -114,7 +115,7 @@ func (f *UtilityFactory) ReadCredentialsFile(component string, uri string) (stri
 }
 
 // See ReadCredentialsFile
-func (f *UtilityFactory) readCredentialsFile(component string, uri string, unmarshallFunc func(in []byte, out interface{}) (err error)) (string, error) {
+func (f *UtilityFactory) readCredentialsFile(component string, uri string, unmarshallFunc func(in []byte, out interface{}) error) (string, error) {
 	configClient, err := f.referenceFactory.GetConfigClient(nil)
 	if err != nil {
 		return "", fmt.Errorf("unable to get config client: %w", err)
@@ -199,9 +200,10 @@ func (f *UtilityFactory) GetCredentialHelper() (CredentialHelper, error) {
 		}
 		helper := config.UtilCredentialHelperConfiguration.CredentialHelper
 		if helper == "" {
-			return "", fmt.Errorf("no credential helper defined (\"big-bang-credential-helper\")")
+			return "", errors.New("no credential helper defined (\"big-bang-credential-helper\")")
 		}
-		output := ""
+
+		var output string
 		if helper == "credentials-file" {
 			output, err = f.ReadCredentialsFile(component, uri)
 			if err != nil {
@@ -213,7 +215,7 @@ func (f *UtilityFactory) GetCredentialHelper() (CredentialHelper, error) {
 			if err != nil {
 				return "", fmt.Errorf("unable to get %v from %v using %v: %w", component, uri, helper, err)
 			}
-			output = string(rawOutput[:])
+			output = string(rawOutput)
 		}
 		if output == "" {
 			return "", fmt.Errorf("no %v found for %v in %v", component, uri, helper)
@@ -451,7 +453,7 @@ func (f *UtilityFactory) getHelmConfig(
 		return nil, err
 	}
 
-	// TODO: add support for an alternate warning handler and then just default nil
+	// Need to add support for an alternate warning handler and then just default nil
 	clientGetter := helm.NewRESTClientGetter(config, namespace, nil, loggingClient)
 
 	debugLog := func(format string, v ...interface{}) {
@@ -536,7 +538,7 @@ func (f *UtilityFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 func (f *UtilityFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.FileLike, error) {
 	r, w, err := os.Pipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Unable to create pipe: %w", err)
+		return nil, nil, fmt.Errorf("unable to create pipe: %w", err)
 	}
 	return r, w, nil
 }

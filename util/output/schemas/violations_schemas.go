@@ -9,25 +9,25 @@ import (
 )
 
 type Violation struct {
-	Name       string // resource name
-	Kind       string // resource kind
-	Namespace  string // resource namespace
-	Policy     string // kyverno policy name
-	Constraint string // gatekeeper constraint name
-	Message    string // policy violation message
-	Action     string // enforcement action
-	Timestamp  string // utc time
+	Name       string `json:"name"       yaml:"name"`
+	Kind       string `json:"kind"       yaml:"kind"`
+	Namespace  string `json:"namespace"  yaml:"namespace"`
+	Policy     string `json:"policy"     yaml:"policy"`
+	Constraint string `json:"constraint" yaml:"constraint"`
+	Message    string `json:"message"    yaml:"message"`
+	Action     string `json:"action"     yaml:"action"`
+	Timestamp  string `json:"timestamp"  yaml:"timestamp"` // UTC time
 }
 
-func (v *Violation) MarshalYaml() ([]byte, error) {
+func (v *Violation) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(v)
 }
 
-func (v *Violation) MarshalJson() ([]byte, error) {
-	return json.MarshalIndent(v, "", "  ")
+func (v *Violation) EncodeJSON() ([]byte, error) {
+	return json.Marshal(v)
 }
 
-func (v *Violation) MarshalHumanReadable() ([]byte, error) {
+func (v *Violation) EncodeText() ([]byte, error) {
 	return []byte(v.String()), nil
 }
 
@@ -45,26 +45,26 @@ func (v *Violation) String() string {
 }
 
 type ViolationsOutput struct {
-	Name       string
-	Violations []Violation
+	Name       string      `json:"name"       yaml:"name"`
+	Violations []Violation `json:"violations" yaml:"violations"`
 }
 
-func (vo *ViolationsOutput) MarshalYaml() ([]byte, error) {
+func (vo *ViolationsOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(vo)
 }
 
-func (vo *ViolationsOutput) MarshalJson() ([]byte, error) {
+func (vo *ViolationsOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(vo)
 }
 
-func (vo *ViolationsOutput) MarshalHumanReadable() ([]byte, error) {
+func (vo *ViolationsOutput) EncodeText() ([]byte, error) {
 	return []byte(vo.String()), nil
 }
 
 func (vo *ViolationsOutput) String() string {
 	var sb bytes.Buffer
 
-	sb.WriteString(fmt.Sprintf("%s:\n", vo.Name))
+	sb.WriteString(vo.Name + ":\n")
 	for _, violation := range vo.Violations {
 		sb.WriteString(fmt.Sprintf("  Resource: %s\n", violation.Name))
 		sb.WriteString(fmt.Sprintf("  Kind: %s\n", violation.Kind))

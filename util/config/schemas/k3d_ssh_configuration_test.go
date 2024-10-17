@@ -5,22 +5,23 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_K3dSshConfiguration(t *testing.T) {
 	var tests = []struct {
 		desc    string
-		arg     *K3dSshConfiguration
+		arg     *K3dSSHConfiguration
 		setUser bool
 	}{
 		{
 			"reconcile configuration, no values",
-			&K3dSshConfiguration{},
+			&K3dSSHConfiguration{},
 			false,
 		},
 		{
 			"reconcile configuration, user set",
-			&K3dSshConfiguration{},
+			&K3dSSHConfiguration{},
 			true,
 		},
 	}
@@ -35,7 +36,7 @@ func TestReconcileConfiguration_K3dSshConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			if tt.setUser {
 				assert.Equal(t, username, tt.arg.User)
 			} else {
@@ -47,31 +48,31 @@ func TestReconcileConfiguration_K3dSshConfiguration(t *testing.T) {
 
 func TestReconcileConfigurationDefaults_K3dSshConfiguration(t *testing.T) {
 	// Arrange
-	k3dSshConfiguration := &K3dSshConfiguration{}
+	k3dSSHConfiguration := &K3dSSHConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, k3dSshConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, k3dSSHConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, "ubuntu", k3dSshConfiguration.User)
+	assert.Equal(t, "ubuntu", k3dSSHConfiguration.User)
 }
 
 func TestReconcileConfigurationSetOutsideOfViper_K3dSshConfiguration(t *testing.T) {
 	// Arrange
-	k3dSshConfiguration := &K3dSshConfiguration{
+	k3dSSHConfiguration := &K3dSSHConfiguration{
 		User: "test",
 	}
 	v := viper.New()
 	// Act
-	assert.Nil(t, k3dSshConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, k3dSSHConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, "test", k3dSshConfiguration.User)
+	assert.Equal(t, "test", k3dSSHConfiguration.User)
 }
 
 func TestGetSubConfigurations_K3dSshConfiguration(t *testing.T) {
 	// Arrange
-	k3dSshConfiguration := &K3dSshConfiguration{}
+	k3dSSHConfiguration := &K3dSSHConfiguration{}
 	// Act
-	subConfigurations := k3dSshConfiguration.getSubConfigurations()
+	subConfigurations := k3dSSHConfiguration.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 0, len(subConfigurations))
+	assert.Empty(t, subConfigurations)
 }

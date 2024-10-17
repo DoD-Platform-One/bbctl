@@ -8,25 +8,22 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
-var (
-	updateRootUse = `update`
-
-	updateRootShort = i18n.T(`Manage updates to the Big Bang product`)
-
-	updateRootLong = templates.LongDesc(i18n.T(`Manage updates to the Big Bang product`))
-
-	updateRootExample = templates.Examples(i18n.T(`
-	    # Update functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
-)
-
 // NewUpdateCmd - Returns a minimal parent command for the `bbctl update` commands
 func NewUpdateCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		updateRootUse     = `update`
+		updateRootShort   = i18n.T(`Manage updates to the Big Bang product`)
+		updateRootLong    = templates.LongDesc(i18n.T(`Manage updates to the Big Bang product`))
+		updateRootExample = templates.Examples(i18n.T(`
+			# Update functionality is implemented in sub-commands. See the specific subcommand help for more information.`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     updateRootUse,
 		Short:   updateRootShort,
 		Long:    updateRootLong,
 		Example: updateRootExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, err := factory.GetOutputClient(cmd)
 			if err != nil {
 				return err

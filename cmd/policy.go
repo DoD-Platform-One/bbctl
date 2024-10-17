@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,34 +17,6 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	policyUse = `policy --PROVIDER CONSTRAINT_NAME`
-
-	policyShort = i18n.T(`Describe the configured policies implemented by Gatekeeper or Kyverno.`)
-
-	policyLong = templates.LongDesc(i18n.T(`
-		Describe the configured policies implemented by Gatekeeper or Kyverno.
-
-		Supported values for the required policy provider flag are --gatekeeper and --kyverno.
-
-		The optional constraint name argument can be provided to limit results to policies with the same name.
-	`))
-
-	policyExample = templates.Examples(i18n.T(`
-		# Describe a secific gatekeeper policy named "restrictedtainttoleration"
-		bbctl policy --gatekeeper restrictedtainttoleration
-	
-	    # Get a list of all active gatekeeper policies
-		bbctl policy --gatekeeper
-		
-		# Describe a specific kyverno policy named "restrict-seccomp"
-		bbctl policy --kyverno restrict-seccomp
-	
-	    # Get a list of all active kyverno policies
-		bbctl policy --kyverno
-	`))
-)
-
 type policyDescriptor struct {
 	name      string // policy name
 	namespace string // policy namespace (kyverno policy)
@@ -54,6 +27,31 @@ type policyDescriptor struct {
 
 // NewPoliciesCmd - Creates a new Cobra command which implements the `bbctl policy` functionality
 func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		policyUse   = `policy --PROVIDER CONSTRAINT_NAME`
+		policyShort = i18n.T(`Describe the configured policies implemented by Gatekeeper or Kyverno.`)
+		policyLong  = templates.LongDesc(i18n.T(`
+			Describe the configured policies implemented by Gatekeeper or Kyverno.
+
+			Supported values for the required policy provider flag are --gatekeeper and --kyverno.
+
+			The optional constraint name argument can be provided to limit results to policies with the same name.
+		`))
+		policyExample = templates.Examples(i18n.T(`
+			# Describe a secific gatekeeper policy named "restrictedtainttoleration"
+			bbctl policy --gatekeeper restrictedtainttoleration
+		
+			# Get a list of all active gatekeeper policies
+			bbctl policy --gatekeeper
+			
+			# Describe a specific kyverno policy named "restrict-seccomp"
+			bbctl policy --kyverno restrict-seccomp
+		
+			# Get a list of all active kyverno policies
+			bbctl policy --kyverno
+		`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     policyUse,
 		Short:   policyShort,
@@ -97,17 +95,17 @@ func NewPoliciesCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("unable to get config client: %v", clientError)
+		return nil, fmt.Errorf("unable to get config client: %w", clientError)
 	}
 
 	gatekeeperError := configClient.SetAndBindFlag("gatekeeper", "", false, "Print gatekeeper policy")
 	if gatekeeperError != nil {
-		return nil, fmt.Errorf("Unable to add flags to command: %v", gatekeeperError)
+		return nil, fmt.Errorf("unable to add flags to command: %w", gatekeeperError)
 	}
 
 	kyvernoError := configClient.SetAndBindFlag("kyverno", "", false, "Print kyverno policy")
 	if kyvernoError != nil {
-		return nil, fmt.Errorf("Unable to add flags to command: %v", kyvernoError)
+		return nil, fmt.Errorf("unable to add flags to command: %w", kyvernoError)
 	}
 
 	return cmd, nil
@@ -146,7 +144,7 @@ func matchingGatekeeperPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, h
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var matches []string = make([]string, 0)
+	var matches = make([]string, 0)
 
 	for _, crd := range gkCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
@@ -172,7 +170,7 @@ func matchingKyvernoPolicyNames(cmd *cobra.Command, factory bbUtil.Factory, hint
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var matches []string = make([]string, 0)
+	var matches = make([]string, 0)
 
 	for _, crd := range kyvernoCrds.Items {
 		crdName, _, _ := unstructured.NestedString(crd.Object, "metadata", "name")
@@ -204,7 +202,7 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return policyListOutput, fmt.Errorf("unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("unable to get config client: %w", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
@@ -219,7 +217,7 @@ func listPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name string)
 		return listKyvernoPoliciesByName(cmd, factory, name)
 	}
 
-	return policyListOutput, fmt.Errorf("either --gatekeeper or --kyverno must be specified, but not both")
+	return policyListOutput, errors.New("either --gatekeeper or --kyverno must be specified, but not both")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs matching the given prefix
@@ -230,7 +228,7 @@ func listGatekeeperPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, na
 		return policyOutput, err
 	}
 
-	crdName := fmt.Sprintf("%s.constraints.gatekeeper.sh", name)
+	crdName := name + ".constraints.gatekeeper.sh"
 
 	constraints, err := gatekeeper.FetchGatekeeperConstraints(client, crdName)
 	if err != nil {
@@ -283,7 +281,7 @@ func listKyvernoPoliciesByName(cmd *cobra.Command, factory bbUtil.Factory, name 
 		if err != nil {
 			loggingClient, loggingErr := factory.GetLoggingClient()
 			if loggingErr != nil {
-				return policyOutput, fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+				return policyOutput, fmt.Errorf("error getting logging client: %w for error: %w", loggingErr, err)
 			}
 			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
 			return policyOutput, err
@@ -325,7 +323,7 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.P
 
 	configClient, err := factory.GetConfigClient(cmd)
 	if err != nil {
-		return policyListOutput, fmt.Errorf("unable to get config client: %v", err)
+		return policyListOutput, fmt.Errorf("unable to get config client: %w", err)
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
@@ -340,7 +338,7 @@ func listAllPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputSchema.P
 		return listAllKyvernoPolicies(cmd, factory)
 	}
 
-	return policyListOutput, fmt.Errorf("either --gatekeeper or --kyverno must be specified")
+	return policyListOutput, errors.New("either --gatekeeper or --kyverno must be specified")
 }
 
 // Internal helper function to query the cluster for Gatekeeper constraint CRDs
@@ -423,7 +421,7 @@ func listAllKyvernoPolicies(cmd *cobra.Command, factory bbUtil.Factory) (outputS
 		if err != nil {
 			loggingClient, loggingErr := factory.GetLoggingClient()
 			if loggingErr != nil {
-				return policyOutput, fmt.Errorf("Error getting logging client: %w for error: %w", loggingErr, err)
+				return policyOutput, fmt.Errorf("error getting logging client: %w for error: %w", loggingErr, err)
 			}
 			loggingClient.Warn("Error getting kyverno policies: %s", err.Error())
 			return policyOutput, err

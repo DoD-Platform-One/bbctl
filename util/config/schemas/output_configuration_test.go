@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
@@ -12,7 +13,7 @@ func TestReconcileOutputConfigurations(t *testing.T) {
 	var tests = []struct {
 		desc      string
 		arg       *OutputConfiguration
-		format    output.OutputFormat
+		format    output.Format
 		setFormat bool
 	}{
 		{
@@ -44,7 +45,7 @@ func TestReconcileOutputConfigurations(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if tt.format != "" {
 				assert.Equal(t, tt.format, tt.arg.Format)
 			}
@@ -57,7 +58,7 @@ func TestReconcileOutputConfigurationDefaults(t *testing.T) {
 	outputConfiguration := &OutputConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, outputConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, outputConfiguration.ReconcileConfiguration(v))
 	// Assert
 	assert.Equal(t, output.TEXT, outputConfiguration.Format)
 }

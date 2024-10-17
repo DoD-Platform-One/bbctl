@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,7 +35,7 @@ func TestGetPolicyCmdConfigClientError(t *testing.T) {
 	cmd, err := NewPoliciesCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -47,10 +48,10 @@ func TestPolicyFailToGetConfig(t *testing.T) {
 	cmd, _ := NewPoliciesCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	factory.SetConfigClient(client)
@@ -62,11 +63,11 @@ func TestPolicyFailToGetConfig(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, result)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -268,11 +269,11 @@ func TestGetK8sDynamicClientErrorGatekeeper(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "failed to get K8sDynamicClient client") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "failed to get K8sDynamicClient client") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -290,11 +291,11 @@ func TestGetConfigClientError(t *testing.T) {
 	err2 := cmd.RunE(cmd, []string{""})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -315,11 +316,11 @@ func TestGetK8sDynamicClientErrorKyverno(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "failed to get K8sDynamicClient client") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "failed to get K8sDynamicClient client") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -336,11 +337,11 @@ func TestNoPolicySpecified(t *testing.T) {
 	err2 := cmd.RunE(cmd, []string{""})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "either --gatekeeper or --kyverno must be specified") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "either --gatekeeper or --kyverno must be specified, but not both") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -361,7 +362,7 @@ func TestFetchGatekeeperCrdsError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting gatekeeper crds:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -380,11 +381,11 @@ func TestFetchGatekeeperConstraintsError(t *testing.T) {
 	err2 := cmd.RunE(cmd, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "error getting gatekeeper constraint:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "error getting gatekeeper constraint:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -406,11 +407,11 @@ func TestFetchKyvernoCrdsError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "error getting kyverno crds:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "error getting kyverno crds:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -431,11 +432,11 @@ func TestFetchKyvernoPoliciesError(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Nil(t, res)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "error getting kyverno policies:") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "error getting kyverno policies:") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
@@ -456,7 +457,7 @@ func TestFetchGatekeeperPolicyDescriptorError(t *testing.T) {
 	err1 := cmd.RunE(cmd, []string{""})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "kind accessor error") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
@@ -482,20 +483,19 @@ func TestFetchGatekeeperPolicyDescriptorStringErrors(t *testing.T) {
 	err4 := cmd.RunE(cmd, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	//assert.Error(t, err)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "name accessor error") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "description accessor error") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
-	assert.Error(t, err3)
+	require.Error(t, err3)
 	if !assert.Contains(t, err3.Error(), "Action accessor error") {
 		t.Errorf("unexpected output: %s", err3.Error())
 	}
-	assert.Error(t, err4)
+	require.Error(t, err4)
 	if !assert.Contains(t, err4.Error(), "kind accessor error") {
 		t.Errorf("unexpected output: %s", err4.Error())
 	}
@@ -515,7 +515,7 @@ func TestFetchKyvernoPolicyDescriptorError(t *testing.T) {
 	err1 := cmd.RunE(cmd, []string{"foo-1"})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "kind accessor error") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
@@ -543,24 +543,23 @@ func TestFetchKyvernoPolicyDescriptorStringErrors(t *testing.T) {
 	err5 := cmd.RunE(cmd, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	//assert.Error(t, err)
-	assert.Error(t, err1)
+	require.Error(t, err1)
 	if !assert.Contains(t, err1.Error(), "name accessor error") {
 		t.Errorf("unexpected output: %s", err1.Error())
 	}
-	assert.Error(t, err2)
+	require.Error(t, err2)
 	if !assert.Contains(t, err2.Error(), "namespace accessor error") {
 		t.Errorf("unexpected output: %s", err2.Error())
 	}
-	assert.Error(t, err3)
+	require.Error(t, err3)
 	if !assert.Contains(t, err3.Error(), "description accessor error") {
 		t.Errorf("unexpected output: %s", err3.Error())
 	}
-	assert.Error(t, err4)
+	require.Error(t, err4)
 	if !assert.Contains(t, err4.Error(), "Action accessor error") {
 		t.Errorf("unexpected output: %s", err4.Error())
 	}
-	assert.Error(t, err5)
+	require.Error(t, err5)
 	if !assert.Contains(t, err5.Error(), "kind accessor error") {
 		t.Errorf("unexpected output: %s", err5.Error())
 	}
@@ -671,7 +670,7 @@ func TestGatekeeperPolicies(t *testing.T) {
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s but expected %v", buf.String(), exp)
@@ -750,7 +749,7 @@ func TestNoGatekeeperPolicies(t *testing.T) {
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s", buf.String())
@@ -887,7 +886,7 @@ func TestKyvernoPolicies(t *testing.T) {
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s", buf.String())
@@ -969,7 +968,7 @@ func TestNoKyvernoPolicies(t *testing.T) {
 			buf := streams.Out.(*bytes.Buffer)
 			cmd := policiesCmd(factory, test.args)
 			err := cmd.Execute()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, exp := range test.expected {
 				if !strings.Contains(buf.String(), exp) {
 					t.Errorf("unexpected output: %s", buf.String())
@@ -1062,7 +1061,6 @@ func TestGatekeeperPoliciesCompletion(t *testing.T) {
 }
 
 func TestKyvernoPoliciesCompletion(t *testing.T) {
-
 	crd1 := &unstructured.Unstructured{}
 	crd1.SetUnstructuredContent(map[string]interface{}{
 		"apiVersion": "apiextensions.k8s.io/v1",

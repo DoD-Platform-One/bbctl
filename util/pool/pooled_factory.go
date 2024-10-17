@@ -16,7 +16,7 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
-	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
@@ -25,11 +25,11 @@ import (
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ErrFactoryNotInitialized is returned when the factory is not initialized
-type ErrFactoryNotInitialized struct{}
+// FactoryNotInitializedError is returned when the factory is not initialized
+type FactoryNotInitializedError struct{}
 
 // Error returns the error message
-func (e ErrFactoryNotInitialized) Error() string {
+func (e FactoryNotInitializedError) Error() string {
 	return "factory not initialized"
 }
 
@@ -76,7 +76,7 @@ func (pf *PooledFactory) GetAWSClient() (bbAws.Client, error) {
 		return pf.awsClient, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetAWSClient()
 	if err != nil {
@@ -94,7 +94,7 @@ func (pf *PooledFactory) GetGitLabClient() (bbGitLab.Client, error) {
 		return pf.gitLabClient, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetGitLabClient()
 	if err != nil {
@@ -112,7 +112,7 @@ func (pf *PooledFactory) GetHelmClient(cmd *cobra.Command, namespace string) (he
 		return client, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetHelmClient(cmd, namespace)
 	if err != nil {
@@ -130,7 +130,7 @@ func (pf *PooledFactory) GetK8sClientset(cmd *cobra.Command) (kubernetes.Interfa
 		return pf.k8sClientset, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetK8sClientset(cmd)
 	if err != nil {
@@ -155,7 +155,7 @@ func (pf *PooledFactory) GetLoggingClientWithLogger(logger *slog.Logger) (bbLog.
 		return client, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetLoggingClientWithLogger(logger)
 	if err == nil {
@@ -172,7 +172,7 @@ func (pf *PooledFactory) GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient
 		return client, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetRuntimeClient(scheme)
 	if err != nil {
@@ -190,7 +190,7 @@ func (pf *PooledFactory) GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interf
 		return pf.k8sDynamicClient, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetK8sDynamicClient(cmd)
 	if err != nil {
@@ -208,7 +208,7 @@ func (pf *PooledFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, e
 		return *pf.outputClient, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetOutputClient(cmd)
 	if err == nil {
@@ -225,7 +225,7 @@ func (pf *PooledFactory) GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 		return pf.restConfig, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetRestConfig(cmd)
 	if err != nil {
@@ -247,7 +247,7 @@ func (pf *PooledFactory) GetCommandExecutor(
 	stderr io.Writer,
 ) (remoteCommand.Executor, error) {
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	return pf.underlyingFactory.GetCommandExecutor(cmd, pod, container, command, stdout, stderr)
 }
@@ -260,7 +260,7 @@ func (pf *PooledFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) 
 		return pf.credentialHelper, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetCredentialHelper()
 	if err == nil {
@@ -277,7 +277,7 @@ func (pf *PooledFactory) GetCommandWrapper(
 	args ...string,
 ) (*bbUtilApiWrappers.Command, error) {
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	return pf.underlyingFactory.GetCommandWrapper(name, args...)
 }
@@ -292,7 +292,7 @@ func (pf *PooledFactory) GetIstioClientSet(
 		return client, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetIstioClientSet(cfg)
 	if err != nil {
@@ -307,7 +307,7 @@ func (pf *PooledFactory) GetIstioClientSet(
 // Not pooled (pass-through)
 func (pf *PooledFactory) GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error) {
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	return pf.underlyingFactory.GetConfigClient(command)
 }
@@ -320,7 +320,7 @@ func (pf *PooledFactory) GetViper() (*viper.Viper, error) {
 		return pf.viper, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetViper()
 	if err == nil {
@@ -337,7 +337,7 @@ func (pf *PooledFactory) GetIOStream() (*genericIOOptions.IOStreams, error) {
 		return pf.ioStream, nil
 	}
 	if pf.underlyingFactory == nil {
-		return nil, &ErrFactoryNotInitialized{}
+		return nil, &FactoryNotInitializedError{}
 	}
 	client, err := pf.underlyingFactory.GetIOStream()
 	if err == nil {
@@ -353,7 +353,7 @@ func (pf *PooledFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.
 	}
 
 	if pf.underlyingFactory == nil {
-		return nil, nil, &ErrFactoryNotInitialized{}
+		return nil, nil, &FactoryNotInitializedError{}
 	}
 
 	r, w, err := pf.underlyingFactory.GetPipe()

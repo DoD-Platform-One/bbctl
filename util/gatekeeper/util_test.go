@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
@@ -165,7 +166,7 @@ func TestFetchGatekeeperConstraintsError(t *testing.T) {
 	result, err := FetchGatekeeperConstraints(client, "nop.constraints.gatekeeper.sh")
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error getting gatekeeper constraint")
 	assert.Nil(t, result)
 }
@@ -182,7 +183,7 @@ func TestFetchGatekeeperCrdsError(t *testing.T) {
 	result, err := FetchGatekeeperCrds(client)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error getting gatekeeper crds")
 	assert.Nil(t, result)
 }

@@ -7,12 +7,12 @@ import (
 
 type OutputConfiguration struct {
 	// Format for output: json, text, yaml
-	Format bbOutput.OutputFormat `mapstructure:"format" yaml:"format"`
+	Format bbOutput.Format `mapstructure:"format" yaml:"format"`
 }
 
 func (o *OutputConfiguration) ReconcileConfiguration(instance *viper.Viper) error {
 	if instance.IsSet("format") {
-		o.Format = bbOutput.OutputFormat(instance.GetString("format"))
+		o.Format = bbOutput.Format(instance.GetString("format"))
 	} else {
 		if o.Format == "" {
 			o.Format = bbOutput.TEXT

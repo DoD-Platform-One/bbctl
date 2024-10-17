@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 )
 
 // FakeFile is a fake implementation of os.File that can be used for testing purposes
@@ -50,12 +50,13 @@ type FakeFile struct {
 // r will only error on read, w will only error on write (even if you set both to fail)
 //
 // If you need to test both see CreateFakeFileFromOSPipeExtended
-func CreateFakeFileFromOSPipe(t *testing.T, errOnRead bool, errOnWrite bool) (r *FakeFile, w *FakeFile, err error) {
+func CreateFakeFileFromOSPipe(t *testing.T, errOnRead bool, errOnWrite bool) (*FakeFile, *FakeFile, error) {
+	t.Helper()
 	osR, osW, err := os.Pipe()
 	if err != nil {
 		return nil, nil, err
 	}
-	r, w = &FakeFile{
+	r, w := &FakeFile{
 		File:               osR,
 		shouldErrorOnRead:  errOnRead,
 		shouldErrorOnWrite: false,
@@ -73,12 +74,13 @@ func CreateFakeFileFromOSPipe(t *testing.T, errOnRead bool, errOnWrite bool) (r 
 
 // CreateFakeFileFromOSPipeExtended creates a new FakeFile instance from a call to os.Pipe()
 // the failOnRead and failOnWrite parameters determine if the file should error on read or write
-func CreateFakeFileFromOSPipeExtended(t *testing.T, rErrOnRead bool, rErrOnWrite bool, wErrOnRead bool, wErrOnWrite bool) (r *FakeFile, w *FakeFile, err error) {
+func CreateFakeFileFromOSPipeExtended(t *testing.T, rErrOnRead bool, rErrOnWrite bool, wErrOnRead bool, wErrOnWrite bool) (*FakeFile, *FakeFile, error) {
+	t.Helper()
 	osR, osW, err := os.Pipe()
 	if err != nil {
 		return nil, nil, err
 	}
-	r, w = &FakeFile{
+	r, w := &FakeFile{
 		File:               osR,
 		shouldErrorOnRead:  rErrOnRead,
 		shouldErrorOnWrite: rErrOnWrite,
@@ -96,6 +98,7 @@ func CreateFakeFileFromOSPipeExtended(t *testing.T, rErrOnRead bool, rErrOnWrite
 
 // CreateFakeFileFromFileLike creates a new FakeFile instance from an existing FileLike (e.g. os.File)
 func CreateFakeFileFromFileLike(t *testing.T, shouldErrorOnRead bool, shouldErrorOnWrite bool, actualFile commonInterfaces.FileLike) (*FakeFile, error) {
+	t.Helper()
 	if actualFile == nil {
 		return nil, &FakeFileError{badInitialization: true}
 	}
@@ -176,7 +179,7 @@ func (f *FakeFile) Name() string {
 }
 
 // Read reads the given byte slice from the file
-func (f *FakeFile) Read(b []byte) (n int, err error) {
+func (f *FakeFile) Read(b []byte) (int, error) {
 	if f.SetFail.Read || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -184,7 +187,7 @@ func (f *FakeFile) Read(b []byte) (n int, err error) {
 }
 
 // ReadAt reads the given byte slice from the file at the given offset
-func (f *FakeFile) ReadAt(b []byte, off int64) (n int, err error) {
+func (f *FakeFile) ReadAt(b []byte, off int64) (int, error) {
 	if f.SetFail.ReadAt || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -200,7 +203,7 @@ func (f *FakeFile) ReadDir(n int) ([]fs.DirEntry, error) {
 }
 
 // ReadFrom reads from the given reader
-func (f *FakeFile) ReadFrom(r io.Reader) (n int64, err error) {
+func (f *FakeFile) ReadFrom(r io.Reader) (int64, error) {
 	if f.SetFail.ReadFrom || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -216,7 +219,7 @@ func (f *FakeFile) Readdir(n int) ([]fs.FileInfo, error) {
 }
 
 // Readdirnames reads the directory names
-func (f *FakeFile) Readdirnames(n int) (names []string, err error) {
+func (f *FakeFile) Readdirnames(n int) ([]string, error) {
 	if f.SetFail.Readdirnames || f.t == nil {
 		return nil, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -224,7 +227,7 @@ func (f *FakeFile) Readdirnames(n int) (names []string, err error) {
 }
 
 // Seek seeks to the given offset
-func (f *FakeFile) Seek(offset int64, whence int) (ret int64, err error) {
+func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
 	if f.SetFail.Seek || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -288,7 +291,7 @@ func (f *FakeFile) Truncate(size int64) error {
 }
 
 // Write writes the given byte slice to the file
-func (f *FakeFile) Write(b []byte) (n int, err error) {
+func (f *FakeFile) Write(b []byte) (int, error) {
 	if f.SetFail.Write || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -296,7 +299,7 @@ func (f *FakeFile) Write(b []byte) (n int, err error) {
 }
 
 // WriteAt writes the given byte slice to the file at the given offset
-func (f *FakeFile) WriteAt(b []byte, off int64) (n int, err error) {
+func (f *FakeFile) WriteAt(b []byte, off int64) (int, error) {
 	if f.SetFail.WriteAt || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -304,7 +307,7 @@ func (f *FakeFile) WriteAt(b []byte, off int64) (n int, err error) {
 }
 
 // WriteString writes the given string to the file
-func (f *FakeFile) WriteString(s string) (n int, err error) {
+func (f *FakeFile) WriteString(s string) (int, error) {
 	if f.SetFail.WriteString || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}
@@ -312,7 +315,7 @@ func (f *FakeFile) WriteString(s string) (n int, err error) {
 }
 
 // WriteTo writes the file to the given writer
-func (f *FakeFile) WriteTo(w io.Writer) (n int64, err error) {
+func (f *FakeFile) WriteTo(w io.Writer) (int64, error) {
 	if f.SetFail.WriteTo || f.t == nil {
 		return 0, &FakeFileError{badInitialization: f.t == nil}
 	}

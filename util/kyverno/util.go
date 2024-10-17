@@ -59,13 +59,10 @@ func FetchKyvernoPolicies(client dynamic.Interface, name string) (*unstructured.
 			// is present in every version of the API so this needs to ignore "resource not found" errors
 			if !strings.Contains(err.Error(), "the server could not find the requested resource") {
 				return nil, fmt.Errorf("error getting kyverno policies: %s", err.Error())
-			} else {
-				continue
 			}
+			continue
 		}
-
 		allPolicies.Items = append(allPolicies.Items, resources.Items...)
 	}
-
 	return allPolicies, nil
 }

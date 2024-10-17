@@ -84,10 +84,10 @@ type InfoFunc func(Client, string, ...interface{})
 type InfoContextFunc func(context.Context, Client, string, ...interface{})
 
 // LogFunc type // golangci-lint complains about stuttering, but this is the best name for this type
-type LogFunc func(context.Context, Client, slog.Level, string, ...interface{})
+type LogFunc func(context.Context, Client, slog.Level, string, ...interface{}) //nolint:revive
 
 // LogAttrsFunc type // golangci-lint complains about stuttering, but this is the best name for this type
-type LogAttrsFunc func(context.Context, Client, slog.Level, string, ...slog.Attr)
+type LogAttrsFunc func(context.Context, Client, slog.Level, string, ...slog.Attr) //nolint:revive
 
 // WarnFunc type
 type WarnFunc func(Client, string, ...interface{})
@@ -229,7 +229,7 @@ func (c *loggingClient) Enabled(context context.Context, level slog.Level) bool 
 }
 
 // Error - log an error
-func (c *loggingClient) Error(format string, args ...interface{}) {
+func (c *loggingClient) Error(format string, _ ...interface{}) {
 	c.errorFunc(c, format)
 }
 

@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	mock "repo1.dso.mil/big-bang/product/packages/bbctl/mocks/repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -59,7 +60,7 @@ func TestValues(t *testing.T) {
 
 	cmd := NewValuesCmd(factory)
 	err := cmd.RunE(cmd, []string{"foo"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	if !strings.Contains(buf.String(), "enabled: 2") {
 		t.Errorf("unexpected output: %s", buf.String())
@@ -165,7 +166,7 @@ func TestNewValuesCmdHelperSucces(t *testing.T) {
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
 
 	// Assert that we don't return an error
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert that the client returned is not nil (nil is returned in all
 	// error cases)
@@ -202,7 +203,7 @@ func TestNewValuesCmdHelperFailConstantsClient(t *testing.T) {
 	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
-	expectedError := fmt.Errorf("failed to get constants")
+	expectedError := errors.New("failed to get constants")
 
 	constantsClient := mock.MockConstantsClient{}
 	constantsClient.On("GetConstants").Return(static.Constants{BigBangNamespace: "bigbang"}, expectedError)
@@ -230,15 +231,14 @@ func TestGetHelmValuesFailGettingValues(t *testing.T) {
 	viper.Set("output-config.format", "yaml")
 	cmd := NewValuesCmd(factory)
 
-	expectedError := fmt.Errorf("error getting helm release values in namespace bigbang: release test not found")
+	expectedError := errors.New("error getting helm release values in namespace bigbang: release test not found")
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, v)
 
 	// Will fail to get helm values as we've set releases to be a nil value
-	streams, _ := factory.GetIOStream()
-	err = v.getHelmValues(streams, "test")
+	err = v.getHelmValues("test")
 
 	assert.Equal(t, expectedError.Error(), err.Error())
 }
@@ -248,7 +248,7 @@ func TestGetHelmValuesFailGettingValues(t *testing.T) {
 func TestMatchingReleaseNamesFailGettingList(t *testing.T) {
 	factory := bbUtil.GetFakeFactory()
 	factory.SetHelmGetListFunc(func() ([]*release.Release, error) {
-		return nil, fmt.Errorf("error getting list")
+		return nil, errors.New("error getting list")
 	})
 	viper, _ := factory.GetViper()
 	// Required value or the execution will fail
@@ -257,7 +257,7 @@ func TestMatchingReleaseNamesFailGettingList(t *testing.T) {
 	cmd := NewValuesCmd(factory)
 
 	v, err := newValuesCmdHelper(cmd, factory, static.DefaultClient)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, v)
 
 	matches, directive := v.matchingReleaseNames("test")
@@ -279,7 +279,7 @@ func TestValuesOutputClientError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Nil(t, suggestions)
 	assert.Equal(t, cobra.ShellCompDirectiveError, directive)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting output client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -296,7 +296,7 @@ func TestValuesGetIOStreamsError(t *testing.T) {
 	assert.NotNil(t, cmd)
 
 	err := cmd.RunE(cmd, []string{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get streams") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}

@@ -25,25 +25,7 @@ import (
 	metricsApi "k8s.io/metrics/pkg/apis/metrics"
 )
 
-var (
-	preflightCheckUse = `preflight-check`
-
-	preflightCheckShort = i18n.T(`Check cluster for the minimum required configurations before installing Big Bang.`)
-
-	preflightCheckLong = templates.LongDesc(i18n.T(`
-		Check cluster for the minimum required configurations before installing Big Bang.
-		This command creates a job in the 'preflight-check' namespace to check system parameters.
-		User needs to have RBAC permissions to create and delete namespace, secret and job resources.`))
-
-	preflightCheckExample = templates.Examples(i18n.T(`
-		# Check cluster for the minimum required configurations
-		bbctl preflight-check --registryserver <registry-server> --registryusername <username> --registrypassword <password>
-		# Export registry credentials as environment variables before running this command to configure registry access
-		# export REGISTRYSERVER=registry1.dso.mil
-		# export REGISTRYUSERNAME=<username>
-		# export REGISTRYPASSWORD=<password>
-		bbctl preflight-check `))
-
+const (
 	preflightPodImage = "registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal:8.4"
 
 	preflightPodNamespace = "preflight-check"
@@ -54,6 +36,47 @@ var (
 
 	fluxNamespace = "flux-system"
 )
+
+// preflightChecks defines all the steps to run in the bbPreflightCheck function
+var preflightChecks = []preflightCheck{ //nolint:gochecknoglobals
+	{
+		desc:     "Metrics Server Check",
+		function: checkMetricsServer,
+		failureMessage: templates.LongDesc(i18n.T(`
+		Metrics Server needs to be running in the cluster for Horizontal Pod Autoscaler to work.`)),
+		successMessage: templates.LongDesc(i18n.T(`
+		Metrics Server is running in the cluster for Horizontal Pod Autoscaler to work.`)),
+	},
+	{
+		desc:     "Default Storage Class Check",
+		function: checkDefaultStorageClass,
+		failureMessage: templates.LongDesc(i18n.T(`
+		A Default Storage Class must be defined for Stateful workloads. 
+		If you don't have a need for Persistent Volumes, this error can be ignored.`)),
+		successMessage: templates.LongDesc(i18n.T(`
+		Default Storage Class exists for Stateful workloads to work.`)),
+	},
+	{
+		desc:     "Flux Controller Check",
+		function: checkFluxController,
+		failureMessage: templates.LongDesc(i18n.T(`
+		Flux Controller is required for successful installation of Big Bang packages using GitOps.`)),
+		successMessage: templates.LongDesc(i18n.T(`
+		Flux Controller is running and allows for successful installation of Big Bang packages using GitOps.`)),
+	},
+	{
+		desc:     "System Parameters Check",
+		function: checkSystemParameters,
+		failureMessage: templates.LongDesc(i18n.T(`
+		Some packages installed by Big Bang require system parameters to be equal or greater than the recommended value. 
+		You can ignore this error if not planning to install packages that failed the check.
+		For more information refer to https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/prerequisites/os-preconfiguration.md`)),
+		successMessage: templates.LongDesc(i18n.T(`
+		System parameters determined to be equal or greater than the recommended value. 
+		This will allow for successful installation of packages that passed the check.
+		For more information refer to https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/prerequisites/os-preconfiguration.md`)),
+	},
+}
 
 // preflightCheckFunc is a type definition that allows each preflight check step to provide its own implementation
 type preflightCheckFunc func(*cobra.Command, bbUtil.Factory, *schemas.GlobalConfiguration) ([]string, preflightCheckStatus)
@@ -83,47 +106,6 @@ type preflightCheck struct {
 	output         []string             // user friendly console output
 }
 
-// preflightChecks defines all the steps to run in the bbPreflightCheck function
-var preflightChecks []preflightCheck = []preflightCheck{
-	{
-		desc:     "Metrics Server Check",
-		function: checkMetricsServer,
-		failureMessage: templates.LongDesc(i18n.T(`
-			Metrics Server needs to be running in the cluster for Horizontal Pod Autoscaler to work.`)),
-		successMessage: templates.LongDesc(i18n.T(`
-			Metrics Server is running in the cluster for Horizontal Pod Autoscaler to work.`)),
-	},
-	{
-		desc:     "Default Storage Class Check",
-		function: checkDefaultStorageClass,
-		failureMessage: templates.LongDesc(i18n.T(`
-			A Default Storage Class must be defined for Stateful workloads. 
-			If you don't have a need for Persistent Volumes, this error can be ignored.`)),
-		successMessage: templates.LongDesc(i18n.T(`
-			Default Storage Class exists for Stateful workloads to work.`)),
-	},
-	{
-		desc:     "Flux Controller Check",
-		function: checkFluxController,
-		failureMessage: templates.LongDesc(i18n.T(`
-			Flux Controller is required for successful installation of Big Bang packages using GitOps.`)),
-		successMessage: templates.LongDesc(i18n.T(`
-			Flux Controller is running and allows for successful installation of Big Bang packages using GitOps.`)),
-	},
-	{
-		desc:     "System Parameters Check",
-		function: checkSystemParameters,
-		failureMessage: templates.LongDesc(i18n.T(`
-			Some packages installed by Big Bang require system parameters to be equal or greater than the recommended value. 
-			You can ignore this error if not planning to install packages that failed the check.
-			For more information refer to https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/prerequisites/os-preconfiguration.md`)),
-		successMessage: templates.LongDesc(i18n.T(`
-			System parameters determined to be equal or greater than the recommended value. 
-			This will allow for successful installation of packages that passed the check.
-			For more information refer to https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/prerequisites/os-preconfiguration.md`)),
-	},
-}
-
 // systemParameter defines the format for each of the system parameter checks
 type systemParameter struct {
 	// parameter name
@@ -136,66 +118,37 @@ type systemParameter struct {
 	threshold map[string]int
 }
 
-// sysParams defines all the system parameter checks to run as part of the checkSystemParameters step
-var sysParams []systemParameter = []systemParameter{
-	{
-		"vm.max_map_count",
-		[]string{"cat", "/proc/sys/vm/max_map_count"},
-		"max number of memory map areas",
-		map[string]int{
-			"ECK":       262144,
-			"Sonarqube": 524288,
-		},
-	},
-	{
-		"fs.file-max",
-		[]string{"cat", "/proc/sys/fs/file-max"},
-		"max number of file handles",
-		map[string]int{
-			"Sonarqube": 131072,
-		},
-	},
-	{
-		"ulimit -n",
-		[]string{"ulimit", "-n"},
-		"max number of open files",
-		map[string]int{
-			"Sonarqube": 131072,
-		},
-	},
-	{
-		"ulimit -u",
-		[]string{"ulimit", "-u"},
-		"max number of user processes",
-		map[string]int{
-			"Sonarqube": 8192,
-		},
-	},
-}
-
-// fluxControllerPods lists all the required pods that must be running in order to confirm Flux is installed in the cluster
-var fluxControllerPods []string = []string{
-	"helm-controller",
-	"kustomize-controller",
-	"source-controller",
-	"notification-controller",
-}
-
 // NewPreflightCheckCmd - Creates a new Cobra command which implements the `bbctl preflight-check` functionality
 func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		preflightCheckUse   = `preflight-check`
+		preflightCheckShort = i18n.T(`Check cluster for the minimum required configurations before installing Big Bang.`)
+		preflightCheckLong  = templates.LongDesc(i18n.T(`
+			Check cluster for the minimum required configurations before installing Big Bang.
+			This command creates a job in the 'preflight-check' namespace to check system parameters.
+			User needs to have RBAC permissions to create and delete namespace, secret and job resources.`))
+		preflightCheckExample = templates.Examples(i18n.T(`
+			# Check cluster for the minimum required configurations
+			bbctl preflight-check --registryserver <registry-server> --registryusername <username> --registrypassword <password>
+			# Export registry credentials as environment variables before running this command to configure registry access
+			# export REGISTRYSERVER=registry1.dso.mil
+			# export REGISTRYUSERNAME=<username>
+			# export REGISTRYPASSWORD=<password>
+			bbctl preflight-check `))
+	)
 	cmd := &cobra.Command{
 		Use:     preflightCheckUse,
 		Short:   preflightCheckShort,
 		Long:    preflightCheckLong,
 		Example: preflightCheckExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return bbPreflightCheck(cmd, factory, cmd, preflightChecks)
 		},
 	}
 
 	configClient, clientError := factory.GetConfigClient(cmd)
 	if clientError != nil {
-		return nil, fmt.Errorf("unable to get config client: %s", clientError)
+		return nil, fmt.Errorf("unable to get config client: %w", clientError)
 	}
 
 	registryServerError := configClient.SetAndBindFlag(
@@ -205,7 +158,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry server url",
 	)
 	if registryServerError != nil {
-		return nil, fmt.Errorf("error setting registryserver flag: %s", registryServerError)
+		return nil, fmt.Errorf("error setting registryserver flag: %w", registryServerError)
 	}
 
 	registryUserError := configClient.SetAndBindFlag(
@@ -215,7 +168,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry username",
 	)
 	if registryUserError != nil {
-		return nil, fmt.Errorf("error setting registryusername flag: %s", registryUserError)
+		return nil, fmt.Errorf("error setting registryusername flag: %w", registryUserError)
 	}
 
 	registryPasswordError := configClient.SetAndBindFlag(
@@ -225,7 +178,7 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		"Image registry password",
 	)
 	if registryPasswordError != nil {
-		return nil, fmt.Errorf("error setting registrypassword flag: %s", registryPasswordError)
+		return nil, fmt.Errorf("error setting registrypassword flag: %w", registryPasswordError)
 	}
 
 	return cmd, nil
@@ -241,7 +194,7 @@ func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, command *cobra
 	}
 	config, configErr := configClient.GetConfig()
 	if configErr != nil {
-		return fmt.Errorf("error getting config: %s", configErr)
+		return fmt.Errorf("error getting config: %w", configErr)
 	}
 	for i, check := range preflightChecks {
 		messages, status := check.function(cmd, factory, config)
@@ -252,17 +205,17 @@ func bbPreflightCheck(cmd *cobra.Command, factory bbUtil.Factory, command *cobra
 }
 
 // Internal helper function to implement the metrics server check step
-func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 	outputMessages := []string{"Checking metrics server..."}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get k8s clientset: "+err.Error()), unknown
 	}
 
 	apiGroups, err := client.Discovery().ServerGroups()
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get server groups: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get server groups: "+err.Error()), unknown
 	}
 
 	metricsAPIAvailable := supportedMetricsAPIVersionAvailable(apiGroups)
@@ -274,17 +227,17 @@ func checkMetricsServer(cmd *cobra.Command, factory bbUtil.Factory, config *sche
 }
 
 // Internal helper function to implement the storage class check step
-func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 	outputMessages := []string{"Checking default storage class..."}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get k8s clientset: "+err.Error()), unknown
 	}
 
 	storageClasses, err := client.StorageV1().StorageClasses().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get storage classes: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get storage classes: "+err.Error()), unknown
 	}
 
 	defaultStorageClassName := ""
@@ -302,18 +255,25 @@ func checkDefaultStorageClass(cmd *cobra.Command, factory bbUtil.Factory, config
 }
 
 // Internal helper function to implement the Flux installation check step
-func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
+func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, _ *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 	outputMessages := []string{"Checking flux installation..."}
+	// fluxControllerPods lists all the required pods that must be running in order to confirm Flux is installed in the cluster
+	var fluxControllerPods = []string{
+		"helm-controller",
+		"kustomize-controller",
+		"source-controller",
+		"notification-controller",
+	}
 
 	client, err := factory.GetK8sClientset(cmd)
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get k8s clientset: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get k8s clientset: "+err.Error()), unknown
 	}
 
 	fluxStatus := make(map[string]string)
 	pods, err := client.CoreV1().Pods(fluxNamespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to get pods: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to get pods: "+err.Error()), unknown
 	}
 
 	for _, pod := range pods.Items {
@@ -343,20 +303,57 @@ func checkFluxController(cmd *cobra.Command, factory bbUtil.Factory, config *sch
 func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *schemas.GlobalConfiguration) ([]string, preflightCheckStatus) {
 	outputMessages := []string{"Checking system parameters..."}
 
+	// sysParams defines all the system parameter checks to run as part of the checkSystemParameters step
+	var sysParams = []systemParameter{
+		{
+			"vm.max_map_count",
+			[]string{"cat", "/proc/sys/vm/max_map_count"},
+			"max number of memory map areas",
+			map[string]int{
+				"ECK":       262144,
+				"Sonarqube": 524288,
+			},
+		},
+		{
+			"fs.file-max",
+			[]string{"cat", "/proc/sys/fs/file-max"},
+			"max number of file handles",
+			map[string]int{
+				"Sonarqube": 131072,
+			},
+		},
+		{
+			"ulimit -n",
+			[]string{"ulimit", "-n"},
+			"max number of open files",
+			map[string]int{
+				"Sonarqube": 131072,
+			},
+		},
+		{
+			"ulimit -u",
+			[]string{"ulimit", "-u"},
+			"max number of user processes",
+			map[string]int{
+				"Sonarqube": 8192,
+			},
+		},
+	}
+
 	pod, messages, err := createResourcesForCommandExecution(cmd, factory, config)
 	outputMessages = append(outputMessages, messages...)
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Failed to create resources for command execution: %s", err.Error())), unknown
+		return append(outputMessages, "Failed to create resources for command execution: "+err.Error()), unknown
 	}
 
 	status := passed
 	for _, param := range sysParams {
-		outputMessages = append(outputMessages, fmt.Sprintf("Checking %s", param.name))
+		outputMessages = append(outputMessages, "Checking "+param.name)
 		var stdout, stderr bytes.Buffer
 
 		exec, err := factory.GetCommandExecutor(cmd, pod, "", param.command, &stdout, &stderr)
 		if err != nil {
-			return append(outputMessages, fmt.Sprintf("Failed to get command executor: %s", err.Error())), unknown
+			return append(outputMessages, "Failed to get command executor: "+err.Error()), unknown
 		}
 		err = exec.StreamWithContext(context.TODO(), remoteCommand.StreamOptions{
 			Stdin:  nil,
@@ -370,7 +367,7 @@ func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *s
 			continue
 		}
 		for bbPackage, threshold := range param.threshold {
-			paramValue := strings.ReplaceAll(stdout.String(), "", "")
+			paramValue := strings.ReplaceAll(stdout.String(), " ", "")
 			paramMessages, paramResult := checkSystemParameter(bbPackage, param.name, paramValue, param.description, threshold)
 			outputMessages = append(outputMessages, paramMessages...)
 			if !paramResult {
@@ -382,7 +379,7 @@ func checkSystemParameters(cmd *cobra.Command, factory bbUtil.Factory, config *s
 	outputMessages = append(outputMessages, "Deleting namespace for command execution...")
 	err = deleteResourcesForCommandExecution(cmd, factory)
 	if err != nil {
-		return append(outputMessages, fmt.Sprintf("Error occurred when deleting system parameter check resources: %s", err.Error())), unknown
+		return append(outputMessages, "Error occurred when deleting system parameter check resources: "+err.Error()), unknown
 	}
 
 	return outputMessages, status
@@ -511,7 +508,7 @@ func createRegistrySecretForCommandExecution(client kubernetes.Interface, config
 		preflightPodImagePullSecret, server, username, password)
 
 	if err != nil {
-		return nil, append(outputMessages, fmt.Sprintf("Failed to create registry secret: %s", err.Error())), err
+		return nil, append(outputMessages, "Failed to create registry secret: "+err.Error()), err
 	}
 
 	return secret, outputMessages, nil
@@ -533,7 +530,7 @@ func createJobForCommandExecution(client kubernetes.Interface, secret *coreV1.Se
 
 	job, err := bbUtilK8s.CreateJob(client, preflightPodNamespace, jobDesc)
 	if err != nil {
-		return nil, append(outputMessages, fmt.Sprintf("Failed to create preflightcheck job: %s", err.Error())), err
+		return nil, append(outputMessages, "Failed to create preflightcheck job: "+err.Error()), err
 	}
 
 	outputMessages = append(outputMessages, fmt.Sprintf("Waiting for job %s to be ready...", job.Name))
@@ -541,7 +538,7 @@ func createJobForCommandExecution(client kubernetes.Interface, secret *coreV1.Se
 	for i := 0; i < config.PreflightCheckConfiguration.RetryCount; i++ {
 		pods, err := client.CoreV1().Pods(preflightPodNamespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: "job-name=preflightcheck"})
 		if err != nil {
-			return nil, append(outputMessages, fmt.Sprintf("Failed to fetch preflightcheck pod status: %s", err.Error())), err
+			return nil, append(outputMessages, "Failed to fetch preflightcheck pod status: "+err.Error()), err
 		}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == coreV1.PodRunning {
@@ -550,9 +547,8 @@ func createJobForCommandExecution(client kubernetes.Interface, secret *coreV1.Se
 		}
 		time.Sleep(time.Duration(config.PreflightCheckConfiguration.RetryDelay) * time.Second)
 	}
-
 	message := "Timeout waiting for command execution job to be ready"
-	return nil, append(outputMessages, message), fmt.Errorf(message)
+	return nil, append(outputMessages, message), errors.New(strings.ToLower(message))
 }
 
 // Internal helper function to cleanup k8s resources after the system parameters check is complete
@@ -576,12 +572,12 @@ func printPreflightCheckSummary(cmd *cobra.Command, factory bbUtil.Factory, pref
 	output := &outputSchema.PreflightCheckOutput{Name: "Preflight Check Summary"}
 
 	for _, check := range preflightChecks {
-		if check.status == passed {
+		if check.status == passed { //nolint:gocritic // Demands switch statement
 			check.output = append(check.output, check.successMessage)
 		} else if check.status == failed {
 			check.output = append(check.output, check.failureMessage)
 		} else {
-			check.output = append(check.output, fmt.Sprintf("System Error Occured - Execute command again to retry"))
+			check.output = append(check.output, "System Error Occurred - Execute command again to retry")
 		}
 		stepOutput := &outputSchema.CheckStepOutput{
 			Name:   check.desc,

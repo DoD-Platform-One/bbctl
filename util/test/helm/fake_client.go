@@ -26,7 +26,6 @@ type FakeClient struct {
 //
 // Returns an error if no release matches the given name
 func (c *FakeClient) GetRelease(name string) (*release.Release, error) {
-
 	if c.getRelease != nil {
 		return c.getRelease(name)
 	}

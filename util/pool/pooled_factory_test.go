@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,9 +34,7 @@ func getCommonTestCases(t *testing.T) []struct {
 	errored     bool
 	bubbleError bool
 } {
-	if t == nil {
-		panic("t is nil")
-	}
+	t.Helper()
 	return []struct {
 		name        string
 		errored     bool
@@ -61,7 +60,7 @@ func getCommonTestCases(t *testing.T) []struct {
 
 func TestErrFactoryNotInitialized_Error(t *testing.T) {
 	// arrange
-	err := ErrFactoryNotInitialized{}
+	err := FactoryNotInitializedError{}
 	// act
 	result := err.Error()
 	// assert
@@ -111,16 +110,16 @@ func TestPooledFactory_GetAWSClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.awsClient)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.awsClient, result)
 				assert.Equal(t, factory1.awsClient, cachedResult)
 				assert.Equal(t, factory1.awsClient, factory2.awsClient)
@@ -140,7 +139,7 @@ func TestPooledFactory_GetGitLabClient(t *testing.T) {
 			if !tc.errored {
 				clientGetter := bbGitLab.ClientGetter{}
 				gitLabClient, err := clientGetter.GetClient("", "")
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				factory2.gitLabClient = gitLabClient
 			}
 			if tc.bubbleError || !tc.errored {
@@ -152,16 +151,16 @@ func TestPooledFactory_GetGitLabClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.gitLabClient)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.gitLabClient, result)
 				assert.Equal(t, factory1.gitLabClient, cachedResult)
 				assert.Equal(t, factory1.gitLabClient, factory2.gitLabClient)
@@ -183,7 +182,7 @@ func TestPooledFactory_GetHelmClient(t *testing.T) {
 			var helmClientPool helmClientPool
 			if !tc.errored {
 				restConfig, err := bbHelm.NewClient(nil, nil, nil)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				helmClientPool = []*helmClientInstance{
 					{
 						namespace: namespace,
@@ -201,16 +200,16 @@ func TestPooledFactory_GetHelmClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.helmClients)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.helmClients, helmClientPool)
 				assert.Equal(t, factory1.helmClients, factory2.helmClients)
 				assert.Equal(t, factory1.helmClients[0].client, result)
@@ -244,16 +243,16 @@ func TestPooledFactory_GetK8sClientset(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.k8sClientset)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.k8sClientset, client)
 				assert.Equal(t, factory1.k8sClientset, factory2.k8sClientset)
 				assert.Equal(t, factory1.k8sClientset, result)
@@ -292,16 +291,16 @@ func TestPooledFactory_GetLoggingClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.loggerClients)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.loggerClients, loggerClientPool)
 				assert.Equal(t, factory1.loggerClients, factory2.loggerClients)
 				assert.Equal(t, factory1.loggerClients[0].client, result)
@@ -341,16 +340,16 @@ func TestPooledFactory_GetLoggingClientWithLogger(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.loggerClients)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.loggerClients, loggerClientPool)
 				assert.Equal(t, factory1.loggerClients, factory2.loggerClients)
 				assert.Equal(t, factory1.loggerClients[0].client, result)
@@ -370,7 +369,7 @@ func TestPooledFactory_GetRuntimeClient(t *testing.T) {
 			factory2 := NewPooledFactory()
 			var runtimeClientPool runtimeClientPool
 			goodScheme := runtime.NewScheme()
-			assert.Nil(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
+			require.NoError(t, goodScheme.SetVersionPriority(schema.GroupVersion{Group: "test", Version: "v1"}))
 			if !tc.errored {
 				goodClientBuilder := &fakeRuntimeClient.ClientBuilder{}
 				goodClientBuilder.WithScheme(goodScheme)
@@ -392,17 +391,17 @@ func TestPooledFactory_GetRuntimeClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.runtimeClients)
 			} else {
 				assert.NotNil(t, result)
 				assert.NotNil(t, cachedResult)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.runtimeClients, factory2.runtimeClients)
 				assert.Equal(t, factory1.runtimeClients, runtimeClientPool)
 				assert.Equal(t, factory1.runtimeClients, factory2.runtimeClients)
@@ -437,16 +436,16 @@ func TestPooledFactory_GetK8sDynamicClient(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.k8sDynamicClient)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.k8sDynamicClient, client)
 				assert.Equal(t, factory1.k8sDynamicClient, factory2.k8sDynamicClient)
 				assert.Equal(t, factory1.k8sDynamicClient, result)
@@ -481,22 +480,21 @@ func TestPooledFactory_GetOutputClient(t *testing.T) {
 				factory1.SetUnderlyingFactory(factory2)
 			}
 			// act
-			// act
 			result, err := factory1.GetOutputClient(cmd)
 			cachedResult, cachedErr := factory1.GetOutputClient(cmd)
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.outputClient)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.outputClient, &outputClient)
 				assert.Equal(t, factory1.outputClient, factory2.outputClient)
 				assert.Equal(t, factory1.outputClient, &result)
@@ -530,16 +528,16 @@ func TestPooledFactory_GetRestConfig(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.restConfig)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.restConfig, restConfig)
 				assert.Equal(t, factory1.restConfig, factory2.restConfig)
 				assert.Equal(t, factory1.restConfig, result)
@@ -568,9 +566,9 @@ func TestPooledFactory_GetCommandExecutor(t *testing.T) {
 			container := "test"
 			command := []string{"echo", "test"}
 			stdout := &bytes.Buffer{}
-			stdout.Write([]byte("test"))
+			stdout.WriteString("test")
 			stderr := &bytes.Buffer{}
-			stderr.Write([]byte("testerr"))
+			stderr.WriteString("testerr")
 			if tc.bubbleError || !tc.errored {
 				factory1.SetUnderlyingFactory(factory2)
 			}
@@ -580,11 +578,11 @@ func TestPooledFactory_GetCommandExecutor(t *testing.T) {
 			// assert
 			// all paths error if there isn't a non-pooled factory because there is no cache
 			assert.Nil(t, result)
-			assert.NotNil(t, err)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+			require.Error(t, err)
+			assert.IsType(t, &FactoryNotInitializedError{}, err)
 			assert.Nil(t, cachedResult)
-			assert.NotNil(t, cachedErr)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+			require.Error(t, cachedErr)
+			assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 		})
 	}
 }
@@ -612,16 +610,16 @@ func TestPooledFactory_GetCredentialHelper(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.credentialHelper)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				// you can't compare functions directly, so we'll just check that they're the same type
 				assert.Equal(t, reflect.TypeOf(factory1.credentialHelper), reflect.TypeOf(result))
 				assert.Equal(t, reflect.TypeOf(factory1.credentialHelper), reflect.TypeOf(cachedResult))
@@ -651,11 +649,11 @@ func TestPooledFactory_GetCommandWrapper(t *testing.T) {
 			// assert
 			// all paths error if there isn't a non-pooled factory, because there is no cache
 			assert.Nil(t, result)
-			assert.NotNil(t, err)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+			require.Error(t, err)
+			assert.IsType(t, &FactoryNotInitializedError{}, err)
 			assert.Nil(t, cachedResult)
-			assert.NotNil(t, cachedErr)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+			require.Error(t, cachedErr)
+			assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 		})
 	}
 }
@@ -691,16 +689,16 @@ func TestPooledFactory_GetIstioClientSet(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Empty(t, factory1.istioClientSets)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.istioClientSets, istioClientSetPool)
 				assert.Equal(t, factory1.istioClientSets, factory2.istioClientSets)
 				assert.Equal(t, factory1.istioClientSets[0].clientset, result)
@@ -730,11 +728,11 @@ func TestPooledFactory_GetConfigClient(t *testing.T) {
 			// assert
 			// this will always error because there is no caching
 			assert.Nil(t, result)
-			assert.NotNil(t, err)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+			require.Error(t, err)
+			assert.IsType(t, &FactoryNotInitializedError{}, err)
 			assert.Nil(t, cachedResult)
-			assert.NotNil(t, cachedErr)
-			assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+			require.Error(t, cachedErr)
+			assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 		})
 	}
 }
@@ -761,16 +759,16 @@ func TestPooledFactory_GetViper(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.viper)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.viper, v)
 				assert.Equal(t, factory1.viper, result)
 				assert.Equal(t, factory1.viper, cachedResult)
@@ -805,16 +803,16 @@ func TestPooledFactory_GetIOStream(t *testing.T) {
 			// assert
 			if tc.errored {
 				assert.Nil(t, result)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedResult)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 				assert.Nil(t, factory1.ioStream)
 			} else {
 				assert.NotNil(t, result)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.ioStream, streams)
 				assert.Equal(t, factory1.ioStream, result)
 				assert.Equal(t, factory1.ioStream, cachedResult)
@@ -831,7 +829,7 @@ func TestPooledFactory_GetPipe(t *testing.T) {
 			factory1 := NewPooledFactory()
 			factory2 := NewPooledFactory()
 			fakeReader, fakeWriter, err := os.Pipe()
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			if !tc.errored {
 				factory2.pipeReader, factory2.pipeWriter = fakeReader, fakeWriter
 			}
@@ -845,17 +843,17 @@ func TestPooledFactory_GetPipe(t *testing.T) {
 			if tc.errored {
 				assert.Nil(t, reader)
 				assert.Nil(t, writer)
-				assert.NotNil(t, err)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, err)
+				require.Error(t, err)
+				assert.IsType(t, &FactoryNotInitializedError{}, err)
 				assert.Nil(t, cachedReader)
 				assert.Nil(t, cachedWriter)
-				assert.NotNil(t, cachedErr)
-				assert.IsType(t, &ErrFactoryNotInitialized{}, cachedErr)
+				require.Error(t, cachedErr)
+				assert.IsType(t, &FactoryNotInitializedError{}, cachedErr)
 			} else {
 				assert.NotNil(t, reader)
 				assert.NotNil(t, writer)
-				assert.Nil(t, err)
-				assert.Nil(t, cachedErr)
+				require.NoError(t, err)
+				require.NoError(t, cachedErr)
 				assert.Equal(t, factory1.pipeReader, reader)
 				assert.Equal(t, factory1.pipeWriter, writer)
 				assert.Equal(t, factory1.pipeReader, cachedReader)

@@ -9,27 +9,24 @@ import (
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 )
 
-var (
-	deployUse = `deploy`
-
-	deployShort = i18n.T(`Deploy Big Bang components and preqrequisites`)
-
-	deployLong = templates.LongDesc(i18n.T(`Deploy Big Bang components and prerequisites.
-
-	Note: Before deploying Big Bang, you must first deploy flux into the cluster. See "bbctl deploy flux --help" for more information.
-	`))
-
-	deployExample = templates.Examples(i18n.T(``))
-)
-
 // NewDeployCmd - parent for deploy commands
 func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		deployUse   = `deploy`
+		deployShort = i18n.T(`Deploy Big Bang components and preqrequisites`)
+		deployLong  = templates.LongDesc(i18n.T(`Deploy Big Bang components and prerequisites.
+	
+		Note: Before deploying Big Bang, you must first deploy flux into the cluster. See "bbctl deploy flux --help" for more information.
+		`))
+		deployExample = templates.Examples(i18n.T(``))
+	)
+
 	cmd := &cobra.Command{
 		Use:     deployUse,
 		Short:   deployShort,
 		Long:    deployLong,
 		Example: deployExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			subCommands := cmd.Commands()
 
 			var validCommands string
@@ -41,13 +38,13 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 			}
 			loggingClient, err := factory.GetLoggingClient()
 			if err != nil {
-				return fmt.Errorf("Unable to get logging client: %w", err)
+				return fmt.Errorf("unable to get logging client: %w", err)
 			}
 			loggingClient.Error(fmt.Sprintf("error: must specify one of: %s\n\n", validCommands))
 
 			err = cmd.Help()
 			if err != nil {
-				return fmt.Errorf("Unable to write to output stream: %w", err)
+				return fmt.Errorf("unable to write to output stream: %w", err)
 			}
 			return nil
 		},
@@ -56,7 +53,7 @@ func NewDeployCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	cmd.AddCommand(NewDeployFluxCmd(factory))
 	bigBangCmd, bigBangCmdError := NewDeployBigBangCmd(factory)
 	if bigBangCmdError != nil {
-		return nil, fmt.Errorf("Error retrieving BigBang Command: %w", bigBangCmdError)
+		return nil, fmt.Errorf("error retrieving BigBang Command: %w", bigBangCmdError)
 	}
 	cmd.AddCommand(bigBangCmd)
 

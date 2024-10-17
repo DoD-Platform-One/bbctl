@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -89,7 +90,7 @@ func TestGetViolationsWithConfigError(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -106,7 +107,7 @@ func TestGetViolationsWithK8sClientsetError(t *testing.T) {
 	// Act
 	err := cmd.Execute()
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "testing error")
 }
 
@@ -124,11 +125,10 @@ func TestViolationsFailToGetConfig(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
-
 }
 
 func TestViolationsCmdHelperError(t *testing.T) {
@@ -233,10 +233,10 @@ func TestViolationsCmdHelperError(t *testing.T) {
 			if tc.shouldFail {
 				assert.Nil(t, result)
 				assert.NotNil(t, cmd)
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectedErrorMessage)
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotNil(t, result)
 			}
 		})
@@ -364,7 +364,6 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 			violation1,
 			[]runtime.Object{},
 		},
-
 		{
 			"violations in given namespace 1",
 			"ns1",
@@ -407,7 +406,7 @@ func TestGatekeeperAuditViolations(t *testing.T) {
 			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
 				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -518,7 +517,7 @@ func TestGatekeeperDenyViolations(t *testing.T) {
 			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
 				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -633,7 +632,7 @@ func TestKyvernoAuditViolations(t *testing.T) {
 			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
 				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -748,7 +747,7 @@ func TestKyvernoEnforceViolations(t *testing.T) {
 			if strings.Contains(buf.String(), test.unexpected) && test.unexpected != "" {
 				t.Errorf("unexpected output:\nOutput:\n%s\nUnexpected:\n%s", buf.String(), test.unexpected)
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -823,10 +822,10 @@ func TestGetViolations(t *testing.T) {
 			if test.errorCheckingGatekeeperExists {
 				var runCount int
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						runCount++
 						if runCount == 1 {
-							return true, nil, fmt.Errorf("error in list crds")
+							return true, nil, errors.New("error in list crds")
 						}
 						return false, nil, nil
 					})
@@ -838,10 +837,10 @@ func TestGetViolations(t *testing.T) {
 			if test.errorCheckingKyvernoExists {
 				var runCount int
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						runCount++
 						if runCount == 2 {
-							return true, nil, fmt.Errorf("error in list crds")
+							return true, nil, errors.New("error in list crds")
 						}
 						return false, nil, nil
 					})
@@ -853,12 +852,12 @@ func TestGetViolations(t *testing.T) {
 			if test.errorCheckingViolations {
 				runCount := 0
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						runCount++
 
 						// Error on the third and beyond calls
 						if runCount >= 3 {
-							return true, nil, fmt.Errorf("error in list crds")
+							return true, nil, errors.New("error in list crds")
 						}
 
 						// Return a valid list of CRDs on the first call
@@ -900,16 +899,15 @@ func TestGetViolations(t *testing.T) {
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 
 				clientSetModFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list events")
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list events")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &clientSetModFunc)
-
 			}
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			// if test.errorCheckingForKyverno or test.errorCheckingForGatekeeper is true,
 			// we'll expect the fake kubernetes client to return an error when listing violations
@@ -963,15 +961,15 @@ func TestKyvernoExists(t *testing.T) {
 
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list crds")
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list crds")
 					})
 				}
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 			}
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, tv)
 
 			// Act
@@ -979,7 +977,7 @@ func TestKyvernoExists(t *testing.T) {
 
 			// Assert
 			if test.errorOnListCRDs {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.False(t, exists)
 				return
@@ -987,7 +985,7 @@ func TestKyvernoExists(t *testing.T) {
 
 			assert.Empty(t, in.String())
 			assert.False(t, exists)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, out.String())
 		})
 	}
@@ -1061,8 +1059,8 @@ func TestListKyvernoViolations(t *testing.T) {
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list events")
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list events")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
@@ -1080,23 +1078,23 @@ func TestListKyvernoViolations(t *testing.T) {
 			}
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			// Act
 			err = tv.listKyvernoViolations("ns1", test.auditViolations)
 			printErr := tv.printViolation()
 
 			// Assert
-			assert.Nil(t, printErr)
+			require.NoError(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListEvents {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
+				assert.Equal(t, "name: No Violations\nviolations: []\n", out.String())
 				return
 			}
 
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, out.String(), test.expected)
 		})
 	}
@@ -1135,8 +1133,8 @@ func TestGatekeeperExists(t *testing.T) {
 
 			if test.errorOnListCRDs {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list crds")
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list crds")
 					})
 				}
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
@@ -1144,7 +1142,7 @@ func TestGatekeeperExists(t *testing.T) {
 			factory.SetGVRToListKind(gvrToListKindForGatekeeper())
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			// Act
 			exists, err := tv.gatekeeperExists()
@@ -1153,13 +1151,13 @@ func TestGatekeeperExists(t *testing.T) {
 			assert.Empty(t, in.String())
 			assert.False(t, exists)
 			if test.errorOnListCRDs {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
 				assert.Empty(t, out.String())
 				return
 			}
 
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, out.String())
 		})
 	}
@@ -1216,8 +1214,8 @@ func TestListGkDenyViolations(t *testing.T) {
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list events")
+					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list events")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
@@ -1232,22 +1230,22 @@ func TestListGkDenyViolations(t *testing.T) {
 			}
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			// Act
 			err = tv.listGkDenyViolations("ns1")
 			printErr := tv.printViolation()
 
 			// Assert
-			assert.Nil(t, printErr)
+			require.NoError(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListEvents {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
+				assert.Equal(t, "name: No Violations\nviolations: []\n", out.String())
 				return
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, out.String(), test.expected)
 		})
 	}
@@ -1314,8 +1312,8 @@ func TestListGkAuditViolations(t *testing.T) {
 
 			if test.errorOnListCrds {
 				modFunc := func(client *dynamicFake.FakeDynamicClient) {
-					client.Fake.PrependReactor("list", "customresourcedefinitions", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-						return true, nil, fmt.Errorf("error in list events")
+					client.Fake.PrependReactor("list", "customresourcedefinitions", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+						return true, nil, errors.New("error in list events")
 					})
 				}
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
@@ -1372,8 +1370,8 @@ func TestListGkAuditViolations(t *testing.T) {
 					objects = append(objects, &constraints)
 				} else {
 					modFunc := func(client *dynamicFake.FakeDynamicClient) {
-						client.Fake.PrependReactor("list", "foos", func(action k8sTesting.Action) (bool, runtime.Object, error) {
-							return true, nil, fmt.Errorf("error in list constraints")
+						client.Fake.PrependReactor("list", "foos", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+							return true, nil, errors.New("error in list constraints")
 						})
 					}
 					factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
@@ -1382,22 +1380,22 @@ func TestListGkAuditViolations(t *testing.T) {
 			}
 
 			tv, err := newViolationsCmdHelper(cmd, factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			// Act
 			err = tv.listGkAuditViolations("ns1")
 			printErr := tv.printViolation()
 
 			// Assert
-			assert.Nil(t, printErr)
+			require.NoError(t, printErr)
 			assert.Empty(t, in.String())
 			if test.errorOnListCrds || test.errorOnListConstraints {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Equal(t, test.expected, err.Error())
-				assert.Equal(t, out.String(), "name: No Violations\nviolations: []\n")
+				assert.Equal(t, "name: No Violations\nviolations: []\n", out.String())
 				return
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Contains(t, out.String(), test.expected)
 		})
 	}
@@ -1476,14 +1474,14 @@ func TestGetGkConstraintViolations(t *testing.T) {
 
 			// Assert
 			if test.errorNestedFieldNoCopy || test.errorOnNestedSlice {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), test.expected)
 				assert.Nil(t, violations)
 				return
 			}
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, violations)
-			assert.Equal(t, 1, len(*violations))
+			assert.Len(t, *violations, 1)
 			violation := (*violations)[0]
 			assert.Equal(t, "foo", violation.name)
 			assert.Equal(t, "ns1", violation.namespace)
@@ -1534,7 +1532,6 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		t.Run(test.desc, func(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
@@ -1554,7 +1551,7 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 			// This is the only test case where we don't expect an error
 			if test.desc == "no errors" {
 				assert.NotNil(t, tv)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				return
 			}
 
@@ -1563,14 +1560,12 @@ func TestNewViolationsCmdHelper(t *testing.T) {
 			assert.Empty(t, out.String())
 
 			// We expect an error
-			assert.NotNil(t, err)
+			require.Error(t, err)
 
 			// Assert that the error is as expected for the given failed client
 			assert.Equal(t, test.expected, err.Error())
-
 		})
 	}
-
 }
 
 // processGkViolations tested in previous tests
@@ -1602,8 +1597,8 @@ func TestViolationsErrorBindingFlags(t *testing.T) {
 	v, _ := factory.GetViper()
 	v.Set("big-bang-repo", "test")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shorthand string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, name string, _ string, _ interface{}, _ string) error {
 		if name == "audit" {
 			return expectedError
 		}
@@ -1612,7 +1607,7 @@ func TestViolationsErrorBindingFlags(t *testing.T) {
 
 	logClient, _ := factory.GetLoggingClient()
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, v)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act
@@ -1620,8 +1615,8 @@ func TestViolationsErrorBindingFlags(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, err)
-	assert.Equal(t, fmt.Sprintf("error setting and binding flags: %s", expectedError.Error()), err.Error())
+	require.Error(t, err)
+	assert.Equal(t, "error setting and binding flags: "+expectedError.Error(), err.Error())
 }
 
 func TestViolationsPrintViolationsErr(t *testing.T) {
@@ -1641,15 +1636,15 @@ func TestViolationsPrintViolationsErr(t *testing.T) {
 	factory.SetObjects([]runtime.Object{eventList})
 
 	tv, err := newViolationsCmdHelper(cmd, factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Act
 	err = tv.listKyvernoViolations("ns1", true)
 	printErr := tv.printViolation()
 
 	// Assert
-	assert.Nil(t, err)
-	assert.Nil(t, printErr)
+	require.NoError(t, err)
+	require.NoError(t, printErr)
 }
 
 func TestNoViolationsPrintViolationsErr(t *testing.T) {
@@ -1662,13 +1657,13 @@ func TestNoViolationsPrintViolationsErr(t *testing.T) {
 	cmd := violationsCmd(factory, "", nil)
 
 	tv, err := newViolationsCmdHelper(cmd, factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Act
 	printErr := tv.printViolation()
 
 	// Assert
-	assert.Nil(t, printErr)
+	require.NoError(t, printErr)
 }
 
 func TestParseViolationsErr(t *testing.T) {
@@ -1683,7 +1678,7 @@ func TestParseViolationsErr(t *testing.T) {
 	}{
 		{
 			"constraint no violation message error",
-			fmt.Errorf("nothing to parse from violation message"),
+			errors.New("nothing to parse from violation message"),
 			policyViolation{},
 			"",
 			"",
@@ -1691,7 +1686,7 @@ func TestParseViolationsErr(t *testing.T) {
 		},
 		{
 			"policy no violation message error",
-			fmt.Errorf("nothing to parse from violation message"),
+			errors.New("nothing to parse from violation message"),
 			policyViolation{},
 			"",
 			"",
@@ -1699,7 +1694,7 @@ func TestParseViolationsErr(t *testing.T) {
 		},
 		{
 			"constraint violation error",
-			fmt.Errorf("error parsing constraint name from violation"),
+			errors.New("error parsing constraint name from violation"),
 			policyViolation{
 				message: "parsing test constraint violation with nothing to parse",
 			},
@@ -1709,7 +1704,7 @@ func TestParseViolationsErr(t *testing.T) {
 		},
 		{
 			"policy violation error",
-			fmt.Errorf("error parsing policy name from violation"),
+			errors.New("error parsing policy name from violation"),
 			policyViolation{
 				message: "parsing test policy violation with nothing to parse",
 			},
@@ -1843,12 +1838,12 @@ func TestParseViolationsErr(t *testing.T) {
 
 			// Assert
 			if test.expectedErr != nil {
-				assert.NotNil(t, parseErr)
+				require.Error(t, parseErr)
 				assert.Equal(t, parseErr.Error(), test.expectedErr.Error())
 			}
 
 			if test.expectedErr == nil {
-				assert.Nil(t, parseErr)
+				require.NoError(t, parseErr)
 				if test.isPolicy {
 					assert.Equal(t, test.parsedMessage, test.violation.message)
 					assert.Equal(t, test.parsedVolation, test.violation.policy)
@@ -1858,7 +1853,6 @@ func TestParseViolationsErr(t *testing.T) {
 					assert.Equal(t, test.parsedVolation, test.violation.constraint)
 				}
 			}
-
 		})
 	}
 }

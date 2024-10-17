@@ -13,12 +13,14 @@ import (
 	awsTypes "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const region = "us-gov-west-1"
 
 // GenerateTestConfig - generate a test config file and set the AWS_CONFIG_FILE environment variable
 func GenerateTestConfig(t *testing.T, config *string) {
+	t.Helper()
 	testConfigName := "bbctlTestConfig" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	testConfigPath := path.Join("/tmp", testConfigName)
 	var testConfig string
@@ -29,13 +31,13 @@ output = json`, region)
 	} else {
 		testConfig = *config
 	}
-	err := os.WriteFile(testConfigPath, []byte(testConfig), 0644)
-	assert.Nil(t, err)
-	os.Setenv("AWS_CONFIG_FILE", testConfigPath)
+	err := os.WriteFile(testConfigPath, []byte(testConfig), 0600)
+	require.NoError(t, err)
+	t.Setenv("AWS_CONFIG_FILE", testConfigPath)
 }
 
 // GenerateClusterIPs - generate a list of ClusterIPs
-func GenerateClusterIPs(t *testing.T) []ClusterIP {
+func GenerateClusterIPs(_ *testing.T) []ClusterIP {
 	publicIP := publicIPConst
 	privateIP := privateIPConst
 	return []ClusterIP{
@@ -112,11 +114,11 @@ func TestConvertClusterIPsPass(t *testing.T) {
 	assert.Equal(t, privateIPAddress, *clusterIPs[0].IP)
 	assert.Equal(t, reservationID, *clusterIPs[0].ReservationID)
 	assert.Equal(t, instanceID, *clusterIPs[0].InstanceID)
-	assert.Equal(t, false, clusterIPs[0].IsPublic)
+	assert.False(t, clusterIPs[0].IsPublic)
 	assert.Equal(t, publicIPAddress, *clusterIPs[1].IP)
 	assert.Equal(t, reservationID, *clusterIPs[1].ReservationID)
 	assert.Equal(t, instanceID, *clusterIPs[1].InstanceID)
-	assert.Equal(t, true, clusterIPs[1].IsPublic)
+	assert.True(t, clusterIPs[1].IsPublic)
 }
 
 func TestConvertClusterIPsNoIPs(t *testing.T) {
@@ -132,12 +134,12 @@ func TestConvertClusterIPsNoIPs(t *testing.T) {
 	// Act
 	clusterIPs := convertClusterIPs(reservation, instance)
 	// Assert
-	assert.Len(t, clusterIPs, 0)
+	assert.Empty(t, clusterIPs)
 }
 
 func TestEnsureContextNil(t *testing.T) {
 	// Act
-	ctx := ensureContext(nil) //nolint:all staticcheck SA1012 intentionally ensuring nil won't break
+	ctx := ensureContext(nil) //nolint:all // staticcheck SA1012 intentionally ensuring nil won't break
 	// Assert
 	assert.NotNil(t, ctx)
 }
@@ -157,7 +159,7 @@ func TestEnsureConfigNil(t *testing.T) {
 	GenerateTestConfig(t, nil)
 	// Act
 	cfg, err := ensureConfig(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, cfg)
@@ -170,10 +172,10 @@ func TestEnsureConfigNotNil(t *testing.T) {
 	GenerateTestConfig(t, nil)
 	// Act
 	origCfg, err := ensureConfig(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	cfg, err := ensureConfig(context.TODO(), origCfg)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, origCfg)
@@ -190,7 +192,7 @@ func TestFilterIPsByExposurePublic(t *testing.T) {
 	assert.NotNil(t, filteredIPs)
 	assert.Len(t, filteredIPs, 1)
 	assert.Equal(t, publicIPConst, *filteredIPs[0].IP)
-	assert.Equal(t, true, filteredIPs[0].IsPublic)
+	assert.True(t, filteredIPs[0].IsPublic)
 }
 
 func TestFilterIPsByExposurePrivate(t *testing.T) {
@@ -202,7 +204,7 @@ func TestFilterIPsByExposurePrivate(t *testing.T) {
 	assert.NotNil(t, filteredIPs)
 	assert.Len(t, filteredIPs, 1)
 	assert.Equal(t, privateIPConst, *filteredIPs[0].IP)
-	assert.Equal(t, false, filteredIPs[0].IsPublic)
+	assert.False(t, filteredIPs[0].IsPublic)
 }
 
 func TestFilterIPsByExposureAll(t *testing.T) {
@@ -238,7 +240,7 @@ func TestConfigPass(t *testing.T) {
 	GenerateTestConfig(t, nil)
 	// Act
 	cfg, err := config(context.TODO())
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, cfg)
@@ -256,10 +258,10 @@ func TestGetClusterIPsPass(t *testing.T) {
 	reservationID := "r-1234567890abcdef0"
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			retVal := ec2.DescribeInstancesOutput{
 				Reservations: []awsTypes.Reservation{
@@ -292,31 +294,29 @@ func TestGetClusterIPsPass(t *testing.T) {
 	// Act
 	ips, err := getClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ips)
 	assert.Len(t, ips, 4)
 	assert.Equal(t, privateInstanceID, *ips[0].InstanceID)
 	assert.Equal(t, privateIPAddress, *ips[0].IP)
-	assert.Equal(t, false, ips[0].IsPublic)
+	assert.False(t, ips[0].IsPublic)
 	assert.Equal(t, publicInstanceID, *ips[1].InstanceID)
 	assert.Equal(t, publicIPAddress, *ips[1].IP)
-	assert.Equal(t, true, ips[1].IsPublic)
+	assert.True(t, ips[1].IsPublic)
 	assert.Equal(t, bothInstanceID, *ips[2].InstanceID)
-	// assert.Equal(t, privateIPAddress, *ips[2].IP)
-	// assert.Equal(t, false, ips[2].IsPublic)
 	assert.Equal(t, bothInstanceID, *ips[3].InstanceID)
 	assert.Equal(t, publicIPAddress, *ips[3].IP)
-	assert.Equal(t, true, ips[3].IsPublic)
+	assert.True(t, ips[3].IsPublic)
 }
 
 func TestGetClusterIPsEmptyReservations(t *testing.T) {
 	// Arrange
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return &ec2.DescribeInstancesOutput{
 				Reservations: []awsTypes.Reservation{},
@@ -326,8 +326,8 @@ func TestGetClusterIPsEmptyReservations(t *testing.T) {
 	// Act
 	ips, err := getClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.Len(t, ips, 0)
-	assert.NotNil(t, err)
+	assert.Empty(t, ips)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no reservations found for user test-user")
 }
 
@@ -335,10 +335,10 @@ func TestGetClusterIPsEmptyInstances(t *testing.T) {
 	// Arrange
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return &ec2.DescribeInstancesOutput{
 				Reservations: []awsTypes.Reservation{
@@ -352,8 +352,8 @@ func TestGetClusterIPsEmptyInstances(t *testing.T) {
 	// Act
 	ips, err := getClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.Len(t, ips, 0)
-	assert.NotNil(t, err)
+	assert.Empty(t, ips)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no instances found for user test-user")
 }
 
@@ -363,10 +363,10 @@ func TestGetClusterIPsNoMatchingInstances(t *testing.T) {
 	publicInstanceID := "i-1234567890abcdef0"
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return &ec2.DescribeInstancesOutput{
 				Reservations: []awsTypes.Reservation{
@@ -385,8 +385,8 @@ func TestGetClusterIPsNoMatchingInstances(t *testing.T) {
 	// Act
 	ips, err := getClusterIPs(context.TODO(), api, "test-user", FilterExposurePrivate)
 	// Assert
-	assert.Len(t, ips, 0)
-	assert.NotNil(t, err)
+	assert.Empty(t, ips)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no filtered cluster IPs found for user test-user")
 }
 
@@ -394,10 +394,10 @@ func TestGetClusterIPsError(t *testing.T) {
 	// Arrange
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return nil, assert.AnError
 		},
@@ -405,8 +405,8 @@ func TestGetClusterIPsError(t *testing.T) {
 	// Act
 	ips, err := getClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.Len(t, ips, 0)
-	assert.NotNil(t, err)
+	assert.Empty(t, ips)
+	require.Error(t, err)
 	assert.Equal(t, assert.AnError, err)
 }
 
@@ -418,10 +418,10 @@ func TestGetSortedClusterIPs(t *testing.T) {
 	privateInstanceID := "i-1234567890abcdef1"
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return &ec2.DescribeInstancesOutput{
 				Reservations: []awsTypes.Reservation{
@@ -444,20 +444,20 @@ func TestGetSortedClusterIPs(t *testing.T) {
 	// Act
 	sortedClusterIPs, err := getSortedClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, sortedClusterIPs)
-	assert.Equal(t, 1, len(sortedClusterIPs.PublicIPs))
-	assert.Equal(t, 1, len(sortedClusterIPs.PrivateIPs))
+	assert.Len(t, sortedClusterIPs.PublicIPs, 1)
+	assert.Len(t, sortedClusterIPs.PrivateIPs, 1)
 }
 
 func TestGetSortedClusterIPsError(t *testing.T) {
 	// Arrange
 	api := MockDescribeInstancesAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *ec2.DescribeInstancesInput,
-			optFns ...func(*ec2.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *ec2.DescribeInstancesInput,
+			_ ...func(*ec2.Options),
 		) (*ec2.DescribeInstancesOutput, error) {
 			return nil, assert.AnError
 		},
@@ -465,7 +465,7 @@ func TestGetSortedClusterIPsError(t *testing.T) {
 	// Act
 	sortedClusterIPs, err := getSortedClusterIPs(context.TODO(), api, "test-user", FilterExposureAll)
 	// Assert
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, SortedClusterIPs{}, sortedClusterIPs)
 	assert.Equal(t, assert.AnError, err)
 }
@@ -475,7 +475,7 @@ func TestGetEc2ClientPass(t *testing.T) {
 	GenerateTestConfig(t, nil)
 	// Act
 	ec2Client, err := getEc2Client(context.TODO(), nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, ec2Client)
@@ -489,17 +489,17 @@ func TestGetIdentityPass(t *testing.T) {
 	}
 	api := MockGetCallerIdentityAPI(
 		func(
-			t *testing.T,
-			ctx context.Context,
-			params *sts.GetCallerIdentityInput,
-			optFns ...func(*sts.Options),
+			_ *testing.T,
+			_ context.Context,
+			_ *sts.GetCallerIdentityInput,
+			_ ...func(*sts.Options),
 		) (*sts.GetCallerIdentityOutput, error) {
 			return output, nil
 		},
 	)
 	// Act
 	identity, err := getIdentity(context.TODO(), api)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Assert
 	assert.NotNil(t, identity)
@@ -512,7 +512,7 @@ func TestGetStsClientPass(t *testing.T) {
 	GenerateTestConfig(t, nil)
 	// Act
 	stsClient, ert := getStsClient(context.TODO(), nil)
-	assert.Nil(t, ert)
+	require.NoError(t, ert)
 
 	// Assert
 	assert.NotNil(t, stsClient)

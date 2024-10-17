@@ -2,6 +2,7 @@ package k3d
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,30 +17,27 @@ import (
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 )
 
-var (
-	hostsUse = `hosts`
-
-	hostsShort = i18n.T(`Generates /etc/hosts entries for your k3d cluster`)
-
-	hostsLong = templates.LongDesc(
-		i18n.T(
-			`Generates a list of hosts that reference your k3d cluster suitable for use in /etc/hosts`,
-		),
-	)
-
-	hostsExample = templates.Examples(i18n.T(`
-	    # Generate a list of hosts that reference your k3d cluster suitable for use in /etc/hosts
-		bbctl k3d hosts`))
-)
-
 // NewHostsCmd - Returns a command to generate a hosts list for your k3d cluster using hostsListCluster
 func NewHostsCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		hostsUse   = `hosts`
+		hostsShort = i18n.T(`Generates /etc/hosts entries for your k3d cluster`)
+		hostsLong  = templates.LongDesc(
+			i18n.T(
+				`Generates a list of hosts that reference your k3d cluster suitable for use in /etc/hosts`,
+			),
+		)
+		hostsExample = templates.Examples(i18n.T(`
+			# Generate a list of hosts that reference your k3d cluster suitable for use in /etc/hosts
+			bbctl k3d hosts`))
+	)
+
 	cmd := &cobra.Command{
 		Use:     hostsUse,
 		Short:   hostsShort,
 		Long:    hostsLong,
 		Example: hostsExample,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return hostsListCluster(cmd, factory)
 		},
 	}
@@ -73,7 +71,7 @@ func k8sListAllServices(
 	listAllErrors bool,
 ) (*coreV1.ServiceList, error) {
 	if listAllErrors {
-		return nil, fmt.Errorf("failed to list all services")
+		return nil, errors.New("failed to list all services")
 	}
 	return k8sClient.CoreV1().Services("").List(context.TODO(), metaV1.ListOptions{})
 }
@@ -128,18 +126,18 @@ func HostsListCluster(cmd *cobra.Command, factory bbUtil.Factory, listAllErrors 
 		}
 		var vsHosts []string
 		for _, virtualService := range istioServices.Items {
-			if len(virtualService.Spec.Hosts) == 0 || len(virtualService.Spec.Gateways) == 0 {
+			if len(virtualService.Spec.GetHosts()) == 0 || len(virtualService.Spec.GetGateways()) == 0 {
 				loggingClient.Warn(
 					"Skipping virtual service %s without hosts or gateways\n",
 					virtualService.Name,
 				)
 				continue
 			}
-			for _, gateway := range virtualService.Spec.Gateways {
+			for _, gateway := range virtualService.Spec.GetGateways() {
 				combinedName := fmt.Sprintf("%s/%s", loadBalancer.Namespace, loadBalancer.Name)
 				if strings.Contains(loadBalancer.Name, gateway) ||
 					strings.Contains(combinedName, gateway) {
-					vsHosts = append(vsHosts, virtualService.Spec.Hosts...)
+					vsHosts = append(vsHosts, virtualService.Spec.GetHosts()...)
 					break
 				}
 			}

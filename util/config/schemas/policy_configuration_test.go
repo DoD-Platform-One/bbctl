@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_PolicyConfiguration(t *testing.T) {
@@ -52,7 +53,7 @@ func TestReconcileConfiguration_PolicyConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.useGatekeeper, tt.arg.Gatekeeper)
 			assert.Equal(t, tt.useKyverno, tt.arg.Kyverno)
 		})
@@ -64,10 +65,10 @@ func TestReconcileConfigurationDefaults_PolicyConfiguration(t *testing.T) {
 	policyConfiguration := &PolicyConfiguration{}
 	v := viper.New()
 	// Act
-	assert.Nil(t, policyConfiguration.ReconcileConfiguration(v))
+	require.NoError(t, policyConfiguration.ReconcileConfiguration(v))
 	// Assert
-	assert.Equal(t, false, policyConfiguration.Gatekeeper)
-	assert.Equal(t, false, policyConfiguration.Kyverno)
+	assert.False(t, policyConfiguration.Gatekeeper)
+	assert.False(t, policyConfiguration.Kyverno)
 }
 
 func TestGetSubConfigurations_PolicyConfiguration(t *testing.T) {
@@ -76,5 +77,5 @@ func TestGetSubConfigurations_PolicyConfiguration(t *testing.T) {
 	// Act
 	subConfigurations := policyConfiguration.getSubConfigurations()
 	// Assert
-	assert.Equal(t, 0, len(subConfigurations))
+	assert.Empty(t, subConfigurations)
 }

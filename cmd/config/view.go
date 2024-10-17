@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -13,26 +14,24 @@ import (
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
-var (
-	viewUse = `view [key]`
-
-	viewShort = i18n.T(`Print bbctl configuration information.`)
-
-	viewLong = templates.LongDesc(i18n.T(`
-		Output the current bbctl configurations set in the bbctl configuration file.
-		
-		Configurations are printed in the format:
-			key: value
-
-		To print a specific configuration, pass it as a keyword paramater to the "bbctl config" invocation.
-		Example:
-			$ bbctl config log-level
-			info
-	`))
-)
-
 // NewConfigViewCmd - create a new Cobra config view command
 func NewConfigViewCmd(factory bbUtil.Factory) *cobra.Command {
+	var (
+		viewUse   = `view [key]`
+		viewShort = i18n.T(`Print bbctl configuration information.`)
+		viewLong  = templates.LongDesc(i18n.T(`
+			Output the current bbctl configurations set in the bbctl configuration file.
+			
+			Configurations are printed in the format:
+				key: value
+	
+			To print a specific configuration, pass it as a keyword paramater to the "bbctl config" invocation.
+			Example:
+				$ bbctl config log-level
+				info
+		`))
+	)
+
 	cmd := &cobra.Command{
 		Use:                   viewUse,
 		Short:                 viewShort,
@@ -48,7 +47,7 @@ func NewConfigViewCmd(factory bbUtil.Factory) *cobra.Command {
 // getValueAsString returns a string representation of the value, handling bool values properly
 func getValueAsString(field reflect.Value) string {
 	if field.Kind() == reflect.Bool {
-		return fmt.Sprintf("%t", field.Bool())
+		return strconv.FormatBool(field.Bool())
 	}
 	return field.String()
 }
@@ -60,7 +59,7 @@ func findConfig(config any, key string) (string, error) {
 
 func findRecursive(v reflect.Value, keys []string) (string, error) {
 	if len(keys) == 0 {
-		return "", fmt.Errorf("invalid key")
+		return "", errors.New("invalid key")
 	}
 
 	fieldName := keys[0]
@@ -87,7 +86,7 @@ func findRecursive(v reflect.Value, keys []string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("No such field: %s", fieldName)
+	return "", fmt.Errorf("no such field: %s", fieldName)
 }
 
 func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) error {
@@ -108,7 +107,6 @@ func getBBConfig(cmd *cobra.Command, factory bbUtil.Factory, args []string) erro
 	}
 
 	switch len(args) {
-
 	case 0:
 		// If all keys are requested, we can just dump the config YAML wholesale
 		// as this is probably what the user wants anyway

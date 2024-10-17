@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_ExampleConfiguration(t *testing.T) {
@@ -36,11 +37,11 @@ func TestReconcileConfiguration_ExampleConfiguration(t *testing.T) {
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
 			if tt.willError {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMessage)
 				// we can't check the values because we don't know what they are because we don't know where it errored
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tt.arg.ShouldError, instance.GetBool("example-config-should-error"))
 			}
 		})

@@ -70,24 +70,24 @@ func getConfigWithFunc(client *ConfigClient, u func(rawVal any, opts ...viper.De
 	var config schemas.GlobalConfiguration
 	unmarshalError := u(&config)
 	if unmarshalError != nil {
-		return nil, fmt.Errorf("Error unmarshalling configuration: %w", unmarshalError)
+		return nil, fmt.Errorf("error unmarshalling configuration: %w", unmarshalError)
 	}
 
 	if client.command != nil {
 		bindingError := b(client.command.PersistentFlags())
 		if bindingError != nil {
-			return nil, fmt.Errorf("Error binding flags: %w", bindingError)
+			return nil, fmt.Errorf("error binding flags: %w", bindingError)
 		}
 	}
 
 	reconcileError := config.ReconcileConfiguration(client.viperInstance)
 	if reconcileError != nil {
-		return nil, fmt.Errorf("Error reconciling configuration: %w", reconcileError)
+		return nil, fmt.Errorf("error reconciling configuration: %w", reconcileError)
 	}
 	validator := validator.New()
 	validatorError := validator.Struct(config)
 	if validatorError != nil {
-		return nil, fmt.Errorf("Error during validation for configuration: %w", validatorError)
+		return nil, fmt.Errorf("error during validation for configuration: %w", validatorError)
 	}
 	return &config, nil
 }

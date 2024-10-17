@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcileConfiguration_UtilK8sConfiguration(t *testing.T) {
@@ -78,7 +79,7 @@ func TestReconcileConfiguration_UtilK8sConfiguration(t *testing.T) {
 			// Act
 			err := tt.arg.ReconcileConfiguration(instance)
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, kubeconfigPath, tt.arg.Kubeconfig)
 			assert.Equal(t, cacheDir, tt.arg.CacheDir)
 			assert.Equal(t, clusterName, tt.arg.ClusterName)

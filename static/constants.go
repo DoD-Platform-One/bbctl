@@ -9,7 +9,7 @@ import (
 var (
 	//go:embed resources
 	resources embed.FS
-	constants = Constants{}
+	constants = Constants{} //nolint:unused,gochecknoglobals
 )
 
 type Readable interface {
@@ -69,7 +69,7 @@ func (c *constantsClient) GetConstants() (Constants, error) {
 }
 
 // Default client using embedded resources
-var DefaultClient = NewConstantsClient(resources.ReadFile)
+var DefaultClient = NewConstantsClient(resources.ReadFile) //nolint:gochecknoglobals
 
 // GetDefaultConstants returns constants using the default client
 func GetDefaultConstants() (Constants, error) {

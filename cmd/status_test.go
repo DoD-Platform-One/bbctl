@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 
@@ -29,7 +30,7 @@ func TestGetStatusUsage(t *testing.T) {
 
 	cmd := NewStatusCmd(factory)
 
-	assert.Equal(t, cmd.Use, "status")
+	assert.Equal(t, "status", cmd.Use)
 	assert.Contains(t, cmd.Example, "bbctl status")
 }
 
@@ -50,7 +51,7 @@ func TestGetStatus(t *testing.T) {
 
 	// functionality is tested separately.
 	// only checking for no error to get code coverage for cobra cmd
-	assert.Nil(t, result)
+	require.NoError(t, result)
 	assert.NotNil(t, output)
 }
 
@@ -78,9 +79,9 @@ func TestGetBigBangStatus(t *testing.T) {
 	// prepare the helm client with no data
 	factory := bbTestUtil.GetFakeFactory()
 	constants, err := static.GetDefaultConstants()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	helmClient, err := factory.GetHelmClient(nil, constants.BigBangNamespace)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var response = getBigBangStatus(helmClient)
 	assert.Contains(t, response[0], "No Big Bang release was found")
 
@@ -137,13 +138,13 @@ func TestGetFluxKustomizations(t *testing.T) {
 
 	// test with reconciled flux git repositories
 	err := fluxClient.Create(context.TODO(), &readyK)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response[0], "All Flux kustomizations are ready")
 
 	// test with unreconciled flux git repositories
 	err = fluxClient.Create(context.TODO(), &notReadyK)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxKustomizations(fluxClient)
 	assert.Contains(t, response[0], "There are 1 Flux kustomizations that are not ready")
 }
@@ -193,13 +194,13 @@ func TestGetFluxGitRepositories(t *testing.T) {
 
 	// test with reconciled flux git repositories
 	err := fluxClient.Create(context.TODO(), &readyGR)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
 	assert.Contains(t, response[0], "All Flux git repositories are ready")
 
 	// test with unreconciled flux git repositories
 	err = fluxClient.Create(context.TODO(), &notReadyGR)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxGitRepositories(fluxClient)
 	assert.Contains(t, response[0], "There are 1 Flux git repositories that are not ready")
 }
@@ -249,13 +250,13 @@ func TestGetFluxHelmReleases(t *testing.T) {
 
 	// test with reconciled flux helm release
 	err := fluxClient.Create(context.TODO(), &reconciledHR)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
 	assert.Contains(t, response[0], "All Flux helm releases are reconciled")
 
 	// test with unreconciled flux helm release
 	err = fluxClient.Create(context.TODO(), &unreconciledHR)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	response = getFluxHelmReleases(fluxClient)
 	assert.Contains(t, response[0], "There are 1 Flux helm releases that are not reconciled")
 }
@@ -513,7 +514,7 @@ func TestProcessPodStatus(t *testing.T) {
 
 	assert.Contains(t, podData, notReadyPod)
 
-	assert.Equal(t, errorPod.status, "error")
+	assert.Equal(t, "error", errorPod.status)
 	assert.Contains(t, podData, errorPod)
 }
 
@@ -651,7 +652,7 @@ func TestGetStatus_NoHelmClient(t *testing.T) {
 	factory.SetFail.GetHelmClient = true
 	err := cmd.RunE(cmd, []string{})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get helm client") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -669,8 +670,8 @@ func TestGetStatus_NoK8sClientset(t *testing.T) {
 	factory.SetFail.GetK8sClientset = true
 	err := cmd.RunE(cmd, []string{})
 
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Failed to get k8s clientset:") {
+	require.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get k8s clientset:") {
 		t.Errorf("unexpected output: %s", err)
 	}
 }
@@ -687,8 +688,8 @@ func TestGetStatus_NoOutputClient(t *testing.T) {
 	factory.SetFail.GetIOStreams = 1
 	err := cmd.RunE(cmd, []string{})
 
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Failed to get output client:") {
+	require.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get output client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -705,8 +706,8 @@ func TestGetStatus_NoRuntimeClient(t *testing.T) {
 	factory.SetFail.GetRuntimeClient = true
 	err := cmd.RunE(cmd, []string{})
 
-	assert.Error(t, err)
-	if !assert.Contains(t, err.Error(), "Failed to get runtime client:") {
+	require.Error(t, err)
+	if !assert.Contains(t, err.Error(), "failed to get runtime client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
 }
@@ -728,7 +729,7 @@ func TestGetStatus_FailOutput(t *testing.T) {
 	assert.NotNil(t, cmd)
 	err := cmd.RunE(cmd, []string{})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, in.String())
 	assert.Empty(t, errOut.String())
 	assert.Equal(t, "failed to create status output: unable to write YAML output: FakeWriter intentionally errored", err.Error())

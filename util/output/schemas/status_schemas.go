@@ -9,42 +9,42 @@ import (
 )
 
 type CheckStatusOutput struct {
-	Name   string
-	Output []string
+	Name   string   `json:"name"   yaml:"name"`
+	Output []string `json:"output" yaml:"output"`
 }
 
 // Outputable interface implementations
-func (cso *CheckStatusOutput) MarshalYaml() ([]byte, error) {
+func (cso *CheckStatusOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(cso)
 }
 
-func (cso *CheckStatusOutput) MarshalJson() ([]byte, error) {
+func (cso *CheckStatusOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(cso)
 }
 
-func (cso *CheckStatusOutput) MarshalHumanReadable() ([]byte, error) {
+func (cso *CheckStatusOutput) EncodeText() ([]byte, error) {
 	return []byte(cso.String()), nil
 }
 
 func (cso *CheckStatusOutput) String() string {
-	return fmt.Sprintf("\n\nName: %s\nOutput:\n    %s\n", cso.Name, strings.Join(cso.Output[:], "\n    "))
+	return fmt.Sprintf("\n\nName: %s\nOutput:\n    %s\n", cso.Name, strings.Join(cso.Output, "\n    "))
 }
 
 type StatusOutput struct {
-	Name     string
-	Statuses []CheckStatusOutput
+	Name     string              `json:"name"     yaml:"name"`
+	Statuses []CheckStatusOutput `json:"statuses" yaml:"statuses"`
 }
 
 // Outputable interface implementations
-func (so *StatusOutput) MarshalYaml() ([]byte, error) {
+func (so *StatusOutput) EncodeYAML() ([]byte, error) {
 	return yaml.Marshal(so)
 }
 
-func (so *StatusOutput) MarshalJson() ([]byte, error) {
+func (so *StatusOutput) EncodeJSON() ([]byte, error) {
 	return json.Marshal(so)
 }
 
-func (so *StatusOutput) MarshalHumanReadable() ([]byte, error) {
+func (so *StatusOutput) EncodeText() ([]byte, error) {
 	statuses := []string{}
 	for _, status := range so.Statuses {
 		statuses = append(statuses, status.String())

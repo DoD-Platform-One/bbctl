@@ -5,7 +5,7 @@ import "github.com/spf13/viper"
 type GitLabConfiguration struct {
 	// access-token used for GitLab auth
 	Token   string `mapstructure:"access-token" yaml:"access-token"`
-	BaseURL string `mapstructure:"base-url" yaml:"base-url"`
+	BaseURL string `mapstructure:"base-url"     yaml:"base-url"`
 }
 
 func (g *GitLabConfiguration) ReconcileConfiguration(instance *viper.Viper) error {

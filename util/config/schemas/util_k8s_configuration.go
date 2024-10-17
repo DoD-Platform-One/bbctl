@@ -62,7 +62,7 @@ type UtilK8sConfiguration struct {
 }
 
 // ReconcileConfiguration reconciles the configuration.
-func (u *UtilK8sConfiguration) ReconcileConfiguration(instance *viper.Viper) error {
+func (u *UtilK8sConfiguration) ReconcileConfiguration(instance *viper.Viper) error { //nolint:cyclop // cyclomatic complexity is 26 but the actual logic is simple
 	if instance.IsSet("cache-dir") {
 		u.CacheDir = instance.GetString("cache-dir")
 	}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
@@ -19,7 +20,7 @@ func TestUpdate_RootUsage(t *testing.T) {
 	assert.Equal(t, "update", cmd.Use)
 	commandsList := cmd.Commands()
 	assert.Len(t, commandsList, 1)
-	var commandUseNamesList []string
+	var commandUseNamesList = make([]string, len(commandsList))
 	for _, command := range commandsList {
 		commandUseNamesList = append(commandUseNamesList, command.Use)
 	}
@@ -62,11 +63,11 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 			assert.Empty(t, errOut.String())
 			assert.Empty(t, in.String())
 			if tc.errorOnGetClient {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), "failed to get output client")
 				assert.Empty(t, out.String())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Contains(t, out.String(), "Please provide a subcommand for config (see help)")
 			}
 		})

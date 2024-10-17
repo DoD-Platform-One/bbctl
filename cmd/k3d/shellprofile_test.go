@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbAwsUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
@@ -74,18 +75,18 @@ func TestK3d_ShellProfiile(t *testing.T) {
 		"export KUBECONFIG=~/.kube/%v-dev-config\n",
 		callerIdentity.Username,
 	)
-	privateIpExport := fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP)
-	publicIpExport := fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP)
+	privateIPExport := fmt.Sprintf("export BB_K3D_PUBLICIP=%v\n", publicIP)
+	publicIPExport := fmt.Sprintf("export BB_K3D_PRIVATEIP=%v\n", privateIP)
 	// Act
 	cmd := NewShellProfileCmd(factory)
 	// Assert
 	assert.Equal(t, "shellprofile", cmd.Use)
-	assert.Nil(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 	assert.Empty(t, in.String())
 	assert.Empty(t, errOut.String())
 	assert.Contains(t, out.String(), kubeConfExport)
-	assert.Contains(t, out.String(), privateIpExport)
-	assert.Contains(t, out.String(), publicIpExport)
+	assert.Contains(t, out.String(), privateIPExport)
+	assert.Contains(t, out.String(), publicIPExport)
 }
 
 func TestK3d_ShellProfileError(t *testing.T) {
@@ -117,10 +118,10 @@ func TestK3d_ShellProfileError(t *testing.T) {
 	// Act
 	err := cmd.Execute()
 	// Assert
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	unwrappedErr := err
 	for unwrappedErr != nil {
-		if _, ok := unwrappedErr.(*apiWrappers.FakeWriterError); ok {
+		if _, ok := unwrappedErr.(*apiWrappers.FakeWriterError); ok { //nolint:errorlint // unwrapping is checked below
 			break
 		}
 		unwrappedErr = errors.Unwrap(unwrappedErr)
@@ -217,7 +218,7 @@ func TestK3d_ShellProfileErrors(t *testing.T) {
 
 			err := shellProfileCluster(factory, cmd)
 
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.Equal(t, test.errmsg, err.Error())
 		})
 	}

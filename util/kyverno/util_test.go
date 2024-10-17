@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 
@@ -241,7 +242,6 @@ func policyList() *unstructured.UnstructuredList {
 }
 
 func TestFetchKyvernoCrds(t *testing.T) {
-
 	var tests = []struct {
 		desc     string
 		expected []string
@@ -286,7 +286,7 @@ func TestFetchKyvernoCrdsError(t *testing.T) {
 	result, err := FetchKyvernoCrds(client)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error getting kyverno crds")
 	assert.Nil(t, result)
 }
@@ -302,7 +302,7 @@ func TestFetchKyvernoCrds_InvalidGroup(t *testing.T) {
 	crds, _ := FetchKyvernoCrds(client)
 
 	// Assert
-	assert.Len(t, crds.Items, 0)
+	assert.Empty(t, crds.Items)
 }
 
 func TestFetchKyvernoPolicies(t *testing.T) {
@@ -352,7 +352,7 @@ func TestFetchKyvernoPoliciesError(t *testing.T) {
 	policies, err := FetchKyvernoPolicies(client, "nop.policies.kyverno.io")
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "error getting kyverno policies")
 	assert.Nil(t, policies)
 }
@@ -371,5 +371,5 @@ func TestFetchKyvernoPoliciesPartialError(t *testing.T) {
 	_, err := FetchKyvernoPolicies(client, "nop.policies.kyverno.io")
 
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	output "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 )
 
@@ -17,7 +18,7 @@ func TestStatusOutputFormat(t *testing.T) {
 	statusOutput.Statuses = append(statusOutput.Statuses, checkStatus)
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -28,7 +29,7 @@ func TestStatusOutputFormat(t *testing.T) {
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: `{"Name":"Test","Statuses":[{"Name":"Status Test Output","Output":["Output one, Output two"]}]}`,
+			expected: `{"name":"Test","statuses":[{"name":"Status Test Output","output":["Output one, Output two"]}]}`,
 		},
 		{
 			name:     "Text Output",
@@ -41,16 +42,16 @@ func TestStatusOutputFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.format {
 			case output.YAML:
-				actual, err := statusOutput.MarshalYaml()
-				assert.NoError(t, err)
+				actual, err := statusOutput.EncodeYAML()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.JSON:
-				actual, err := statusOutput.MarshalJson()
-				assert.NoError(t, err)
+				actual, err := statusOutput.EncodeJSON()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.TEXT:
-				actual, err := statusOutput.MarshalHumanReadable()
-				assert.NoError(t, err)
+				actual, err := statusOutput.EncodeText()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			}
 		})
@@ -65,7 +66,7 @@ func TestCheckStatusOutputFormat(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		format   output.OutputFormat
+		format   output.Format
 		expected string
 	}{
 		{
@@ -76,7 +77,7 @@ func TestCheckStatusOutputFormat(t *testing.T) {
 		{
 			name:     "JSON Output",
 			format:   output.JSON,
-			expected: `{"Name":"Status Test Output","Output":["Output one, Output two"]}`,
+			expected: `{"name":"Status Test Output","output":["Output one, Output two"]}`,
 		},
 		{
 			name:     "Text Output",
@@ -89,16 +90,16 @@ func TestCheckStatusOutputFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.format {
 			case output.YAML:
-				actual, err := checkStatus.MarshalYaml()
-				assert.NoError(t, err)
+				actual, err := checkStatus.EncodeYAML()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.JSON:
-				actual, err := checkStatus.MarshalJson()
-				assert.NoError(t, err)
+				actual, err := checkStatus.EncodeJSON()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			case output.TEXT:
-				actual, err := checkStatus.MarshalHumanReadable()
-				assert.NoError(t, err)
+				actual, err := checkStatus.EncodeText()
+				require.NoError(t, err)
 				assert.Equal(t, tt.expected, string(actual))
 			}
 		})

@@ -12,9 +12,9 @@ type Runnable interface {
 
 // Streamable - describes a thing that can have its stdout and stderr set
 type Streamable interface {
-	SetStdout(io.Writer)
-	SetStderr(io.Writer)
-	SetStdin(io.Reader)
+	SetStdout(writer io.Writer)
+	SetStderr(writer io.Writer)
+	SetStdin(reader io.Reader)
 }
 
 // Commandable - describes a thing that can be run and have its stdout and stderr set

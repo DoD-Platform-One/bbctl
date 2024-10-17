@@ -14,25 +14,23 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
-	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/common_interfaces"
-)
-
-var (
-	initUse = `init`
-
-	initShort = i18n.T(`Initializes bbctl configuration information.`)
-
-	initLong = templates.LongDesc(i18n.T(`Initializes the bbctl configurations through prompts and sets the information to a configuration file.`))
+	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 )
 
 // NewConfigInitCmd - create a new Cobra config init command
 func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
+	var (
+		initUse   = `init`
+		initShort = i18n.T(`Initializes bbctl configuration information.`)
+		initLong  = templates.LongDesc(i18n.T(`Initializes the bbctl configurations through prompts and sets the information to a configuration file.`))
+	)
+
 	cmd := &cobra.Command{
 		Use:                   initUse,
 		Short:                 initShort,
 		Long:                  initLong,
 		DisableFlagsInUseLine: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return initBBConfig(factory, cmd)
 		},
 	}
@@ -109,7 +107,7 @@ func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
+func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	streams, err := factory.GetIOStream()
 	if err != nil {
 		return fmt.Errorf("error getting IO streams: %w", err)
@@ -146,7 +144,7 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
 			optional: false,
 		}}
 
-	fmt.Println("Please enter values for the following configurations.")
+	fmt.Println("Please enter values for the following configurations.") //nolint:forbidigo
 	for _, c := range configKeys {
 		var input string
 		flag, _ := command.Flags().GetString(c.key)
@@ -154,13 +152,13 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
 		if flag != "" {
 			config[c.key] = flag
 		} else {
-			fmt.Fprintln(streams.Out, strings.Replace(c.key, "-", " ", -1))
+			fmt.Fprintln(streams.Out, strings.ReplaceAll(c.key, "-", " "))
 			fmt.Fprintln(streams.Out, c.info)
 			if c.optional {
 				fmt.Fprintln(streams.Out, "Press enter to skip")
 			}
 			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input)
+			fmt.Fscanln(streams.In, &input) //nolint:errcheck
 			if c.optional && input != "" || !c.optional {
 				config[c.key] = input
 			}
@@ -170,10 +168,10 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) (err error) {
 	output, _ := command.Flags().GetString("output")
 	if output == "" {
 		var input string
-		fmt.Println("Please enter the output path for the config.yaml file.")
+		fmt.Println("Please enter the output path for the config.yaml file.") //nolint:forbidigo
 		fmt.Fprintln(streams.Out, "Press enter to skip")
 		fmt.Fprint(streams.Out, "$ ")
-		fmt.Fscanln(streams.In, &input)
+		fmt.Fscanln(streams.In, &input) //nolint:errcheck
 		if input != "" {
 			output = input
 		} else {
@@ -206,11 +204,11 @@ func writeConfigFile(
 			if err == nil {
 				err = fmt.Errorf("(sole deferred error: %w)", newErr)
 			} else {
-				err = fmt.Errorf("%w (additional deferred error: %v)", err, newErr)
+				err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 			}
 		}
 	}()
 
-	_, err = io.WriteString(configFile, string(configYaml))
+	_, err = io.Writer.Write(configFile, configYaml)
 	return err
 }

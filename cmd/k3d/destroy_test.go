@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 )
@@ -32,7 +33,7 @@ func TestNewDestroyClusterCmd_RunWithMissingBigBangRepo(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(
 		t,
 		err.Error(),
@@ -45,7 +46,7 @@ func TestNewDestroyClusterCmd_RunWithMissingBigBangRepo(t *testing.T) {
 
 func TestNewDestroyClusterCmd_Run(t *testing.T) {
 	bigBangRepoLocation := "/tmp/big-bang"
-	assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+	require.NoError(t, os.MkdirAll(bigBangRepoLocation, 0755))
 
 	testCases := []struct {
 		name           string
@@ -56,7 +57,7 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 			name:   "JSON",
 			format: "json",
 			expectedOutput: fmt.Sprintf(
-				"{\n  \"general_info\": null,\n  \"actions\": [\n    \"Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d\"\n  ],\n  \"warnings\": []\n}",
+				"{\"generalInfo\":null,\"actions\":[\"Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d\"],\"warnings\":[]}",
 				bigBangRepoLocation,
 			),
 		},
@@ -64,7 +65,7 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 			name:   "YAML",
 			format: "yaml",
 			expectedOutput: fmt.Sprintf(
-				"general_info: {}\nactions:\n- 'Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d'\nwarnings: []\n",
+				"generalInfo: {}\nactions:\n- 'Running command: %s/docs/assets/scripts/developer/k3d-dev.sh -d'\nwarnings: []\n",
 				bigBangRepoLocation,
 			),
 		},
@@ -97,7 +98,7 @@ func TestNewDestroyClusterCmd_Run(t *testing.T) {
 
 			// Assert
 			assert.NotNil(t, cmd)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, "destroy", cmd.Use)
 			assert.Empty(t, streams.ErrOut.(*bytes.Buffer).String())
 
@@ -143,12 +144,12 @@ func TestDestroyCluster_Failures(t *testing.T) {
 		{
 			name:                "Fail to get output client",
 			errorOnOutputClient: true,
-			expectedError:       "Unable to create output client:",
+			expectedError:       "unable to create output client:",
 		},
 		{
 			name:                  "Fail to get command wrapper",
 			errorOnCommandWrapper: true,
-			expectedError:         "Unable to get command wrapper:",
+			expectedError:         "unable to get command wrapper:",
 		},
 		{
 			name:          "Fail to get pipe",
@@ -169,7 +170,7 @@ func TestDestroyCluster_Failures(t *testing.T) {
 		{
 			name:          "Fail to run command",
 			errorOnCmdRun: true,
-			expectedError: "Failed to run command",
+			expectedError: "failed to run command",
 		},
 		{
 			name:          "Fail to push output",
@@ -184,7 +185,7 @@ func TestDestroyCluster_Failures(t *testing.T) {
 			cmd := NewDestroyClusterCmd(factory)
 			viper, _ := factory.GetViper()
 			streams, _ := factory.GetIOStream()
-			originalOut := (*streams).Out
+			originalOut := streams.Out
 			if tc.errorOnIOStream {
 				factory.SetFail.GetIOStreams = 1
 			}
@@ -206,7 +207,7 @@ func TestDestroyCluster_Failures(t *testing.T) {
 			if tc.errorOnCopyBuffer {
 				r, w, _ := bbTestApiWrappers.CreateFakeFileFromOSPipe(t, false, false)
 				r.SetFail.WriteTo = true
-				assert.Nil(t, factory.SetPipe(r, w))
+				require.NoError(t, factory.SetPipe(r, w))
 			}
 			if tc.errorOnCmdRun {
 				factory.SetFail.SetCommandWrapperRunError = true
@@ -222,7 +223,7 @@ func TestDestroyCluster_Failures(t *testing.T) {
 			err := destroyCluster(factory, cmd, []string{})
 
 			// Assert
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
 			assert.Equal(t, "destroy", cmd.Use)
 			if tc.errorOnOutput {

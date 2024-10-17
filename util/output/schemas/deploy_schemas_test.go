@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBigbangOutput_Marshall(t *testing.T) {
@@ -27,15 +28,15 @@ func TestBigbangOutput_Marshall(t *testing.T) {
 		{
 			name:     "YAML",
 			input:    testObject,
-			expected: "message: test\nname: test\nlastdeployed: test\nnamespace: test\nstatus: test\nrevision: test\ntestsuite: test\nnotes: test\n",
+			expected: "message: test\nname: test\nlastDeployed: test\nnamespace: test\nstatus: test\nrevision: test\ntestSuite: test\nnotes: test\n",
 		},
 		{
 			name:     "JSON",
 			input:    testObject,
-			expected: "{\"Message\":\"test\",\"Name\":\"test\",\"LastDeployed\":\"test\",\"Namespace\":\"test\",\"Status\":\"test\",\"Revision\":\"test\",\"TestSuite\":\"test\",\"Notes\":\"test\"}",
+			expected: "{\"message\":\"test\",\"name\":\"test\",\"lastDeployed\":\"test\",\"namespace\":\"test\",\"status\":\"test\",\"revision\":\"test\",\"testSuite\":\"test\",\"notes\":\"test\"}",
 		},
 		{
-			name:     "HumanReadable",
+			name:     "Text",
 			input:    testObject,
 			expected: "Message: test\nName: test\nLast Deployed: test\nNamespace: test\nStatus: test\nRevision: test\nTest Suite: test\nNotes:\ntest\n",
 		},
@@ -49,14 +50,14 @@ func TestBigbangOutput_Marshall(t *testing.T) {
 			var err error
 			switch test.name {
 			case "YAML":
-				actual, err = test.input.MarshalYaml()
+				actual, err = test.input.EncodeYAML()
 			case "JSON":
-				actual, err = test.input.MarshalJson()
-			case "HumanReadable":
-				actual, err = test.input.MarshalHumanReadable()
+				actual, err = test.input.EncodeJSON()
+			case "Text":
+				actual, err = test.input.EncodeText()
 			}
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, string(actual))
 		})
 	}
@@ -81,15 +82,15 @@ func TestFluxOutput_Marshall(t *testing.T) {
 		{
 			name:     "YAML",
 			input:    testObject,
-			expected: "general_info:\n  test: test\nactions:\n- test\nwarnings:\n- test\n",
+			expected: "generalInfo:\n  test: test\nactions:\n- test\nwarnings:\n- test\n",
 		},
 		{
 			name:     "JSON",
 			input:    testObject,
-			expected: "{\"general_info\":{\"test\":\"test\"},\"actions\":[\"test\"],\"warnings\":[\"test\"]}",
+			expected: "{\"generalInfo\":{\"test\":\"test\"},\"actions\":[\"test\"],\"warnings\":[\"test\"]}",
 		},
 		{
-			name:     "HumanReadable",
+			name:     "Text",
 			input:    testObject,
 			expected: "General Info:\n  test: test\n\nActions:\n  test\n\nWarnings:\n  test\n",
 		},
@@ -103,14 +104,14 @@ func TestFluxOutput_Marshall(t *testing.T) {
 			var err error
 			switch test.name {
 			case "YAML":
-				actual, err = test.input.MarshalYaml()
+				actual, err = test.input.EncodeYAML()
 			case "JSON":
-				actual, err = test.input.MarshalJson()
-			case "HumanReadable":
-				actual, err = test.input.MarshalHumanReadable()
+				actual, err = test.input.EncodeJSON()
+			case "Text":
+				actual, err = test.input.EncodeText()
 			}
 			// Assert
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expected, string(actual))
 		})
 	}

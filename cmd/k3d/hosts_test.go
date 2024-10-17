@@ -2,6 +2,7 @@ package k3d
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	apiV1Beta1 "istio.io/api/networking/v1beta1"
 	apisV1Beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	coreV1 "k8s.io/api/core/v1"
@@ -35,7 +37,7 @@ func TestK3d_NewHostsCmd(t *testing.T) {
 	// Act
 	cmd, err := NewHostsCmd(factory)
 	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "hosts", cmd.Use)
 }
@@ -158,7 +160,7 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			viperInstance.Set("output-config.format", "yaml")
 			viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 			cmd, cmdErr := NewHostsCmd(factory)
-			assert.Nil(t, cmdErr)
+			require.NoError(t, cmdErr)
 			cmd.SetArgs([]string{"--private-ip"})
 			var err error
 
@@ -167,12 +169,12 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 				if !tc.shouldErr {
 					return
 				}
-				assert.Nil(t, cmd.Execute())
+				require.NoError(t, cmd.Execute())
 				return
 			}
 
 			if tc.shouldErr {
-				runCrasherCommand := exec.Command(os.Args[0], "-test.run=TestK3d_NewHostsCmd_Run")
+				runCrasherCommand := exec.Command(os.Args[0], "-test.run=TestK3d_NewHostsCmd_Run") //nolint:gosec
 				runCrasherCommand.Env = append(os.Environ(), "BE_CRASHER=1")
 				runCrasherCommand.Stderr = errOut
 				runCrasherCommand.Stdout = out
@@ -187,21 +189,21 @@ func TestK3d_NewHostsCmd_Run(t *testing.T) {
 			assert.Equal(t, "hosts", cmd.Use)
 			if tc.shouldFail {
 				if tc.shouldErr {
-					assert.NotNil(t, err)
+					require.Error(t, err)
 					assert.Contains(t, out.String(), "FAIL")
 					assert.Contains(t, errOut.String(), (&apiWrappers.FakeWriterError{}).Error())
 				} else {
-					assert.Nil(t, err)
+					require.NoError(t, err)
 					assert.Equal(t, "hosts: {}\n", out.String())
 					assert.Empty(t, errOut.String())
 				}
 				assert.Empty(t, in.String())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Empty(t, errOut.String())
 				assert.Empty(t, in.String())
 				// hosts:\n  192.192.192.192:\n  - test1\n  - test2\n
-				assert.Equal(t, fmt.Sprintf("hosts:\n  %v:\n  - %v\n  - %v\n", privateIP, vs.Spec.Hosts[0], vs.Spec.Hosts[1]), out.String())
+				assert.Equal(t, fmt.Sprintf("hosts:\n  %v:\n  - %v\n  - %v\n", privateIP, vs.Spec.GetHosts()[0], vs.Spec.GetHosts()[1]), out.String())
 			}
 		})
 	}
@@ -242,7 +244,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 			name: "ErrorBuildingK8sConfig",
 			errorFunc: func(factory *bbTestUtil.FakeFactory) {
 				viperInstance, viperErr := factory.GetViper()
-				assert.Nil(t, viperErr)
+				require.NoError(t, viperErr)
 				viperInstance.Set("kubeconfig", badkubeconfig)
 			},
 			errmsg: fmt.Sprintf(
@@ -277,7 +279,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 	factory.ResetIOStream()
 	streams, streamsErr := factory.GetIOStream()
 	out := streams.Out.(*bytes.Buffer)
-	assert.Nil(t, streamsErr)
+	require.NoError(t, streamsErr)
 	streams.Out = apiWrappers.CreateFakeWriterFromReaderWriter(t, false, true, out)
 	account := callerIdentityAccount
 	arn := callerIdentityArn
@@ -296,7 +298,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 			factory.SetCallerIdentity(&callerIdentity)
 			factory.SetClusterIPs(&clusterIPs)
 			viperInstance, viperErr := factory.GetViper()
-			assert.Nil(t, viperErr)
+			require.NoError(t, viperErr)
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", goodkubeconfig)
 
@@ -306,7 +308,7 @@ func TestK3d_hostsListClusterErrors(t *testing.T) {
 			cmd, _ := NewHostsCmd(factory)
 			err := hostsListCluster(cmd, factory)
 
-			assert.NotNil(t, err)
+			require.Error(t, err)
 			assert.Equal(t, test.errmsg, err.Error())
 		})
 	}
@@ -318,19 +320,19 @@ func TestK3d_HostsListCluster_ListAllError(t *testing.T) {
 	factory.ResetIOStream()
 	bigBangRepoLocation := "test"
 	viperInstance, viperErr := factory.GetViper()
-	assert.Nil(t, viperErr)
+	require.NoError(t, viperErr)
 	viperInstance.Set("big-bang-repo", bigBangRepoLocation)
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
 	// Act
 	cmd, err := NewHostsCmd(factory)
 	assert.NotNil(t, cmd)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	listAllErr := HostsListCluster(cmd, factory, true)
 
 	// Assert
-	assert.Error(t, listAllErr)
+	require.Error(t, listAllErr)
 	if !assert.Contains(t, listAllErr.Error(), "unable to list all services:") {
 		t.Errorf("unexpected output: %s", listAllErr.Error())
 	}
@@ -340,12 +342,12 @@ func TestK3d_NewHostsCmd_BindFlagsError(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	viperInstance, viperErr := factory.GetViper()
-	assert.Nil(t, viperErr)
+	require.NoError(t, viperErr)
 	viperInstance.Set("big-bang-repo", "test")
 	viperInstance.Set("kubeconfig", "../../util/test/data/kube-config.yaml")
 
-	expectedError := fmt.Errorf("failed to set and bind flag")
-	setAndBindFlagFunc := func(client *bbConfig.ConfigClient, name string, shortHand string, value interface{}, description string) error {
+	expectedError := errors.New("failed to set and bind flag")
+	setAndBindFlagFunc := func(_ *bbConfig.ConfigClient, name string, _ string, _ interface{}, _ string) error {
 		if name == "private-ip" {
 			return expectedError
 		}
@@ -353,9 +355,9 @@ func TestK3d_NewHostsCmd_BindFlagsError(t *testing.T) {
 	}
 
 	logClient, logClientErr := factory.GetLoggingClient()
-	assert.Nil(t, logClientErr)
+	require.NoError(t, logClientErr)
 	configClient, err := bbConfig.NewClient(nil, setAndBindFlagFunc, &logClient, nil, viperInstance)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	factory.SetConfigClient(configClient)
 
 	// Act
@@ -363,8 +365,8 @@ func TestK3d_NewHostsCmd_BindFlagsError(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.NotNil(t, err)
-	assert.Equal(t, fmt.Sprintf("unable to bind flags: %s", expectedError.Error()), err.Error())
+	require.Error(t, err)
+	assert.Equal(t, "unable to bind flags: "+expectedError.Error(), err.Error())
 }
 
 func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
@@ -382,7 +384,7 @@ func TestK3d_NewHostsCmd_ConfigClientError(t *testing.T) {
 
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -395,10 +397,10 @@ func TestHostsFailToGetConfig(t *testing.T) {
 	cmd, _ := NewHostsCmd(factory)
 	viper, _ := factory.GetViper()
 	expected := ""
-	getConfigFunc := func(client *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
+	getConfigFunc := func(_ *bbConfig.ConfigClient) (*schemas.GlobalConfiguration, error) {
 		return &schemas.GlobalConfiguration{
 			BigBangRepo: expected,
-		}, fmt.Errorf("Dummy Error")
+		}, errors.New("dummy error")
 	}
 	client, _ := bbConfig.NewClient(getConfigFunc, nil, &loggingClient, cmd, viper)
 	factory.SetConfigClient(client)
@@ -407,7 +409,7 @@ func TestHostsFailToGetConfig(t *testing.T) {
 	err := hostsListCluster(cmd, factory)
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "error getting config:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}

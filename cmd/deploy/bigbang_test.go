@@ -2,12 +2,13 @@ package deploy
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	outputSchema "repo1.dso.mil/big-bang/product/packages/bbctl/util/output/schemas"
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 	bbTestApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
@@ -35,7 +36,7 @@ func TestBigBang_NewDeployBigBangCmd_MissingBigBangRepo(t *testing.T) {
 	err := cmd.Execute()
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(
 		t,
 		err.Error(),
@@ -84,13 +85,13 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With Components YAML",
 			format:         "yaml",
 			args:           []string{"--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastdeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestsuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With Components JSON",
 			format:         "json",
 			args:           []string{"--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "{\"Message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"Name\":\"\",\"LastDeployed\":\"\",\"Namespace\":\"\",\"Status\":\"\",\"Revision\":\"\",\"TestSuite\":\"\",\"Notes\":\"\"}",
+			expectedOutput: "{\"message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"name\":\"\",\"lastDeployed\":\"\",\"namespace\":\"\",\"status\":\"\",\"revision\":\"\",\"testSuite\":\"\",\"notes\":\"\"}",
 		},
 		{
 			name:           "With Components TEXT",
@@ -102,13 +103,13 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With K3d YAML",
 			format:         "yaml",
 			args:           []string{"--k3d"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastdeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestsuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With K3d JSON",
 			format:         "json",
 			args:           []string{"--k3d"},
-			expectedOutput: "{\"Message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"Name\":\"\",\"LastDeployed\":\"\",\"Namespace\":\"\",\"Status\":\"\",\"Revision\":\"\",\"TestSuite\":\"\",\"Notes\":\"\"}",
+			expectedOutput: "{\"message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"name\":\"\",\"lastDeployed\":\"\",\"namespace\":\"\",\"status\":\"\",\"revision\":\"\",\"testSuite\":\"\",\"notes\":\"\"}",
 		},
 		{
 			name:           "With K3d TEXT",
@@ -120,13 +121,13 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			name:           "With K3d and Components YAML",
 			format:         "yaml",
 			args:           []string{"--k3d", "--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastdeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestsuite: \"\"\nnotes: \"\"\n",
+			expectedOutput: "message: 'Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang\n  --create-namespace --set registryCredentials.username= --set registryCredentials.password=\n  --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true '\nname: \"\"\nlastDeployed: \"\"\nnamespace: \"\"\nstatus: \"\"\nrevision: \"\"\ntestSuite: \"\"\nnotes: \"\"\n",
 		},
 		{
 			name:           "With K3d and Components JSON",
 			format:         "json",
 			args:           []string{"--k3d", "--addon=foo,bar", "--addon=baz"},
-			expectedOutput: "{\"Message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"Name\":\"\",\"LastDeployed\":\"\",\"Namespace\":\"\",\"Status\":\"\",\"Revision\":\"\",\"TestSuite\":\"\",\"Notes\":\"\"}",
+			expectedOutput: "{\"message\":\"Running command: helm upgrade -i bigbang /tmp/big-bang/chart -n bigbang --create-namespace --set registryCredentials.username= --set registryCredentials.password= --set addons.baz.enabled=true --set addons.bar.enabled=true --set addons.foo.enabled=true \",\"name\":\"\",\"lastDeployed\":\"\",\"namespace\":\"\",\"status\":\"\",\"revision\":\"\",\"testSuite\":\"\",\"notes\":\"\"}",
 		},
 		{
 			name:           "With K3d and Components TEXT",
@@ -143,17 +144,17 @@ func TestBigBang_NewDeployBigBangCmd_Output(t *testing.T) {
 			factory.ResetIOStream()
 			streams, _ := factory.GetIOStream()
 			bigBangRepoLocation := "/tmp/big-bang"
-			assert.Nil(t, os.MkdirAll(bigBangRepoLocation, 0755))
+			require.NoError(t, os.MkdirAll(bigBangRepoLocation, 0755))
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", bigBangRepoLocation)
 			v.Set("output-config.format", tc.format)
 			cmd, err := NewDeployBigBangCmd(factory)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			cmd.SetArgs([]string{"--addon=foo,bar", "--addon=baz"})
 			// Act
 			err = cmd.Execute()
 			// Assert
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, cmd)
 			assert.Equal(t, "bigbang", cmd.Use)
 			assert.Empty(t, streams.ErrOut.(*bytes.Buffer).String())
@@ -177,7 +178,7 @@ func TestGetBigBangCmdConfigClientError(t *testing.T) {
 	cmd, err := NewDeployBigBangCmd(factory)
 	// Assert
 	assert.Nil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "unable to get config client:") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -196,7 +197,7 @@ func TestDeployBigBangConfigClientError(t *testing.T) {
 
 	// Assert
 	assert.NotNil(t, cmd)
-	assert.Error(t, err)
+	require.Error(t, err)
 	if !assert.Contains(t, err.Error(), "failed to get config client") {
 		t.Errorf("unexpected output: %s", err.Error())
 	}
@@ -254,12 +255,12 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 		{
 			name:            "Error on username",
 			errorOnUsername: true,
-			expectedError:   "Dummy Error",
+			expectedError:   "dummy error",
 		},
 		{
 			name:            "Error on password",
 			errorOnPassword: true,
-			expectedError:   "Dummy Error",
+			expectedError:   "dummy error",
 		},
 		{
 			name:                  "Error on command wrapper",
@@ -285,7 +286,7 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 		{
 			name:          "Error on command run",
 			errorOnCmdRun: true,
-			expectedError: "Failed to run command",
+			expectedError: "failed to run command",
 		},
 		{
 			name:           "Error on output",
@@ -301,8 +302,8 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 			factory := bbTestUtil.GetFakeFactory()
 			streams, err := factory.GetIOStream()
 			// TODO: fix the flux client changing up the streams
-			originalOut := (*streams).Out
-			assert.Nil(t, err)
+			originalOut := streams.Out
+			require.NoError(t, err)
 			v, _ := factory.GetViper()
 			v.Set("big-bang-repo", "/tmp/big-bang")
 			v.Set("format", "yaml")
@@ -325,17 +326,17 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 				factory.SetFail.GetCredentialHelper = true
 			}
 			if tc.errorOnUsername {
-				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+				factory.SetCredentialHelper(func(s1, _ string) (string, error) {
 					if s1 == "username" {
-						return "", fmt.Errorf("Dummy Error")
+						return "", errors.New("dummy error")
 					}
 					return "dummy", nil
 				})
 			}
 			if tc.errorOnPassword {
-				factory.SetCredentialHelper(func(s1, s2 string) (string, error) {
+				factory.SetCredentialHelper(func(s1, _ string) (string, error) {
 					if s1 == "password" {
-						return "", fmt.Errorf("Dummy Error")
+						return "", errors.New("dummy error")
 					}
 					return "dummy", nil
 				})
@@ -349,7 +350,7 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 			if tc.errorOnCopyBuffer {
 				r, w, _ := bbTestApiWrappers.CreateFakeFileFromOSPipe(t, false, false)
 				r.SetFail.WriteTo = true
-				assert.Nil(t, factory.SetPipe(r, w))
+				require.NoError(t, factory.SetPipe(r, w))
 			}
 			if tc.errorOnCmdRun {
 				factory.SetFail.SetCommandWrapperRunError = true
@@ -364,7 +365,7 @@ func TestDeployBigBangToClusterErrors(t *testing.T) {
 			// Act
 			err = deployBigBangToCluster(cmd, factory, []string{})
 			// Assert
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.expectedError)
 			if tc.errorOnOutput {
 				assert.Empty(t, originalOut.(*bbTestApiWrappers.FakeReaderWriter).ActualBuffer.(*bytes.Buffer).String())

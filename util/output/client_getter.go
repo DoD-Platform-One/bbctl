@@ -8,6 +8,6 @@ import (
 type ClientGetter struct{}
 
 // GetClient returns a new log client.
-func (clientGetter *ClientGetter) GetClient(format OutputFormat, streams genericclioptions.IOStreams) Client {
+func (clientGetter *ClientGetter) GetClient(format Format, streams genericclioptions.IOStreams) Client {
 	return NewOutputClient(format, streams)
 }
