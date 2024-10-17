@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 type Violation struct {
@@ -20,7 +20,7 @@ type Violation struct {
 }
 
 func (v *Violation) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(v)
+	return yamler.Marshal(v)
 }
 
 func (v *Violation) EncodeJSON() ([]byte, error) {
@@ -50,7 +50,7 @@ type ViolationsOutput struct {
 }
 
 func (vo *ViolationsOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(vo)
+	return yamler.Marshal(vo)
 }
 
 func (vo *ViolationsOutput) EncodeJSON() ([]byte, error) {

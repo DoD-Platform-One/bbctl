@@ -5,10 +5,10 @@ import (
 	"path"
 	"strings"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"io"
 	"os"
-
-	"gopkg.in/yaml.v2"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -182,7 +182,7 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 			output = path.Join(homedir, ".bbctl")
 		}
 	}
-	return writeConfigFile(&config, yaml.Marshal, output, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	return writeConfigFile(&config, yamler.Marshal, output, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
 }
 
 func writeConfigFile(

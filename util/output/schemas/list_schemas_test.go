@@ -27,9 +27,16 @@ func TestHelmReleaseTableOuput_Marshal(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "YAML",
-			marshal:  testObject.EncodeYAML,
-			expected: "releases:\n- name: test\n  namespace: test-ns\n  revision: 1\n  status: test-status\n  chart: test-chart\n  appVersion: test-version\n",
+			name:    "YAML",
+			marshal: testObject.EncodeYAML,
+			expected: `releases:
+  - name: test
+    namespace: test-ns
+    revision: 1
+    status: test-status
+    chart: test-chart
+    appVersion: test-version
+`,
 		},
 		{
 			name:     "JSON",

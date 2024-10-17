@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 type CheckStatusOutput struct {
@@ -15,7 +15,7 @@ type CheckStatusOutput struct {
 
 // Outputable interface implementations
 func (cso *CheckStatusOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(cso)
+	return yamler.Marshal(cso)
 }
 
 func (cso *CheckStatusOutput) EncodeJSON() ([]byte, error) {
@@ -37,7 +37,7 @@ type StatusOutput struct {
 
 // Outputable interface implementations
 func (so *StatusOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(so)
+	return yamler.Marshal(so)
 }
 
 func (so *StatusOutput) EncodeJSON() ([]byte, error) {

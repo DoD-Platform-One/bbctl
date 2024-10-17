@@ -3,8 +3,9 @@ package schemas
 import (
 	"encoding/json"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/gosuri/uitable"
-	"gopkg.in/yaml.v2"
 )
 
 type HelmReleaseOutput struct {
@@ -21,7 +22,7 @@ type HelmReleaseTableOutput struct {
 }
 
 func (hrto *HelmReleaseTableOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(hrto)
+	return yamler.Marshal(hrto)
 }
 
 func (hrto *HelmReleaseTableOutput) EncodeJSON() ([]byte, error) {

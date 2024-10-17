@@ -20,7 +20,7 @@ func TestCheckStepOutput_Marshall(t *testing.T) {
 				Output: []string{"output1", "output2"},
 				Status: "pass",
 			},
-			expected: "name: test\noutput:\n- output1\n- output2\nstatus: pass\n",
+			expected: "name: test\noutput:\n  - output1\n  - output2\nstatus: pass\n",
 		},
 		{
 			name: "JSON",
@@ -81,7 +81,7 @@ func TestPreflightCheckOutput_Marshall(t *testing.T) {
 					},
 				},
 			},
-			expected: "name: test\nsteps:\n- name: test\n  output:\n  - output1\n  - output2\n  status: pass\n",
+			expected: "name: test\nsteps:\n  - name: test\n    output:\n      - output1\n      - output2\n    status: pass\n",
 		},
 		{
 			name: "JSON",

@@ -24,7 +24,7 @@ func TestStatusOutputFormat(t *testing.T) {
 		{
 			name:     "YAML Output",
 			format:   output.YAML,
-			expected: "name: Test\nstatuses:\n- name: Status Test Output\n  output:\n  - Output one, Output two\n",
+			expected: "name: Test\nstatuses:\n  - name: Status Test Output\n    output:\n      - Output one, Output two\n",
 		},
 		{
 			name:     "JSON Output",
@@ -72,7 +72,7 @@ func TestCheckStatusOutputFormat(t *testing.T) {
 		{
 			name:     "YAML Output",
 			format:   output.YAML,
-			expected: "name: Status Test Output\noutput:\n- Output one, Output two\n",
+			expected: "name: Status Test Output\noutput:\n  - Output one, Output two\n",
 		},
 		{
 			name:     "JSON Output",

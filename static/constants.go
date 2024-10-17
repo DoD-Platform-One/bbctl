@@ -3,7 +3,7 @@ package static
 import (
 	"embed"
 
-	yaml "gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 var (
@@ -38,7 +38,7 @@ func (c *Constants) readConstants() error {
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal(yamlFile, c)
+	err = yamler.Unmarshal(yamlFile, c)
 	return err
 }
 

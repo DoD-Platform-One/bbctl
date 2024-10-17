@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 type K3dOutput struct {
@@ -13,7 +13,7 @@ type K3dOutput struct {
 }
 
 func (o *K3dOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(o.Data)
+	return yamler.Marshal(o.Data)
 }
 
 func (o *K3dOutput) EncodeJSON() ([]byte, error) {
@@ -47,7 +47,7 @@ type HostsOutput struct {
 }
 
 func (o *HostsOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(o)
+	return yamler.Marshal(o)
 }
 
 func (o *HostsOutput) EncodeJSON() ([]byte, error) {
@@ -69,7 +69,7 @@ type ShellProfileOutput struct {
 }
 
 func (o *ShellProfileOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(o)
+	return yamler.Marshal(o)
 }
 
 func (o *ShellProfileOutput) EncodeJSON() ([]byte, error) {

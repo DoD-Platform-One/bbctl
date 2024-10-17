@@ -8,7 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
@@ -506,7 +507,7 @@ type helmChartManifest struct {
 // decodeChartYAML decodes the Chart.yaml file body from GitLab into a type
 func decodeChartYAML(fileBody []byte) (*helmChartManifest, error) {
 	var chart helmChartManifest
-	err := yaml.Unmarshal(fileBody, &chart)
+	err := yamler.Unmarshal(fileBody, &chart)
 	if err != nil {
 		return nil, err
 	}

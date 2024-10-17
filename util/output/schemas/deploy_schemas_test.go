@@ -80,9 +80,15 @@ func TestFluxOutput_Marshall(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "YAML",
-			input:    testObject,
-			expected: "generalInfo:\n  test: test\nactions:\n- test\nwarnings:\n- test\n",
+			name:  "YAML",
+			input: testObject,
+			expected: `generalInfo:
+  test: test
+actions:
+  - test
+warnings:
+  - test
+`,
 		},
 		{
 			name:     "JSON",

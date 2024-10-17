@@ -10,12 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 	genericIoOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	bbTestLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
@@ -57,7 +58,7 @@ func GetValueFromViper(t *testing.T, v *viper.Viper, key string, arg interface{}
 
 func WriteConfigFile(t *testing.T, dirname string, config schemas.BaseConfiguration) {
 	t.Helper()
-	content, err := yaml.Marshal(config)
+	content, err := yamler.Marshal(config)
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(dirname, 0755))
 	require.NoError(t, os.WriteFile(path.Join(dirname, "config.yaml"), content, 0600))

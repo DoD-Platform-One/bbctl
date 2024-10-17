@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/config/schemas"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
@@ -51,10 +52,7 @@ func TestConfigGetAll(t *testing.T) {
 		"big-bang-repo": "/path/to/repo",
 		"log-level":     "testLogLevel",
 		"log-output":    "testLogOutput",
-		// The type [any]any is required here since the yaml unmarshaller erases the string type for nested keys
-		"output-config": map[any]any{
-			"format": "yaml",
-		},
+		"output-config": map[string]interface{}{"format": "yaml"},
 	}
 
 	for key, value := range testValues {
@@ -75,7 +73,7 @@ func TestConfigGetAll(t *testing.T) {
 	// of outputcannot be guaranteed
 	outputMap := make(map[string]any)
 
-	yamlErr := yaml.Unmarshal(out.Bytes(), outputMap)
+	yamlErr := yamler.Unmarshal(out.Bytes(), outputMap)
 	require.NoError(t, yamlErr)
 
 	for key, value := range testValues {

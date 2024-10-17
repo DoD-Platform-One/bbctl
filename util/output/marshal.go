@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 )
 
 // Outputable interface is used to define the methods that an object must implement in order to be able to be marshaled into different formats
@@ -27,7 +27,7 @@ type BasicOutput struct {
 
 // MashalYaml marshals the BasicOutput object into a yaml format
 func (b *BasicOutput) EncodeYAML() ([]byte, error) {
-	return yaml.Marshal(b.Vals)
+	return yamler.Marshal(b.Vals)
 }
 
 // EncodeJSON marshals the BasicOutput object into a json format

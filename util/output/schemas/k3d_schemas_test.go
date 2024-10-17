@@ -21,9 +21,15 @@ func TestK3dOutputFormat(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "YAML Output",
-			format:   output.YAML,
-			expected: "generalInfo: {}\nactions:\n- Action 1\n- Action 2\nwarnings:\n- Warning 1\n",
+			name:   "YAML Output",
+			format: output.YAML,
+			expected: `generalInfo: {}
+actions:
+  - Action 1
+  - Action 2
+warnings:
+  - Warning 1
+`,
 		},
 		{
 			name:     "JSON Output",
@@ -69,9 +75,13 @@ func TestHostsOutputFormat(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "YAML Output",
-			format:   output.YAML,
-			expected: "hosts:\n  192.168.1.1:\n  - host1.local\n  - host2.local\n",
+			name:   "YAML Output",
+			format: output.YAML,
+			expected: `hosts:
+  192.168.1.1:
+    - host1.local
+    - host2.local
+`,
 		},
 		{
 			name:     "JSON Output",

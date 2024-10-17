@@ -40,7 +40,7 @@ func TestViolationsOutputFormat(t *testing.T) {
 		{
 			name:     "YAML Output",
 			format:   output.YAML,
-			expected: "name: Violations Test Output\nviolations:\n- name: b\n  kind: c\n  namespace: d\n  policy: f\n  constraint: e\n  message: g\n  action: h\n  timestamp: a\n- name: j\n  kind: k\n  namespace: l\n  policy: \"n\"\n  constraint: m\n  message: o\n  action: p\n  timestamp: i\n",
+			expected: "name: Violations Test Output\nviolations:\n  - name: b\n    kind: c\n    namespace: d\n    policy: f\n    constraint: e\n    message: g\n    action: h\n    timestamp: a\n  - name: j\n    kind: k\n    namespace: l\n    policy: \"n\"\n    constraint: m\n    message: o\n    action: p\n    timestamp: i\n",
 		},
 		{
 			name:     "JSON Output",

@@ -103,7 +103,7 @@ func TestFlux_NewDeployFluxCmd_Output(t *testing.T) {
 		{
 			name:           "YAML",
 			format:         "yaml",
-			expectedOutput: "generalInfo: {}\nactions:\n- 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n",
+			expectedOutput: "generalInfo: {}\nactions:\n  - 'Running command: /tmp/big-bang/scripts/install_flux.sh -u  -p'\nwarnings: []\n",
 		},
 		{
 			name:           "TEXT",
