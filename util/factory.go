@@ -22,8 +22,10 @@ import (
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
 	bbK8sUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/k8s"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
@@ -51,6 +53,7 @@ type Factory interface {
 	GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error)
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
+	GetIronBankClient(cmd *cobra.Command) (ironbank.Client, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(
 		cmd *cobra.Command,
@@ -60,7 +63,7 @@ type Factory interface {
 		stdout io.Writer,
 		stderr io.Writer,
 	) (remoteCommand.Executor, error)
-	GetCredentialHelper() (CredentialHelper, error)
+	GetCredentialHelper() (credentialhelper.CredentialHelper, error)
 	GetCommandWrapper(name string, args ...string) (*bbUtilApiWrappers.Command, error)
 	GetIstioClientSet(cfg *rest.Config) (bbUtilApiWrappers.IstioClientset, error)
 	GetConfigClient(command *cobra.Command) (*bbConfig.ConfigClient, error)
@@ -85,20 +88,6 @@ func NewFactory(referenceFactory Factory) *UtilityFactory {
 type UtilityFactory struct {
 	referenceFactory Factory
 	getViperFunction func() (*viper.Viper, error)
-}
-
-// CredentialsFile struct represents credentials YAML files with a top level field called `credentials`
-// which contains a list of Credentials struct values
-type CredentialsFile struct {
-	Credentials []Credentials `yaml:"credentials"`
-}
-
-// Credentials struct represents each individual entry in a valid credentials file.
-// URI should be unique for every entry
-type Credentials struct {
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	URI      string `yaml:"uri"`
 }
 
 // ReadCredentialsFile reads the credentials file for the requested uri and attempts to return the string value
@@ -142,14 +131,14 @@ func (f *UtilityFactory) readCredentialsFile(component string, uri string, unmar
 	}
 
 	// Unmarshal the credentials file
-	var credentialsFile CredentialsFile
+	var credentialsFile credentialhelper.CredentialsFile
 	err = unmarshallFunc(credentialsYaml, &credentialsFile)
 	if err != nil {
 		return "", fmt.Errorf("unable to unmarshal credentials file %v: %w", credentialsPath, err)
 	}
 
 	// Find the credentials for the uri
-	credentials := Credentials{}
+	credentials := credentialhelper.Credentials{}
 	for _, c := range credentialsFile.Credentials {
 		if c.URI == uri {
 			credentials = c
@@ -172,16 +161,6 @@ func (f *UtilityFactory) readCredentialsFile(component string, uri string, unmar
 	}
 }
 
-// CredentialHelper is a function type that can be used to fetch credential values
-// The function takes 2 parameters:
-//
-// * component (string) - The Credentials struct field name, either `username` or `password`
-//
-// * uri (string) - The Credentials struct URI value which uniquely identifies the requested component
-//
-// These parameters are passed into custom credential helpers as CLI arguments in the same order.
-type CredentialHelper func(string, string) (string, error)
-
 // GetCredentialHelper returns a function reference to the configured credential helper function that can
 // be called to fetch credential values. A custom credential helper function is any CLI executable
 // script which can be passed into this function via the bbctl config settings as a file path.
@@ -189,7 +168,7 @@ type CredentialHelper func(string, string) (string, error)
 // Errors when no credential helper is defined, there is an issue reading credentials from a file,
 // there is an issue running a custom credential helper script, and when an empty value is returned
 // for a requested credential component
-func (f *UtilityFactory) GetCredentialHelper() (CredentialHelper, error) {
+func (f *UtilityFactory) GetCredentialHelper() (credentialhelper.CredentialHelper, error) {
 	credentialHelper := func(component string, uri string) (string, error) {
 		configClient, err := f.referenceFactory.GetConfigClient(nil)
 		if err != nil {
@@ -339,6 +318,25 @@ func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, e
 	outputClient := outputCLientGetter.GetClient(config.OutputConfiguration.Format, *streams)
 
 	return outputClient, nil
+}
+
+// GetIronBankClient initializes and returns a new ironbank client
+func (f *UtilityFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+	return f.getIronBankClient(command)
+}
+
+func (f *UtilityFactory) getIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+	credentialHelper, err := f.referenceFactory.GetCredentialHelper()
+	if err != nil {
+		return nil, err
+	}
+
+	clientGetter := ironbank.ClientGetter{}
+	client, err := clientGetter.GetClient(credentialHelper)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get ironbank client: %w", err)
+	}
+	return client, nil
 }
 
 // GetLoggingClient initializes and returns a new logging client using the default slog logger implementation

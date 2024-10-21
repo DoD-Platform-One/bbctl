@@ -9,5 +9,5 @@ type ClientGetter struct{}
 
 // GetClient returns a new GitLab client
 func (clientGetter *ClientGetter) GetClient(baseURL string, accessToken string, options ...gitlab.ClientOptionFunc) (Client, error) {
-	return NewClient(baseURL, accessToken, getFile, options...)
+	return NewClient(baseURL, accessToken, getFile, getProject, getReleaseArtifact, options...)
 }

@@ -18,8 +18,10 @@ import (
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +47,7 @@ type PooledFactory struct {
 	k8sDynamicClient  dynamic.Interface
 	outputClient      *bbOutput.Client
 	restConfig        *rest.Config
-	credentialHelper  bbUtil.CredentialHelper
+	credentialHelper  credentialhelper.CredentialHelper
 	istioClientSets   istioClientsetPool
 	viper             *viper.Viper
 	ioStream          *genericIOOptions.IOStreams
@@ -255,7 +257,7 @@ func (pf *PooledFactory) GetCommandExecutor(
 // GetCredentialHelper returns the credential helper
 //
 // Pooled by helper (singleton)
-func (pf *PooledFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
+func (pf *PooledFactory) GetCredentialHelper() (credentialhelper.CredentialHelper, error) {
 	if pf.credentialHelper != nil {
 		return pf.credentialHelper, nil
 	}
@@ -310,6 +312,14 @@ func (pf *PooledFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 		return nil, &FactoryNotInitializedError{}
 	}
 	return pf.underlyingFactory.GetConfigClient(command)
+}
+
+// GetIronBankClient returns a client for interacting with IronBank
+func (pf *PooledFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+	if pf.underlyingFactory == nil {
+		return nil, &FactoryNotInitializedError{}
+	}
+	return pf.underlyingFactory.GetIronBankClient(command)
 }
 
 // GetViper returns the Viper

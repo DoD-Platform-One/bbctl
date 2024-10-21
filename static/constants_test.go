@@ -23,7 +23,7 @@ func TestAssertConstants(t *testing.T) {
 	assert.NotNil(t, c)
 	assert.Equal(t, "bigbang", c.BigBangHelmReleaseName)
 	assert.Equal(t, "bigbang", c.BigBangNamespace)
-	assert.Equal(t, "0.7.4", c.BigBangCliVersion)
+	assert.Equal(t, "0.7.5", c.BigBangCliVersion)
 }
 
 func TestErrorConstants(t *testing.T) {
