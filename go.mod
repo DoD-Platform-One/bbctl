@@ -1,6 +1,6 @@
 module repo1.dso.mil/big-bang/product/packages/bbctl
 
-go 1.22.4
+go 1.23.2
 
 require (
 	github.com/Masterminds/semver v1.5.0
