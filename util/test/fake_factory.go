@@ -12,19 +12,21 @@ import (
 	"sync"
 
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
-	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/apiwrappers"
 	bbAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/aws"
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
 	bbLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/log"
 	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	fakeApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 	fakeAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/aws"
 	fakeGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/gitlab"
 	fakeHelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
+	fakeIronBank "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/ironbank"
 	fakeLog "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -204,6 +206,7 @@ type FakeFactory struct {
 		GetViper                     int // the number of times to pass before returning an error every time, 0 is never fail
 		GetViperCount                int // the number of times the GetViper function has been called
 		GetGitLabClient              bool
+		GetIronBankClient            bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
@@ -218,14 +221,19 @@ type FakeFactory struct {
 		getValues  helm.GetValuesFunc
 	}
 
-	credentialHelper bbUtil.CredentialHelper
+	credentialHelper credentialhelper.CredentialHelper
 	gitlab           struct {
-		getFileFunc fakeGitLab.GetFileFunc
+		getFileFunc            fakeGitLab.GetFileFunc
+		getProjectFunc         fakeGitLab.GetProjectFunc
+		getReleaseArtifactFunc fakeGitLab.GetReleaseArtifactFunc
+	}
+	ironbank struct {
+		getImageSHAFunc fakeIronBank.GetImageSHAFunc
 	}
 }
 
 // GetCredentialHelper - get credential helper
-func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
+func (f *FakeFactory) GetCredentialHelper() (credentialhelper.CredentialHelper, error) {
 	if f.SetFail.GetCredentialHelper {
 		return nil, errors.New("failed to get credential helper")
 	}
@@ -237,7 +245,7 @@ func (f *FakeFactory) GetCredentialHelper() (bbUtil.CredentialHelper, error) {
 	return f.credentialHelper, nil
 }
 
-func (f *FakeFactory) SetCredentialHelper(credentialHelper bbUtil.CredentialHelper) {
+func (f *FakeFactory) SetCredentialHelper(credentialHelper credentialhelper.CredentialHelper) {
 	f.credentialHelper = credentialHelper
 }
 
@@ -265,6 +273,16 @@ func (f *FakeFactory) SetGitLabGetFileFunc(getFileFunc fakeGitLab.GetFileFunc) {
 	f.gitlab.getFileFunc = getFileFunc
 }
 
+// SetGitLabGetProjectFunc sets the GetProject function on the fake GitLab client
+func (f *FakeFactory) SetGitLabGetProjectFunc(getProjectFunc fakeGitLab.GetProjectFunc) {
+	f.gitlab.getProjectFunc = getProjectFunc
+}
+
+// SetGitLabGetReleaseArtifactFunc sets the getReleaseArtifact function on the fake GitLab client
+func (f *FakeFactory) SetGitLabGetReleaseArtifactFunc(getReleaseArtifactFunc fakeGitLab.GetReleaseArtifactFunc) {
+	f.gitlab.getReleaseArtifactFunc = getReleaseArtifactFunc
+}
+
 // GetGitLabClient constructs a fake GitLab client
 func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
 	// Fail if the GetGitLabClient function has been called with a set fail
@@ -272,7 +290,12 @@ func (f *FakeFactory) GetGitLabClient() (bbGitLab.Client, error) {
 		return nil, errors.New("failed to get GitLab client")
 	}
 
-	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com", "", f.gitlab.getFileFunc)
+	fakeClient, err := fakeGitLab.NewFakeClient("https://localhost.com",
+		"",
+		f.gitlab.getFileFunc,
+		f.gitlab.getProjectFunc,
+		f.gitlab.getReleaseArtifactFunc,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GitLab client: %w", err)
 	}
@@ -592,4 +615,16 @@ func (f *FakeFactory) SetPipe(reader commonInterfaces.FileLike, writer commonInt
 func (f *FakeFactory) ResetPipe() {
 	f.pipeReader = nil
 	f.pipeWriter = nil
+}
+
+// SetIronBankGetImageSHAFunc sets the GetImageSHA function on the fake ironbank client
+func (f *FakeFactory) SetIronBankGetImageSHAFunc(getImageSHAFunc fakeIronBank.GetImageSHAFunc) {
+	f.ironbank.getImageSHAFunc = getImageSHAFunc
+}
+
+func (f *FakeFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+	if f.SetFail.GetIronBankClient {
+		return nil, fmt.Errorf("failed to get ironbank client")
+	}
+	return fakeIronBank.NewFakeClient(f.ironbank.getImageSHAFunc), nil
 }
