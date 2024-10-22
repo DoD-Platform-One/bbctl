@@ -43,7 +43,7 @@ func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	err = configClient.SetAndBindFlag(
 		"output",
 		"o",
-		"$HOME/.bbctl/",
+		"",
 		"Specify the output file where all configurations will be stored",
 	)
 	if err != nil {
@@ -112,6 +112,13 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("error getting IO streams: %w", err)
 	}
+
+	configClient, err := factory.GetConfigClient(command)
+	if err != nil {
+		return fmt.Errorf("unable to get config client: %w", err)
+	}
+	// Pull current config to verify inputs
+	oldConfig, getConfigErr := configClient.GetConfig()
 	config := make(map[string]interface{})
 
 	configKeys := []struct {
@@ -147,21 +154,28 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	fmt.Println("Please enter values for the following configurations.") //nolint:forbidigo
 	for _, c := range configKeys {
 		var input string
-		flag, _ := command.Flags().GetString(c.key)
+		var value string
 		// These don't use the standard output client because they are interactive
-		if flag != "" {
-			config[c.key] = flag
+		if getConfigErr != nil {
+			value = ""
 		} else {
-			fmt.Fprintln(streams.Out, strings.ReplaceAll(c.key, "-", " "))
-			fmt.Fprintln(streams.Out, c.info)
-			if c.optional {
-				fmt.Fprintln(streams.Out, "Press enter to skip")
-			}
-			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input) //nolint:errcheck
-			if c.optional && input != "" || !c.optional {
-				config[c.key] = input
-			}
+			value, _ = findConfig(oldConfig, c.key)
+		}
+		fmt.Fprintln(streams.Out, strings.Replace(c.key, "-", " ", -1))
+		fmt.Fprintln(streams.Out, c.info)
+		if value != "" {
+			fmt.Fprintln(streams.Out, "Current value: ", value)
+			c.optional = true
+		}
+		if c.optional {
+			fmt.Fprintln(streams.Out, "Press enter to skip")
+		}
+		fmt.Fprint(streams.Out, "$ ")
+		_, _ = fmt.Fscanln(streams.In, &input)
+		if c.optional && input != "" || !c.optional {
+			config[c.key] = input
+		} else if c.optional && value != "" && input == "" {
+			config[c.key] = value
 		}
 	}
 
@@ -171,7 +185,7 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 		fmt.Println("Please enter the output path for the config.yaml file.") //nolint:forbidigo
 		fmt.Fprintln(streams.Out, "Press enter to skip")
 		fmt.Fprint(streams.Out, "$ ")
-		fmt.Fscanln(streams.In, &input) //nolint:errcheck
+		_, _ = fmt.Fscanln(streams.In, &input)
 		if input != "" {
 			output = input
 		} else {
