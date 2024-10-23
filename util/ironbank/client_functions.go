@@ -25,5 +25,6 @@ func getImageSHA(registryCredentials credentialhelper.Credentials, image string)
 	}
 
 	sha := strings.TrimPrefix(desc.Digest.String(), "sha256:")
+
 	return sha, nil
 }

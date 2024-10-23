@@ -9,7 +9,7 @@ import (
 
 type GetFileFunc func(repository string, path string, branch string) ([]byte, error)
 type GetProjectFunc func(projectID string) (*gitlab.Project, error)
-type GetReleaseArtifactFunc func(projectId int, releaseTag string, artifactPath string) ([]byte, error)
+type GetReleaseArtifactFunc func(projectID int, releaseTag string, artifactPath string) ([]byte, error)
 
 // NewFakeClient - returns a new Fake GitLab client with the provided options
 func NewFakeClient(
@@ -49,9 +49,9 @@ func (c *FakeClient) GetFile(repository string, path string, branch string) ([]b
 	return []byte("String file contents"), nil
 }
 
-func (c *FakeClient) GetReleaseArtifact(projectId int, releaseTag string, artifactPath string) ([]byte, error) {
+func (c *FakeClient) GetReleaseArtifact(projectID int, releaseTag string, artifactPath string) ([]byte, error) {
 	if c.getReleaseArtifactFunc != nil {
-		return c.getReleaseArtifactFunc(projectId, releaseTag, artifactPath)
+		return c.getReleaseArtifactFunc(projectID, releaseTag, artifactPath)
 	}
 	return []byte("grafana:1.0.3\ntempo:3.2.1\n"), nil
 }

@@ -30,38 +30,7 @@ import (
 	"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	versionUse = `version`
-
-	versionShort = i18n.T(`Print the current bbctl client version and the version of the Big Bang currently deployed.`)
-
-	versionLong = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
-	 The Big Bang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
-	 Using the --client flag will only return the bbctl client version.`))
-
-	versionExample = templates.Examples(i18n.T(`
-		# Print version
-		bbctl version
-		
-		# Print the bbctl client version only
-		bbctl version --client
-
-		# Get the version of a specific chart
-		bbctl version CHART_NAME
-
-		# Get the version of all current installed chartes managed by Big Bang
-		bbctl version --all-charts
-
-		# Get the latest version of a given chart
-		bbctl version CHART_NAME --check-for-updates
-
-		# Get the latest version of all current installed chartes managed by Big Bang
-		bbctl version --all-charts --check-for-updates
-
-		# Disable Iron Bank SHA checking
-		bbctl version --no-shas
-		`))
-)
+const BigBangChartName = "bigbang"
 
 type versionCmdHelper struct {
 	constants      static.Constants
@@ -114,7 +83,7 @@ func newVersionCmdHelper(cmd *cobra.Command, factory bbUtil.Factory, constantsCl
 		return nil, fmt.Errorf("error getting k8s client: %w", err)
 	}
 
-	ironbankClient, errr := factory.GetIronBankClient(cmd)
+	ironbankClient, errr := factory.GetIronBankClient()
 	if errr != nil {
 		return nil, fmt.Errorf("error getting ironbank client: %w", errr)
 	}
@@ -136,9 +105,11 @@ func NewVersionCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	var (
 		versionUse   = `version`
 		versionShort = i18n.T(`Print the current bbctl client version and the version of the Big Bang currently deployed.`)
-		versionLong  = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
+
+		versionLong = templates.LongDesc(i18n.T(`Print the version of the bbctl client and the version of Big Bang currently deployed.
 		The Big Bang deployment version is pulled from the cluster currently referenced by your KUBECONFIG setting if no cluster parameters are provided.
 		Using the --client flag will only return the bbctl client version.`))
+
 		versionExample = templates.Examples(i18n.T(`
 		# Print version
 		bbctl version
@@ -289,7 +260,7 @@ func (v *versionCmdHelper) bbVersion(args []string) error {
 		}
 
 		// Ignore bigbang since bigbang itself doesn't deploy images
-		if !v.config.VersionConfiguration.NoSHAs && chartName != "bigbang" {
+		if !v.config.VersionConfiguration.NoSHAs && chartName != BigBangChartName {
 			message, err := v.matchSHAs(chartName, chartVersion, targetNamespace)
 			if err != nil {
 				return fmt.Errorf("error checking for SHAs: %w", err)
@@ -477,7 +448,7 @@ func (v *versionCmdHelper) getReleaseVersion(releaseName string) (string, error)
 
 // getChartVersion gets the version of a chart by the chart name and also returns the target namespace for the chart
 func (v *versionCmdHelper) getChartVersion(chartName string) (string, string, error) {
-	if chartName == "bigbang" {
+	if chartName == BigBangChartName {
 		version, err := v.getBigBangVersion()
 		return version, v.constants.BigBangNamespace, err
 	}
@@ -510,13 +481,13 @@ func (v *versionCmdHelper) getChartVersion(chartName string) (string, string, er
 func (v *versionCmdHelper) getLatestChartVersion(chartName string) (string, error) {
 	v.logger.Debug("checking for update to " + chartName)
 
-	packageUri, branch, err := v.getChartURL(chartName)
+	packageURI, branch, err := v.getChartURL(chartName)
 	if err != nil {
 		return "", fmt.Errorf("error getting chart URL: %w", err)
 	}
 
 	// Fetch the latest Chart.yalm from the upstream repo
-	body, err := v.gitlabClient.GetFile(packageUri, "chart/Chart.yaml", branch)
+	body, err := v.gitlabClient.GetFile(packageURI, "chart/Chart.yaml", branch)
 	if err != nil {
 		return "", fmt.Errorf("error getting Chart.yaml: %w", err)
 	}
@@ -561,6 +532,9 @@ func (v *versionCmdHelper) getChartImages(chartName, releaseTag string) ([]strin
 	var images []string
 
 	projectPath, _, err := v.getChartURL(chartName)
+	if err != nil {
+		return images, fmt.Errorf("error getting chart URL: %w", err)
+	}
 
 	project, err := v.gitlabClient.GetProject(projectPath)
 	if err != nil {
@@ -579,7 +553,7 @@ func (v *versionCmdHelper) getChartURL(chartName string) (string, string, error)
 	var packageURI, branch string
 
 	// Special consideraiotns for the bigbang chart
-	if chartName == "bigbang" {
+	if chartName == BigBangChartName {
 		packageURI = "big-bang/bigbang"
 		branch = "master"
 	} else {
@@ -628,7 +602,7 @@ func (v *versionCmdHelper) getUpstreamSHAsForChartRelease(chartName, releaseTag 
 // for a given chart
 //
 // Filters for images that from IronBank only
-func (v *versionCmdHelper) getSHAsForCurrentPods(chartName, targetNamespace string) (map[string]string, error) {
+func (v *versionCmdHelper) getSHAsForCurrentPods(targetNamespace string) (map[string]string, error) {
 	imageMap := map[string]string{}
 
 	pods, err := v.kubeClient.Resource(schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}).Namespace(targetNamespace).List(context.TODO(), metaV1.ListOptions{})
@@ -675,7 +649,7 @@ func (v *versionCmdHelper) matchSHAs(chartName, chartVersion, targetNamespace st
 	var messageBuilder strings.Builder
 	var hasErrors bool
 
-	current, err := v.getSHAsForCurrentPods(chartName, targetNamespace)
+	current, err := v.getSHAsForCurrentPods(targetNamespace)
 	if err != nil {
 		return "", fmt.Errorf("error getting SHAs for current pods: %w", err)
 	}

@@ -65,9 +65,9 @@ func (v *PackageVersion) String() string {
 
 type VersionOutput map[string]PackageVersion
 
-func (v VersionOutput) ToMap() map[string]any {
+func (vo VersionOutput) ToMap() map[string]any {
 	outputMap := map[string]any{}
-	for chartName, version := range v {
+	for chartName, version := range vo {
 		outputMap[chartName] = version.ToMap()
 	}
 	return outputMap
@@ -85,7 +85,7 @@ func (vo *VersionOutput) EncodeText() ([]byte, error) {
 	var sb strings.Builder
 
 	for chartName, version := range *vo {
-		sb.WriteString(fmt.Sprintf("%s:\n", chartName))
+		sb.WriteString(chartName + ":\n")
 		sb.WriteString(version.String())
 	}
 

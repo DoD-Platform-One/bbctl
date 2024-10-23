@@ -1,8 +1,6 @@
 package ironbank
 
 import (
-	"fmt"
-
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
 )
 
@@ -22,5 +20,5 @@ func (c *FakeClient) GetImageSHA(image string) (string, error) {
 	if c.getImageSHA != nil {
 		return c.getImageSHA(image)
 	}
-	return fmt.Sprintf("1234567890"), nil
+	return "1234567890", nil
 }

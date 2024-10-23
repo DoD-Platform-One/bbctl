@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var credentialHelper = func(component, uri string) (string, error) {
+var credentialHelper = func(component, _ string) (string, error) {
 	switch component {
 	case "username":
 		return "testuser", nil
@@ -19,11 +20,8 @@ var credentialHelper = func(component, uri string) (string, error) {
 }
 
 func TestGetClient(t *testing.T) {
-	// Arrange
 	clientGetter := ClientGetter{}
-	// Act
 	client, err := clientGetter.GetClient(credentialHelper)
-	// Assert
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 }
