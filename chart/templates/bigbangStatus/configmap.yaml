@@ -1,0 +1,11 @@
+{{- if .Values.bigbangStatus.enabled }}
+
+{{- $custom := dict "" "" }}
+{{ $_ := set $custom "fullname" (include "bigbang-status.fullname" .) }}
+{{ $_ := set $custom "labels" (include "bigbang-status.labels" .) }}
+{{ $_ := set $custom "config" (include "bigbang-status.config" . | print) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.config-maps" $args | nindent 0 }}
+{{- end }}
