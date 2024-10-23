@@ -46,10 +46,12 @@ func TestGetImageSHA(t *testing.T) {
 				// Write some garbage back, this will be internally SHAd
 				w.Header().Set("Docker-Content-Digest", "sha256:1234567890abcdef")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				encoder := json.NewEncoder(w)
+				err := encoder.Encode(map[string]interface{}{
 					"schemaVersion": 2,
 					"mediaType":     "application/vnd.docker.distribution.manifest.v2+json",
 				})
+				assert.NoError(t, err)
 			},
 			// This was calculated by the server
 			wantSHA: "8c70a933efd9403d2412a4db4de8e47c2e1dccd680a0efcde1625ee94ab5d1c9",
@@ -75,7 +77,7 @@ func TestGetImageSHA(t *testing.T) {
 		},
 	}
 
-	credentialHelper := func(component, uri string) (string, error) {
+	credentialHelper := func(component, _ string) (string, error) {
 		switch component {
 		case "username":
 			return "testuser", nil
@@ -106,7 +108,6 @@ func TestGetImageSHA(t *testing.T) {
 }
 
 func TestGetImageSHABadCredentials(t *testing.T) {
-
 	tests := []struct {
 		name             string
 		credentialHelper credentialhelper.CredentialHelper
@@ -114,14 +115,14 @@ func TestGetImageSHABadCredentials(t *testing.T) {
 	}{
 		{
 			name: "No Username",
-			credentialHelper: func(component, uri string) (string, error) {
+			credentialHelper: func(_, _ string) (string, error) {
 				return "", errors.New("no username")
 			},
 			expectedErr: "failed to get username: no username",
 		},
 		{
 			name: "No Password",
-			credentialHelper: func(component, uri string) (string, error) {
+			credentialHelper: func(component, _ string) (string, error) {
 				if component == "password" {
 					return "", errors.New("no password")
 				}

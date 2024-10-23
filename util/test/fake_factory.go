@@ -622,9 +622,9 @@ func (f *FakeFactory) SetIronBankGetImageSHAFunc(getImageSHAFunc fakeIronBank.Ge
 	f.ironbank.getImageSHAFunc = getImageSHAFunc
 }
 
-func (f *FakeFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+func (f *FakeFactory) GetIronBankClient() (ironbank.Client, error) {
 	if f.SetFail.GetIronBankClient {
-		return nil, fmt.Errorf("failed to get ironbank client")
+		return nil, errors.New("failed to get ironbank client")
 	}
 	return fakeIronBank.NewFakeClient(f.ironbank.getImageSHAFunc), nil
 }

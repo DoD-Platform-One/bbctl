@@ -53,7 +53,7 @@ type Factory interface {
 	GetRuntimeClient(scheme *runtime.Scheme) (runtimeClient.Client, error)
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
-	GetIronBankClient(cmd *cobra.Command) (ironbank.Client, error)
+	GetIronBankClient() (ironbank.Client, error)
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(
 		cmd *cobra.Command,
@@ -321,11 +321,11 @@ func (f *UtilityFactory) GetOutputClient(cmd *cobra.Command) (bbOutput.Client, e
 }
 
 // GetIronBankClient initializes and returns a new ironbank client
-func (f *UtilityFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
-	return f.getIronBankClient(command)
+func (f *UtilityFactory) GetIronBankClient() (ironbank.Client, error) {
+	return f.getIronBankClient()
 }
 
-func (f *UtilityFactory) getIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+func (f *UtilityFactory) getIronBankClient() (ironbank.Client, error) {
 	credentialHelper, err := f.referenceFactory.GetCredentialHelper()
 	if err != nil {
 		return nil, err

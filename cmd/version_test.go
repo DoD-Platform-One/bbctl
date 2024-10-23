@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -50,6 +49,7 @@ func TestGetVersionUsage(t *testing.T) {
 
 // parseYAMLOutput takes a YAML string and returns a map[string]any{}
 func parseYAMLOutput(t *testing.T, yamlString string) map[string]any {
+	t.Helper()
 	// Trim any leading or trailing whitespace
 	yamlString = strings.TrimSpace(yamlString)
 
@@ -97,7 +97,7 @@ func TestGetVersion(t *testing.T) {
 	// Act
 	cmd, _ := NewVersionCmd(factory)
 	res := cmd.RunE(cmd, []string{})
-	assert.NoError(t, res)
+	require.NoError(t, res)
 	outputMap := parseYAMLOutput(t, buf.String())
 
 	constants, err := static.GetDefaultConstants()
@@ -144,7 +144,7 @@ func TestGetVersionClientVersionOnly(t *testing.T) {
 	// Act
 	cmd, _ := NewVersionCmd(factory)
 	err := cmd.RunE(cmd, []string{})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	outputMap := parseYAMLOutput(t, buf.String())
 
@@ -367,7 +367,7 @@ func TestGetVersionWithIronBankError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 
 	// Assert
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, "error creating version helper: error getting ironbank client: failed to get ironbank client", err.Error())
 }
 
@@ -415,25 +415,25 @@ func TestVersionErrorBindingFlags(t *testing.T) {
 			flagName:       "client",
 			failOnCallNum:  1,
 			expectedCmd:    false,
-			expectedErrMsg: "error setting and binding client flag: " + expectedError.Error(),
+			expectedErrMsg: "error setting and binding client flag: failed to set and bind flag",
 		},
 		{
 			flagName:       "all-charts",
 			failOnCallNum:  2,
 			expectedCmd:    false,
-			expectedErrMsg: "error setting and binding all-charts flag: " + expectedError.Error(),
+			expectedErrMsg: "error setting and binding all-charts flag: failed to set and bind flag",
 		},
 		{
 			flagName:       "check-for-updates",
 			failOnCallNum:  3,
 			expectedCmd:    false,
-			expectedErrMsg: "error setting and binding check-for-updates flag: " + expectedError.Error(),
+			expectedErrMsg: "error setting and binding check-for-updates flag: failed to set and bind flag",
 		},
 		{
 			flagName:       "no-shas",
 			failOnCallNum:  4,
 			expectedCmd:    false,
-			expectedErrMsg: fmt.Sprintf("error setting and binding no-shas flag: %s", expectedError.Error()),
+			expectedErrMsg: "error setting and binding no-shas flag: failed to set and bind flag",
 		},
 	}
 
@@ -583,7 +583,8 @@ func TestBBVersionAllCharts(t *testing.T) {
 	require.NoError(t, err)
 
 	h, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.NoError(t, h.bbVersion([]string{}))
+	require.NoError(t, err)
+	require.NoError(t, h.bbVersion([]string{}))
 
 	output := fakeWriter.ActualBuffer.(*bytes.Buffer).String()
 
@@ -641,8 +642,8 @@ func TestBBVersionNoArgsErrorCheckingForUpdates(t *testing.T) {
 	streams.Out = fakeWriter
 	factory.SetIOStream(streams)
 	factory.SetHelmReleases(buildHelmReleasesFixture())
-	factory.SetGitLabGetFileFunc(func(repository string, path string, branch string) ([]byte, error) {
-		return nil, fmt.Errorf("dummy error")
+	factory.SetGitLabGetFileFunc(func(_, _, _ string) ([]byte, error) {
+		return nil, errors.New("dummy error")
 	})
 
 	cmd, err := NewVersionCmd(factory)
@@ -737,7 +738,7 @@ func TestBBVersionWithChartNameErrorCheckingForUpdates(t *testing.T) {
 	factory.SetHelmReleases(buildHelmReleasesFixture())
 	factory.SetGVRToListKind(versionTestGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
-	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+	factory.SetGitLabGetFileFunc(func(_, _, _ string) ([]byte, error) {
 		return nil, errors.New("dummy error")
 	})
 
@@ -922,6 +923,7 @@ func buildGitRepoFixture() *unstructured.UnstructuredList {
 	}
 }
 
+//nolint:unparam
 func newHelmRelease(name, namespace, chartVersion, targetNamespace string) unstructured.Unstructured {
 	return unstructured.Unstructured{
 		Object: map[string]any{
@@ -929,7 +931,7 @@ func newHelmRelease(name, namespace, chartVersion, targetNamespace string) unstr
 			"kind":       "HelmRelease",
 			"metadata": map[string]any{
 				"name":      name,
-				"namespace": "bigbang",
+				"namespace": namespace,
 			},
 			"status": map[string]any{
 				"history": []any{
@@ -977,7 +979,7 @@ func newPod(name, namespace, image, sha string) corev1.Pod {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:  fmt.Sprintf("%s-1", name),
+					Name:  name + "-1",
 					Image: image,
 				},
 			},
@@ -987,7 +989,7 @@ func newPod(name, namespace, image, sha string) corev1.Pod {
 			ContainerStatuses: []corev1.ContainerStatus{
 				{
 					Image:   image,
-					ImageID: fmt.Sprintf("docker-pullable://image@sha256:%s", sha),
+					ImageID: "docker-pullable://image@sha256:" + sha,
 				},
 			},
 		},
@@ -1030,9 +1032,9 @@ func TestGetAllChartVersions(t *testing.T) {
 
 	outputMap := output.ToMap()
 
-	assert.Equal(t, outputMap["bigbang"].(map[string]any)["version"], "1.0.2")
-	assert.Equal(t, outputMap["grafana"].(map[string]any)["version"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"].(map[string]any)["version"], "3.2.1")
+	assert.Equal(t, "1.0.2", outputMap["bigbang"].(map[string]any)["version"])
+	assert.Equal(t, "1.0.3", outputMap["grafana"].(map[string]any)["version"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"].(map[string]any)["version"])
 }
 
 func TestGetAllChartVersionsBigBangManagedByFlux(t *testing.T) {
@@ -1056,9 +1058,10 @@ func TestGetAllChartVersionsBigBangManagedByFlux(t *testing.T) {
 	require.NoError(t, err)
 
 	outputMap := output.ToMap()
-	assert.Equal(t, outputMap["bigbang"].(map[string]any)["version"], "1.0.2")
-	assert.Equal(t, outputMap["grafana"].(map[string]any)["version"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"].(map[string]any)["version"], "3.2.1")
+
+	assert.Equal(t, "1.0.2", outputMap["bigbang"].(map[string]any)["version"])
+	assert.Equal(t, "1.0.3", outputMap["grafana"].(map[string]any)["version"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"].(map[string]any)["version"])
 }
 
 func TestGetAllChartVersionsErrorGettingBigBangVersion(t *testing.T) {
@@ -1080,8 +1083,8 @@ func TestGetAllChartVersionsErrorGettingBigBangVersion(t *testing.T) {
 	assert.Equal(t, "error getting Big Bang version: error fetching Big Bang release version: error getting helm information for release bigbang: release bigbang not found", err.Error())
 
 	outputMap := output.ToMap()
-	assert.Equal(t, outputMap["grafana"].(map[string]any)["version"], "1.0.3")
-	assert.Equal(t, outputMap["tempo"].(map[string]any)["version"], "3.2.1")
+	assert.Equal(t, "1.0.3", outputMap["grafana"].(map[string]any)["version"])
+	assert.Equal(t, "3.2.1", outputMap["tempo"].(map[string]any)["version"])
 }
 
 func TestGetAllChartVersionsErrorListingReleases(t *testing.T) {
@@ -1180,7 +1183,7 @@ func TestGetAllChartVersionsCheckForUpdatesErrorGettingLatestChartVersion(t *tes
 
 	factory.SetGVRToListKind(versionTestGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture(), buildHelmReleaseFixture(false)})
-	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+	factory.SetGitLabGetFileFunc(func(_, _, _ string) ([]byte, error) {
 		return nil, errors.New("dummy error")
 	})
 
@@ -1314,9 +1317,9 @@ func TestGetChartVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	version, namespace, err := h.getChartVersion("bigbang")
-	assert.Nil(t, err)
-	assert.Equal(t, version, "1.0.2")
-	assert.Equal(t, namespace, "bigbang")
+	require.NoError(t, err)
+	assert.Equal(t, "1.0.2", version)
+	assert.Equal(t, "bigbang", namespace)
 
 	// TODO check namespacs
 	version, _, err = h.getChartVersion("invalid-chart")
@@ -1390,7 +1393,7 @@ func TestGetLatestChartVersionErrorListingGitRepos(t *testing.T) {
 	factory.SetGVRToListKind(versionTestGVR)
 	factory.SetObjects(nil)
 
-	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+	factory.SetGitLabGetFileFunc(func(_, _, _ string) ([]byte, error) {
 		return []byte("version: 1.0.3"), nil
 	})
 
@@ -1620,7 +1623,7 @@ func TestCheckForUpdatesErrorGettingLatestChartVersion(t *testing.T) {
 	factory.SetGVRToListKind(versionTestGVR)
 	factory.SetObjects([]runtime.Object{buildGitRepoFixture()})
 
-	factory.SetGitLabGetFileFunc(func(_ string, _ string, _ string) ([]byte, error) {
+	factory.SetGitLabGetFileFunc(func(_, _, _ string) ([]byte, error) {
 		return nil, errors.New("dummy error")
 	})
 
@@ -1718,13 +1721,13 @@ func TestGetSHAsForCurrentPods(t *testing.T) {
 		})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	versionHelper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
-	shas, err := versionHelper.getSHAsForCurrentPods("grafana", "monitoring")
-	assert.Nil(t, err)
+	shas, err := versionHelper.getSHAsForCurrentPods("monitoring")
+	require.NoError(t, err)
 
 	assert.Equal(t, map[string]string{
 		"grafana:1.0.3": "1234567890",
@@ -1748,16 +1751,15 @@ func TestMatchShas(t *testing.T) {
 	)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	versionHelper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	message, err := versionHelper.matchSHAs("grafana", "1.0.3", "monitoring")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, "All SHAs match", message)
-
 }
 
 func TestMatchSHAsNotFoundInRelease(t *testing.T) {
@@ -1777,22 +1779,21 @@ func TestMatchSHAsNotFoundInRelease(t *testing.T) {
 	)
 
 	// Return a list that doesn't have any images posted to force a mismatch
-	noImages := func(projectId int, releaseTag string, artifactPath string) ([]byte, error) {
+	noImages := func(_ int, _, _ string) ([]byte, error) {
 		return []byte{}, nil
 	}
 	factory.SetGitLabGetReleaseArtifactFunc(noImages)
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	versionHelper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	message, err := versionHelper.matchSHAs("grafana", "1.0.3", "monitoring")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, `Error: SHA for running container "grafana:1.0.3" not found in published release artifacts`, message)
-
 }
 
 func TestMatchShasMismatchedSHAs(t *testing.T) {
@@ -1811,19 +1812,18 @@ func TestMatchShasMismatchedSHAs(t *testing.T) {
 		},
 	)
 
-	factory.SetIronBankGetImageSHAFunc(func(image string) (string, error) {
+	factory.SetIronBankGetImageSHAFunc(func(_ string) (string, error) {
 		return "mismatched-sha", nil
 	})
 
 	cmd, err := NewVersionCmd(factory)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	versionHelper, err := newVersionCmdHelper(cmd, factory, static.DefaultClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	message, err := versionHelper.matchSHAs("grafana", "1.0.3", "monitoring")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, `Error: SHA mismatch for image "grafana:1.0.3". Local: "mismatched-sha", upstream: "1234567890"`, message)
-
 }

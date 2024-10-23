@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -59,14 +60,13 @@ func getReleaseArtifact(client *gitlab.Client, projectID int, releaseTag string,
 		return nil, fmt.Errorf("error getting release from gitlab: %w", err)
 	}
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("error getting release from gitlab: %s", response.Status)
 	}
 
 	for _, asset := range release.Assets.Links {
 		if asset.Name == artifactPath {
-
-			req, err := http.NewRequest("GET", asset.URL, nil)
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, asset.URL, nil)
 			if err != nil {
 				return nil, fmt.Errorf("error creating request to download release artifact: %w", err)
 			}
@@ -75,8 +75,9 @@ func getReleaseArtifact(client *gitlab.Client, projectID int, releaseTag string,
 			if err != nil {
 				return nil, fmt.Errorf("error downloading release artifact: %w", err)
 			}
+			defer resp.Body.Close()
 
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				return nil, fmt.Errorf("error downloading release artifact: %s", resp.Status)
 			}
 

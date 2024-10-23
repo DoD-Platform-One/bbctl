@@ -119,7 +119,7 @@ func TestGetValidProject(t *testing.T) {
 		}
 
 		// Check if the request method is GET
-		if r.Method != "GET" {
+		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET request, got: %s", r.Method)
 		}
 
@@ -139,11 +139,12 @@ func TestGetValidProject(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(server.URL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Call the getProject function
 	projectPath := "grafana"
 	gotProject, err := gitlabClient.GetProject(projectPath)
+	require.NoError(t, err)
 
 	// Assert that the returned project matches the expected values
 	assert.NotNil(t, gotProject)
@@ -156,7 +157,7 @@ func TestGetValidProject(t *testing.T) {
 
 func TestGetInvalidProject(t *testing.T) {
 	// Create a mock HTTP server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Header().Set("Content-Type", "application/json")
 		resp := map[string]string{
@@ -168,7 +169,7 @@ func TestGetInvalidProject(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(server.URL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Call the getProject function
 	projectPath := "invalid"
@@ -215,10 +216,10 @@ func TestGetReleaseArtifact(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(serverURL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	artifact, err := gitlabClient.GetReleaseArtifact(1, "v1.0.0", "images.txt")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, []byte("images"), artifact)
 }
@@ -242,7 +243,7 @@ func TestGetReleaseArtifactErrorGettingRelease(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(serverURL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	artifact, err := gitlabClient.GetReleaseArtifact(1, "v1.0.0", "images.txt")
 	assert.Nil(t, artifact)
@@ -283,7 +284,7 @@ func TestGetReleaseArtifactErrorDownloading(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(serverURL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	artifact, err := gitlabClient.GetReleaseArtifact(1, "v1.0.0", "images.txt")
 	assert.Nil(t, artifact)
@@ -322,7 +323,7 @@ func TestGetReleaseArtifactMissingArtifact(t *testing.T) {
 
 	clientGetter := ClientGetter{}
 	gitlabClient, err := clientGetter.GetClient(serverURL, "")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	artifact, err := gitlabClient.GetReleaseArtifact(1, "v1.0.0", "missing.txt")
 	assert.Nil(t, artifact)

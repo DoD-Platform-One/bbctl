@@ -315,11 +315,11 @@ func (pf *PooledFactory) GetConfigClient(command *cobra.Command) (*bbConfig.Conf
 }
 
 // GetIronBankClient returns a client for interacting with IronBank
-func (pf *PooledFactory) GetIronBankClient(command *cobra.Command) (ironbank.Client, error) {
+func (pf *PooledFactory) GetIronBankClient() (ironbank.Client, error) {
 	if pf.underlyingFactory == nil {
 		return nil, &FactoryNotInitializedError{}
 	}
-	return pf.underlyingFactory.GetIronBankClient(command)
+	return pf.underlyingFactory.GetIronBankClient()
 }
 
 // GetViper returns the Viper
