@@ -1,0 +1,12 @@
+{{- if and .Values.bigbangViolations.enabled .Values.bigbangViolations.serviceAccount.create }}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-violations.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-violations.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-violations.service-account-annotations" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cluster-admin-cluster-role-binding" $args | nindent 0 }}
+{{- end }}
+
