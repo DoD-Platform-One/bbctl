@@ -1,0 +1,15 @@
+{{- if .Values.bigbangViolations.enabled -}}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-violations.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-violations.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-violations.service-account-annotations" .) }}
+{{- $_ := set $custom "fullname" (include "bigbang-violations.fullname" .) }}
+{{- $_ := set $custom "schedule" .Values.bigbangViolations.schedule }}
+{{- $_ := set $custom "command" (include "bigbang-violations.command" .) }}
+{{- $_ := set $custom "args" (include "bigbang-violations.args" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cron-job" $args | nindent 0 }}
+{{- end }}

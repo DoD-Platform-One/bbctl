@@ -1,0 +1,12 @@
+{{- if .Values.bigbangViolations.enabled }}
+
+{{- $custom := dict "" "" }}
+{{ $_ := set $custom "fullname" (include "bigbang-violations.fullname" .) }}
+{{ $_ := set $custom "labels" (include "bigbang-violations.labels" .) }}
+{{ $_ := set $custom "config" (include "bigbang-violations.config" . | print) }}
+
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.config-maps" $args | nindent 0 }}
+{{- end }}
