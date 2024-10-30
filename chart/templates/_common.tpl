@@ -135,6 +135,13 @@ spec:
               readOnly: false
           containers:
           - name: {{ .scope.Chart.Name }}
+            env:
+            - name: "REGISTRYSERVER"
+              value: {{ .scope.Values.registryCredentials.registry }}
+            - name: "REGISTRYUSERNAME"
+              value: {{ .scope.Values.registryCredentials.username }}
+            - name: "REGISTRYPASSWORD"
+              value: {{ .scope.Values.registryCredentials.password }}
             securityContext:
               {{- toYaml .scope.Values.securityContext | nindent 14 }}
             image: "{{ .scope.Values.image.repository }}:{{ .scope.Values.image.tag | default .scope.Chart.AppVersion }}"

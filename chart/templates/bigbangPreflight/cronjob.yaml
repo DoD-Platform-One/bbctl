@@ -1,0 +1,15 @@
+{{- if .Values.bigbangPreflight.enabled -}}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-preflight.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-preflight.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-preflight.service-account-annotations" .) }}
+{{- $_ := set $custom "fullname" (include "bigbang-preflight.fullname" .) }}
+{{- $_ := set $custom "schedule" .Values.bigbangPreflight.schedule }}
+{{- $_ := set $custom "command" (include "bigbang-preflight.command" .) }}
+{{- $_ := set $custom "args" (include "bigbang-preflight.args" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cron-job" $args | nindent 0 }}
+{{- end }}
