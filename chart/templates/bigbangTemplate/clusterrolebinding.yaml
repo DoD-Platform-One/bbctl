@@ -1,0 +1,12 @@
+{{- if and .Values.bigbangTemplate.enabled .Values.bigbangTemplate.serviceAccount.create }}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-template.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-template.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-template.service-account-annotations" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cluster-admin-cluster-role-binding" $args | nindent 0 }}
+{{- end }}
+

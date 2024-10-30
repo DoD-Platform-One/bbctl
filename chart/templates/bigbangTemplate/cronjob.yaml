@@ -1,0 +1,15 @@
+{{- if .Values.bigbangTemplate.enabled -}}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-template.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-template.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-template.service-account-annotations" .) }}
+{{- $_ := set $custom "fullname" (include "bigbang-template.fullname" .) }}
+{{- $_ := set $custom "schedule" .Values.bigbangTemplate.schedule }}
+{{- $_ := set $custom "command" (include "bigbang-template.command" .) }}
+{{- $_ := set $custom "args" (include "bigbang-template.args" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cron-job" $args | nindent 0 }}
+{{- end }}

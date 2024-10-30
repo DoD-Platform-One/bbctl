@@ -21,3 +21,6 @@
 .idea/
 *.tmproj
 .vscode/
+# New cron job command template files
+templates/bigbangTemplate/
+
