@@ -36,10 +36,10 @@ yqImage:
   tag: "4.44.3"
 
 registryCredentials:
-  - registry: registry1.dso.mil
-    username: ""
-    password: ""
-    email: ""
+  registry: registry1.dso.mil
+  username: ""
+  password: ""
+  email: ""
 
 imagePullSecrets:
   - name: "private-registry"
@@ -149,4 +149,21 @@ bigbangViolations:
     annotations: {}
     # The override name of the service account to use.
     # If not set and create is true, -bigbang-violations is appended to .Values.serviceAccount.name
+    name: ""
+
+bigbangPreflight:
+  enabled: true
+  schedule: "0 * * * *"
+  bigbangReleaseName: "bigbang"
+  bigbangReleaseNamespace: "bigbang"
+  labels: {}
+  config: {}
+  podAnnotations: {}
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The override name of the service account to use.
+    # If not set and create is true, -bigbang-status is appended to .Values.serviceAccount.name
     name: ""

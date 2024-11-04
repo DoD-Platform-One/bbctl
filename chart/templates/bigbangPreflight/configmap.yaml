@@ -1,0 +1,12 @@
+{{- if .Values.bigbangPreflight.enabled }}
+
+{{- $custom := dict "" "" }}
+{{ $_ := set $custom "fullname" (include "bigbang-preflight.fullname" .) }}
+{{ $_ := set $custom "labels" (include "bigbang-preflight.labels" .) }}
+{{ $_ := set $custom "config" (include "bigbang-preflight.config" . | print) }}
+
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.config-maps" $args | nindent 0 }}
+{{- end }}

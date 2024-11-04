@@ -24,6 +24,10 @@ type JobDesc struct {
 //
 // Returns the job and an error if there were any issues creating the job
 func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) (*batchV1.Job, error) {
+	runAsNonRoot := true
+	runAsGroup := int64(1000)
+	runAsUser := int64(1000)
+
 	job := &batchV1.Job{
 		ObjectMeta: metaV1.ObjectMeta{
 			Name: jobDesc.Name,
@@ -42,6 +46,14 @@ func CreateJob(client kubernetes.Interface, namespace string, jobDesc *JobDesc) 
 							Image:   jobDesc.ContainerImage,
 							Command: jobDesc.Command,
 							Args:    jobDesc.Args,
+							SecurityContext: &coreV1.SecurityContext{
+								RunAsUser:    &runAsUser,
+								RunAsGroup:   &runAsGroup,
+								RunAsNonRoot: &runAsNonRoot,
+								Capabilities: &coreV1.Capabilities{
+									Drop: []coreV1.Capability{"ALL"},
+								},
+							},
 						},
 					},
 					ImagePullSecrets: []coreV1.LocalObjectReference{
