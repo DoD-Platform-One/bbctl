@@ -8,3 +8,5 @@ bin/
 coverage.html
 pkg/
 config.yaml
+dist/
+.DS_Store
