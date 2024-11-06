@@ -1,0 +1,15 @@
+{{- if .Values.bigbangPolicy.enabled -}}
+
+{{- $custom := dict "" "" }}
+{{- $_ := set $custom "serviceAccountName" (include "bigbang-policy.service-account-name" .) }}
+{{- $_ := set $custom "labels" (include "bigbang-policy.labels" .) }}
+{{- $_ := set $custom "annotations" (include "bigbang-policy.service-account-annotations" .) }}
+{{- $_ := set $custom "fullname" (include "bigbang-policy.fullname" .) }}
+{{- $_ := set $custom "schedule" .Values.bigbangPolicy.schedule }}
+{{- $_ := set $custom "command" (include "bigbang-policy.command" .) }}
+{{- $_ := set $custom "args" (include "bigbang-policy.args" .) }}
+
+{{- $args := dict "scope" . "custom" $custom }}
+
+{{- include "bbctl.common.cron-job" $args | nindent 0 }}
+{{- end }}
