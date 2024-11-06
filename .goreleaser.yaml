@@ -1,0 +1,74 @@
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+# GitLab environment
+# An API token must be provided in the GITLAB_TOKEN env var
+gitlab_urls:
+  api: https://repo1.dso.mil/api/v4/
+  download: https://repo1.dso.mil
+
+  use_package_registry: true # Upload release artifacts in the registry instead of as attachements
+
+# Gitlab project settings for release
+release:
+  gitlab:
+    name: "11320" # BBCTL project
+    owner: ""
+
+  # Release notes
+  mode: append
+
+# Pre-release steps
+# before:
+  # hooks:
+
+# Multi-environment build settings
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+# Define archive release artifacts
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+# Define changelog
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chart:"
+
+# Sign binary release artifacts
+binary_signs: 
+- output: true
+
+# Sign archive release artifacts
+signs:
+  - artifacts: checksum
+    output: true
+
+# Generate SBOMs
+sboms:
+  - artifacts: archive

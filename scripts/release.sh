@@ -21,10 +21,6 @@ if [ "$DRY_RUN" != "false" ]; then
   echo "DRY_RUN is not set to 'false'. This will echo the write commands for git/gitlab instead of running them."
 fi
 
-# Set OS/ARCH
-SUPPORTED_OS_LIST=("linux" "darwin" "windows")
-SUPPORTED_ARCH_LIST=("amd64" "arm64")
-
 # Set Project ID
 PROJECT_ID=11320
 
@@ -188,35 +184,14 @@ if [ "$CHART_CHANGED" == "true" ]; then
         \"${PROJECT_API_URL}/packages/generic/$PACKAGE_NAME/$VERSION/$TARBALL\""
   rm "$TARBALL_PATH"
 else
-  for OS in "${SUPPORTED_OS_LIST[@]}"; do
-    for ARCH in "${SUPPORTED_ARCH_LIST[@]}"; do
-      echo "---"
-      BINARY_NAME="$PACKAGE_NAME-$VERSION-$OS-$ARCH"
-      echo "Building in $PACKAGE_DIR for $BINARY_NAME..."
-      if [ "$SKIP_BUILD" == "true" ]; then
-        echo "Skipping build..."
-        continue
-      fi
-      GOOS=$OS GOARCH=$ARCH go build -o "$PACKAGE_DIR/bin/$BINARY_NAME"
-      echo "Creating tarball..."
-      TARBALL="$BINARY_NAME.tar.gz"
-      TARBALL_PATH="$PACKAGE_DIR/bin/$TARBALL"
-      tar -czf "$TARBALL_PATH" -C "$PACKAGE_DIR/bin" "$BINARY_NAME"
-      echo "Pushing to gitlab..."
-      if [ "$(ls -1 "$PACKAGE_DIR/bin" | grep .tar.gz | wc -l)" -ne 1 ]; then
-        echo "There should be exactly one .tar.gz file in the bin directory" 1>&2
-        exit 1
-      fi
-      # https://docs.gitlab.com/ee/user/packages/generic_packages/#publish-a-package-file
-      run_command "curl --header \"PRIVATE-TOKEN: $REPO1_TOKEN\" \
-           --upload-file \"$TARBALL_PATH\" \
-           \"${PROJECT_API_URL}/packages/generic/$PACKAGE_NAME/$VERSION/$TARBALL\""
-      rm "$TARBALL_PATH"
-    done
-  done
+  if [ "$DRY_RUN" != "false" ]; then
+     goreleaser release --snapshot --clean
+  else
+     goreleaser release --clean
+  fi
 fi
 
-# Create Release
+# Create Helm Chart Release
 if [ "$DRY_RUN" != "false" ]; then
   ALL_LINKS='[{"url": "https://repo1.dso.mil/bigbang/product/packages/bbctl/-/package_files/672/download", "name": "All-bbctl-0.0.0", "link_type": "other"}]'
   FULL_PACKAGE_URL="https://repo1.dso.mil/big-bang/product/packages/bbctl/-/packages/520"
@@ -237,17 +212,16 @@ ALL_LINKS="$(echo $ALL_LINKS | jq -r '. += [{url: "'$FULL_PACKAGE_URL'", name: "
 
 
 ## Create the release
-RELEASE_STRING="BigBangCli Release"
 if [ "$CHART_CHANGED" == "true" ]; then
   RELEASE_STRING="BigBangCli Chart Release"
+  RELEASE_JSON='{
+    "name": "'$VERSION'",
+    "tag_name": "'$VERSION'", 
+    "description": "'$RELEASE_STRING' '$VERSION'\n\n---\n\n'$LOG_MESSAGES'",
+    "assets": { "links": '$ALL_LINKS' }
+  }'
+  # https://docs.gitlab.com/ee/api/releases/#create-a-release
+  run_command "curl --header 'Content-Type: application/json' --header \"PRIVATE-TOKEN: $REPO1_TOKEN\" \
+      --data '$RELEASE_JSON' \
+      --request POST \"${PROJECT_API_URL}/releases\""
 fi
-RELEASE_JSON='{
-  "name": "'$VERSION'",
-  "tag_name": "'$VERSION'", 
-  "description": "'$RELEASE_STRING' '$VERSION'\n\n---\n\n'$LOG_MESSAGES'",
-  "assets": { "links": '$ALL_LINKS' }
-}'
-# https://docs.gitlab.com/ee/api/releases/#create-a-release
-run_command "curl --header 'Content-Type: application/json' --header \"PRIVATE-TOKEN: $REPO1_TOKEN\" \
-     --data '$RELEASE_JSON' \
-     --request POST \"${PROJECT_API_URL}/releases\""
