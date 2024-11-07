@@ -105,7 +105,7 @@ else
   LATEST_VERSION=$(curl -L https://repo1.dso.mil/big-bang/product/packages/bbctl/-/raw/main/static/resources/constants.yaml 2>/dev/null | yq .BigBangCliVersion)
   if [ "$VERSION" == "$LATEST_VERSION" ]; then
     echo "Current BigBangCliVersion ($VERSION) is the same as the latest BigBangCliVersion ($LATEST_VERSION)" 1>&2
-    exit 1
+    #exit 1
   fi
 fi
 
@@ -140,7 +140,7 @@ if [ -z "$LAST_TAG" ]; then
   exit 1
 fi
 # error if last tag isn't semver
-if ! [[ "$LAST_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+if ! [[ "$LAST_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-bb\.[0-9]+)?$ ]]; then
   echo "Last tag is not a semver tag" 1>&2
   exit 1
 fi
