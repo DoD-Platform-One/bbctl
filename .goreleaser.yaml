@@ -39,7 +39,7 @@ builds:
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: "{{ .ProjectName }}_{{- title .Os }}_{{- if eq .Arch \"amd64\" }}x86_64{{- else }}{{ .Arch }}{{ end }}{{- if .Arm }}v{{ .Arm }}{{ end }}"
+    name_template: "{{ .ProjectName }}-{{.Version}}{{- tolower .Os }}-{{- if eq .Arch \"amd64\" }}x86-64{{- else }}{{ .Arch }}{{ end }}{{- if .Arm }}v{{ .Arm }}{{ end }}"
     # use zip for windows archives
     format_overrides:
       - goos: windows
@@ -57,6 +57,7 @@ changelog:
 # Sign binary release artifacts
 binary_signs: 
 - output: true
+  signature: '${artifact}-{{.Version}}-{{ tolower .Os }}-{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}-{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}.sig'
 
 # Sign archive release artifacts
 signs:
