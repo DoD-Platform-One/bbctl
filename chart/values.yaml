@@ -88,15 +88,26 @@ affinity: {}
 istio:
   enabled: false
 
+credentialsFile:
+  credentials:
+  - uri: "registry1.dso.mil"
+    username: ""
+    password: ""
+  - uri: "repo1.dso.mil"
+    username: ""
+    password: ""
+
 baseConfig:
   bbctl-log-add-source: true
   bbctl-log-format: json
   bbctl-log-level: warn
   bbctl-log-output: stderr
-  big-bang-credential-helper: credentials-file
   big-bang-repo: https://repo1.dso.mil/big-bang/bigbang/-/blob/master/
   output-config:
     format: json
+  util-credential-helper:
+    big-bang-credential-helper-credentials-file-path: "/home/bigbang/.bbctl/credentials.yaml"
+    big-bang-credential-helper: "credentials-file"
 
 baseLabels: {}
 

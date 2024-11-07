@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 0.7.4-bb.0](https://img.shields.io/badge/Version-0.7.4--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.4](https://img.shields.io/badge/AppVersion-0.7.4-informational?style=flat-square)
+![Version: 0.7.4-bb.0](https://img.shields.io/badge/Version-0.7.4--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.5](https://img.shields.io/badge/AppVersion-0.7.5-informational?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -32,23 +32,24 @@ Help Contribute! See the [developer documentation](/docs/developer.md). The CLI 
 `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 
 ## Upstream References
-* <https://repo1.dso.mil/big-bang/product/packages/bbctl>
+- <https://repo1.dso.mil/big-bang/product/packages/bbctl>
 
 * <https://repo1.dso.mil/big-bang/product/packages/bbctl>
 
-### Upstream Release Notes
+## Upstream Release Notes
 
 There is no upstream for this chart.
 
 ## Learn More
-* [Application Overview](docs/overview.md)
-* [Other Documentation](docs/)
+
+- [Application Overview](docs/overview.md)
+- [Other Documentation](docs/)
 
 ## Pre-Requisites
 
-* Kubernetes Cluster deployed
-* Kubernetes config installed in `~/.kube/config`
-* Helm installed
+- Kubernetes Cluster deployed
+- Kubernetes config installed in `~/.kube/config`
+- Helm installed
 
 Install Helm
 
@@ -56,8 +57,9 @@ https://helm.sh/docs/intro/install/
 
 ## Deployment
 
-* Clone down the repository
-* cd into directory
+- Clone down the repository
+- cd into directory
+
 ```bash
 helm install bbctl chart/
 ```
@@ -73,6 +75,10 @@ helm install bbctl chart/
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
 | yqImage.tag | string | `"4.44.3"` |  |
+| registryCredentials.registry | string | `"registry1.dso.mil"` |  |
+| registryCredentials.username | string | `""` |  |
+| registryCredentials.password | string | `""` |  |
+| registryCredentials.email | string | `""` |  |
 | imagePullSecrets[0].name | string | `"private-registry"` |  |
 | nameOverride | string | `""` |  |
 | fullnameOverride | string | `""` |  |
@@ -90,13 +96,20 @@ helm install bbctl chart/
 | tolerations | list | `[]` |  |
 | affinity | object | `{}` |  |
 | istio.enabled | bool | `false` |  |
+| credentialsFile.credentials[0].uri | string | `"registry1.dso.mil"` |  |
+| credentialsFile.credentials[0].username | string | `""` |  |
+| credentialsFile.credentials[0].password | string | `""` |  |
+| credentialsFile.credentials[1].uri | string | `"repo1.dso.mil"` |  |
+| credentialsFile.credentials[1].username | string | `""` |  |
+| credentialsFile.credentials[1].password | string | `""` |  |
 | baseConfig.bbctl-log-add-source | bool | `true` |  |
 | baseConfig.bbctl-log-format | string | `"json"` |  |
 | baseConfig.bbctl-log-level | string | `"warn"` |  |
 | baseConfig.bbctl-log-output | string | `"stderr"` |  |
-| baseConfig.big-bang-credential-helper | string | `"credentials-file"` |  |
 | baseConfig.big-bang-repo | string | `"https://repo1.dso.mil/big-bang/bigbang/-/blob/master/"` |  |
-| baseConfig.output-config.format | string | `"yaml"` |  |
+| baseConfig.output-config.format | string | `"json"` |  |
+| baseConfig.util-credential-helper.big-bang-credential-helper-credentials-file-path | string | `"/home/bigbang/.bbctl/credentials.yaml"` |  |
+| baseConfig.util-credential-helper.big-bang-credential-helper | string | `"credentials-file"` |  |
 | baseLabels | object | `{}` |  |
 | bigbangUpdater.enabled | bool | `true` |  |
 | bigbangUpdater.schedule | string | `"0 * * * *"` |  |
@@ -108,6 +121,36 @@ helm install bbctl chart/
 | bigbangUpdater.serviceAccount.create | bool | `true` |  |
 | bigbangUpdater.serviceAccount.annotations | object | `{}` |  |
 | bigbangUpdater.serviceAccount.name | string | `""` |  |
+| bigbangStatus.enabled | bool | `true` |  |
+| bigbangStatus.schedule | string | `"0 * * * *"` |  |
+| bigbangStatus.bigbangReleaseName | string | `"bigbang"` |  |
+| bigbangStatus.bigbangReleaseNamespace | string | `"bigbang"` |  |
+| bigbangStatus.labels | object | `{}` |  |
+| bigbangStatus.config | object | `{}` |  |
+| bigbangStatus.podAnnotations | object | `{}` |  |
+| bigbangStatus.serviceAccount.create | bool | `true` |  |
+| bigbangStatus.serviceAccount.annotations | object | `{}` |  |
+| bigbangStatus.serviceAccount.name | string | `""` |  |
+| bigbangViolations.enabled | bool | `true` |  |
+| bigbangViolations.schedule | string | `"0 * * * *"` |  |
+| bigbangViolations.bigbangReleaseName | string | `"bigbang"` |  |
+| bigbangViolations.bigbangReleaseNamespace | string | `"bigbang"` |  |
+| bigbangViolations.labels | object | `{}` |  |
+| bigbangViolations.config | object | `{}` |  |
+| bigbangViolations.podAnnotations | object | `{}` |  |
+| bigbangViolations.serviceAccount.create | bool | `true` |  |
+| bigbangViolations.serviceAccount.annotations | object | `{}` |  |
+| bigbangViolations.serviceAccount.name | string | `""` |  |
+| bigbangPreflight.enabled | bool | `true` |  |
+| bigbangPreflight.schedule | string | `"0 * * * *"` |  |
+| bigbangPreflight.bigbangReleaseName | string | `"bigbang"` |  |
+| bigbangPreflight.bigbangReleaseNamespace | string | `"bigbang"` |  |
+| bigbangPreflight.labels | object | `{}` |  |
+| bigbangPreflight.config | object | `{}` |  |
+| bigbangPreflight.podAnnotations | object | `{}` |  |
+| bigbangPreflight.serviceAccount.create | bool | `true` |  |
+| bigbangPreflight.serviceAccount.annotations | object | `{}` |  |
+| bigbangPreflight.serviceAccount.name | string | `""` |  |
 
 ## Contributing
 
