@@ -130,10 +130,6 @@ func NewPreflightCheckCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		preflightCheckExample = templates.Examples(i18n.T(`
 			# Check cluster for the minimum required configurations
 			bbctl preflight-check --registryserver <registry-server> --registryusername <username> --registrypassword <password>
-			# Export registry credentials as environment variables before running this command to configure registry access
-			# export REGISTRYSERVER=registry1.dso.mil
-			# export REGISTRYUSERNAME=<username>
-			# export REGISTRYPASSWORD=<password>
 			bbctl preflight-check `))
 	)
 	cmd := &cobra.Command{

@@ -34,6 +34,9 @@ data:
   config.yaml: |
     # The configuration for the {{ .custom.fullname }}, this comment provides a properly indented first line
     {{- .custom.config | nindent 4 }}
+  credentials.yaml: |
+    # The credentials file for the {{ .custom.fullname }}, this comment provides a properly indented first line
+    {{- .scope.Values.credentialsFile | print | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -135,21 +138,16 @@ spec:
               readOnly: false
           containers:
           - name: {{ .scope.Chart.Name }}
-            env:
-            - name: "REGISTRYSERVER"
-              value: {{ .scope.Values.registryCredentials.registry }}
-            - name: "REGISTRYUSERNAME"
-              value: {{ .scope.Values.registryCredentials.username }}
-            - name: "REGISTRYPASSWORD"
-              value: {{ .scope.Values.registryCredentials.password }}
             securityContext:
               {{- toYaml .scope.Values.securityContext | nindent 14 }}
             image: "{{ .scope.Values.image.repository }}:{{ .scope.Values.image.tag | default .scope.Chart.AppVersion }}"
             imagePullPolicy: {{ .scope.Values.image.pullPolicy }}
             command: 
             {{- .custom.command | nindent 12 }}
+            {{- with .custom.args }}
             args:
-            {{- .custom.args | nindent 12 }}
+            {{- . | nindent 12 }}
+            {{- end }}
             volumeMounts:
             - name: config-volume
               mountPath: /home/bigbang/.bbctl/
