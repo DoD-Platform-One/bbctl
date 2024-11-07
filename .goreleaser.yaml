@@ -14,7 +14,7 @@ gitlab_urls:
 release:
   gitlab:
     name: "bbctl"
-    owner: "big-bang"
+    owner: "big-bang/product/packages"
 
   # Release notes
   mode: append
