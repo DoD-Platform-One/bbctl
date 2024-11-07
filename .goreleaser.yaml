@@ -19,6 +19,9 @@ release:
   # Release notes
   mode: append
 
+  # Artifact nameing template
+  name_template: "{{.ProjectName}}-v{{.Version}}"
+
 # Pre-release steps
 # before:
   # hooks:
