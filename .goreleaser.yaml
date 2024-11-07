@@ -13,8 +13,8 @@ gitlab_urls:
 # Gitlab project settings for release
 release:
   gitlab:
-    name: "11320" # BBCTL project
-    owner: ""
+    name: "bbctl"
+    owner: "big-bang"
 
   # Release notes
   mode: append
