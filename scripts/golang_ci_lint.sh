@@ -7,6 +7,15 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 . "${DIR}/get_dirs.sh"
 
+# TODO: Remove this installation once we have golangci-lint pre-installed in the pipeline image
+GOBIN=$(pwd)/bin/ go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+
 # golangci Lint
 echo "linting in $PACKAGE_DIR..."
-golangci-lint run ./...
+
+mv .git .git-hidden
+trap 'mv .git-hidden .git' EXIT
+
+golangci-lint run ./... --timeout=20m
+
+echo "No linting errors detected"
