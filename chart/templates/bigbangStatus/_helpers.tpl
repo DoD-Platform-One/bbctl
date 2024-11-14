@@ -99,8 +99,10 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-status.command" -}}
-- "./bbctl"
-- "status"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl status)"
 {{- end }}
 
 {{/*

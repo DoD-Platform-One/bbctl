@@ -99,8 +99,10 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-preflight.command" -}}
-- "./bbctl"
-- "preflight-check"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl preflight-check)"
 {{- end }}
 
 {{/*
