@@ -99,8 +99,10 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-template.command" -}}
-- "./bbctl"
-- "template"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl template)"
 {{- end }}
 
 {{/*

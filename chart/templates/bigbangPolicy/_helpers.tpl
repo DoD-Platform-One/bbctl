@@ -99,9 +99,10 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-policy.command" -}}
-- "./bbctl"
-- "policy"
-- "--{{ .Values.bigbangPolicy.policyEnforcer }}"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl policy --{{ .Values.bigbangPolicy.policyEnforcer }})"
 {{- end }}
 
 {{/*

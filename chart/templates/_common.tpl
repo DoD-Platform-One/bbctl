@@ -36,7 +36,7 @@ data:
     {{- .custom.config | nindent 4 }}
   credentials.yaml: |
     # The credentials file for the {{ .custom.fullname }}, this comment provides a properly indented first line
-    {{- .scope.Values.credentialsFile | print | nindent 4 }}
+    {{- .scope.Values.credentialsFile | toYaml | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

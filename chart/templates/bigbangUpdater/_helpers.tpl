@@ -99,14 +99,14 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-updater.command" -}}
-- "./bbctl"
-- "version"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl version -U -A)"
 {{- end }}
 
 {{/*
 Create the args
 */}}
 {{- define "bigbang-updater.args" -}}
-- "-U"
-- "-A"
 {{- end }}

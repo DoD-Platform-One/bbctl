@@ -28,7 +28,7 @@ image:
   repository: "registry1.dso.mil/ironbank/big-bang/bbctl"
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: 0.7.5
 
 yqImage:
   repository: "registry1.dso.mil/ironbank/opensource/yq/yq"
@@ -84,9 +84,6 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
-
-istio:
-  enabled: false
 
 credentialsFile:
   credentials:
