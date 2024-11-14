@@ -58,11 +58,11 @@ func NewConfigInitCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error setting credential from interactive: %w", err)
 	}
-        err = configClient.SetAndBindFlag(
-                "credentials-entry",
-                "",
-                "",
-                "Creates credentials with provided entry",
+	err = configClient.SetAndBindFlag(
+		"credentials-entry",
+		"",
+		"",
+		"Creates credentials with provided entry",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error setting credential from json: %w", err)
@@ -144,10 +144,10 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 		info     string
 		optional bool
 	}{{
-			key:      "bbctl-log-format",
-			info:     "Log format for bbctl. Options are json, text",
-			optional: false,
-		},
+		key:      "bbctl-log-format",
+		info:     "Log format for bbctl. Options are json, text",
+		optional: false,
+	},
 		{
 			key:      "bbctl-log-level",
 			info:     "Log level for bbctl. Options are debug, info, warn, error",
@@ -219,10 +219,10 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	var credentialDir string
 	if credArg == "" {
 		var input string
-		fmt.Println("Please enter the output path for the credentials.yaml file.")
+		fmt.Println("Please enter the output path for the credentials.yaml file.") //nolint:forbidigo
 		fmt.Fprintln(streams.Out, "Press enter to skip")
 		fmt.Fprint(streams.Out, "$ ")
-		fmt.Fscanln(streams.In, &input)
+		_, _ = fmt.Fscanln(streams.In, &input)
 		if input == "" {
 			homedir, err := os.UserHomeDir()
 			if err != nil {
@@ -237,63 +237,67 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	}
 
 	type User struct {
-		Uri 	 string `yaml:"uri"`
+		URI      string `yaml:"uri"`
 		Username string `yaml:"username"`
 		Password string `yaml:"password"`
 	}
 
 	type Credential struct {
-		Credentials []User  `yaml:"credentials"`
+		Credentials []User `yaml:"credentials"`
 	}
 
-	users := []User{} 
+	users := []User{}
 	temp := User{}
-	credEntry, _ := command.Flags().GetString("credentials-entry") 
+	credEntry, _ := command.Flags().GetString("credentials-entry")
 	if credEntry != "" {
 		result := strings.SplitAfter(credEntry, "}")
 		result = result[:len(result)-1]
 		for _, r := range result {
 			err := yamler.Unmarshal([]byte(r), &temp)
 			if err != nil {
-				fmt.Println("Error Unmarshaling string:", err)
+				fmt.Println("Error Unmarshaling string:", err) //nolint:forbidigo
 			}
 			users = append(users, temp)
 		}
 	} else {
-		check := "y" 
+		check := "y"
 		for check == "y" {
 			var input string
-			fmt.Fprintln(streams.Out, "Enter uri")	
+			fmt.Fprintln(streams.Out, "Enter uri")
 			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input)
+			_, _ = fmt.Fscanln(streams.In, &input)
 			if input != "" {
-				temp.Uri = input
+				temp.URI = input
 			}
-			fmt.Fprintln(streams.Out, "Enter username")	
+			fmt.Fprintln(streams.Out, "Enter username")
 			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input)
+			_, _ = fmt.Fscanln(streams.In, &input)
 			if input != "" {
 				temp.Username = input
 			}
-			fmt.Fprintln(streams.Out, "Enter password")	
+			fmt.Fprintln(streams.Out, "Enter password")
 			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input)
+			_, _ = fmt.Fscanln(streams.In, &input)
 			if input != "" {
 				temp.Password = input
 			}
 			users = append(users, temp)
-			fmt.Fprintln(streams.Out, "Would you like to enter more credentials? (y/n)")	
+			fmt.Fprintln(streams.Out, "Would you like to enter more credentials? (y/n)")
 			fmt.Fprint(streams.Out, "$ ")
-			fmt.Fscanln(streams.In, &input)
+			_, _ = fmt.Fscanln(streams.In, &input)
 			check = input
 		}
 	}
 	credentials := Credential{Credentials: users}
 	credentialsYaml, err := yamler.Marshal(&credentials)
 	if err != nil {
-		fmt.Println("Error marshaling YAML:", err)
+		return fmt.Errorf("error marshaling YAML: %w", err)
 	}
-	writeCredFile(credentialsYaml, credentialDir, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	writeErr := writeCredFile(credentialsYaml, credentialDir, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	if writeErr != nil {
+		return fmt.Errorf("unable to write credentials file: %w", err)
+	}
+
 	return writeConfigFile(&config, yamler.Marshal, output, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
 }
 
@@ -324,11 +328,12 @@ func writeConfigFile(
 	_, err = io.Writer.Write(configFile, configYaml)
 	return err
 }
+
 func writeCredFile(
 	config []byte,
 	outputDir string,
 	createFunc func(string) (commonInterfaces.FileLike, error),
-) (err error) {
+) error {
 	credFile, err := createFunc(path.Join(outputDir, "credentials.yaml"))
 	if err != nil {
 		return err
@@ -338,11 +343,11 @@ func writeCredFile(
 			if err == nil {
 				err = fmt.Errorf("(sole deferred error: %w)", newErr)
 			} else {
-				err = fmt.Errorf("%w (additional deferred error: %w)", err,newErr)
+				err = fmt.Errorf("%w (additional deferred error: %w)", err, newErr)
 			}
 		}
 	}()
 
-	_, err = io.WriteString(credFile, string(config))
+	_, err = io.Writer.Write(credFile, config)
 	return err
 }

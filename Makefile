@@ -46,11 +46,9 @@ install:
 	@echo "make installing..."
 	./scripts/install.sh
 
-golint:
+lint:
 	@echo "make golangci linting..."
 	./scripts/golang_ci_lint.sh
-
-lint: vet golint
 
 release:
 	@echo "make releasing..."
