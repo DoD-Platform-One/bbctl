@@ -16,6 +16,6 @@ echo "linting in $PACKAGE_DIR..."
 mv .git .git-hidden
 trap 'mv .git-hidden .git' EXIT
 
-golangci-lint run ./... --timeout=20m
+GOGC=30 bin/golangci-lint run ./... --timeout=30m
 
 echo "No linting errors detected"
