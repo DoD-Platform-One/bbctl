@@ -1,0 +1,451 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 52,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "bbctl versions -U -A",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "id": 2,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"}",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Versions Logs",
+        "transformations": [
+          {
+            "id": "formatTime",
+            "options": {
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "timeField": "Time",
+              "timezone": "browser",
+              "useTimezone": true
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "bbctl policy --kyverno",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "id": 4,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-policy\", container=\"bbctl\"}",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Policy Logs",
+        "transformations": [
+          {
+            "id": "formatTime",
+            "options": {
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "timeField": "Time",
+              "timezone": "browser",
+              "useTimezone": true
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "bbctl preflight-check",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "id": 3,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-preflight\", container=\"bbctl\"}",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Preflight Check Logs",
+        "transformations": [
+          {
+            "id": "formatTime",
+            "options": {
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "timeField": "Time",
+              "timezone": "browser",
+              "useTimezone": true
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "bbctl status",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "id": 6,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"}",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Status Logs",
+        "transformations": [
+          {
+            "id": "formatTime",
+            "options": {
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "timeField": "Time",
+              "timezone": "browser",
+              "useTimezone": true
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "bbctl violations",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "id": 5,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-violations\", container=\"bbctl\"}",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "title": "Violations Logs",
+        "transformations": [
+          {
+            "id": "formatTime",
+            "options": {
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "timeField": "Time",
+              "timezone": "browser",
+              "useTimezone": true
+            }
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "refresh": "",
+    "schemaVersion": 39,
+    "tags": [],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "2024-11-18T01:46:48.219Z",
+      "to": "2024-11-19T01:46:48.221Z"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "all-logs-dashboard",
+    "uid": {},
+    "version": {},
+    "weekStart": ""
+  }
