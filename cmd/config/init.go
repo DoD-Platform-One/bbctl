@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
 
 	"io"
@@ -138,6 +139,12 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	// Pull current config to verify inputs
 	oldConfig, getConfigErr := configClient.GetConfig()
 	config := make(map[string]interface{})
+
+	constants, err := static.GetDefaultConstants()
+	if err != nil {
+		return fmt.Errorf("unable to get version: %w", err)
+	}
+	config["version"] = constants.BigBangCliVersion
 
 	configKeys := []struct {
 		key      string
