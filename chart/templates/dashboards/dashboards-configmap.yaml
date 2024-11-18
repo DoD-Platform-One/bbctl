@@ -1,0 +1,14 @@
+{{- if .Values.bigbang.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "bbctl-dashboards"
+  namespace: "monitoring"
+  labels:
+     grafana_dashboard: "1"
+data:
+  versions-dashboard.json: |-
+    {{ .Files.Get "dashboards/versions-dashboard.json" | nindent 4 }}
+  all-logs-dashboard.json: |-
+    {{ .Files.Get "dashboards/all-logs-dashboard.json" | nindent 4 }}
+{{- end -}}

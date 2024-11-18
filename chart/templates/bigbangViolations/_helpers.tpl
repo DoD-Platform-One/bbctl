@@ -99,8 +99,10 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-violations.command" -}}
-- "./bbctl"
-- "violations"
+- "/bin/bash"
+- "-c"
+- | 
+  echo "$(./bbctl violations)"
 {{- end }}
 
 {{/*
