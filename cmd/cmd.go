@@ -9,7 +9,6 @@ import (
 	config "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/config"
 	deploy "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/deploy"
 	k3d "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/k3d"
-	update "repo1.dso.mil/big-bang/product/packages/bbctl/cmd/update"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 )
 
@@ -80,7 +79,7 @@ func NewRootCmd(factory bbUtil.Factory) (*cobra.Command, error) {
 		return nil, fmt.Errorf("error retrieving Deploy Command: %w", deployCmdError)
 	}
 	cmd.AddCommand(deployCmd)
-	cmd.AddCommand(update.NewUpdateCmd(factory))
+	cmd.AddCommand(NewUpdateCmd(factory))
 
 	return cmd, nil
 }

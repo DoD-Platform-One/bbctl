@@ -1,4 +1,4 @@
-package update
+package cmd
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	bbTestUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util/test"
 )
 
-func TestUpdate_RootUsage(t *testing.T) {
+func TestUpdate_Usage(t *testing.T) {
 	// Arrange
 	factory := bbTestUtil.GetFakeFactory()
 	// Act
@@ -18,13 +18,6 @@ func TestUpdate_RootUsage(t *testing.T) {
 	// Assert
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "update", cmd.Use)
-	commandsList := cmd.Commands()
-	assert.Len(t, commandsList, 1)
-	var commandUseNamesList = make([]string, len(commandsList))
-	for _, command := range commandsList {
-		commandUseNamesList = append(commandUseNamesList, command.Use)
-	}
-	assert.Contains(t, commandUseNamesList, "check")
 }
 
 func TestUpdate_RootNoSubcommand(t *testing.T) {
@@ -44,7 +37,6 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Arrange
 			factory := bbTestUtil.GetFakeFactory()
 			factory.ResetIOStream()
 			v, _ := factory.GetViper()
@@ -56,10 +48,10 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 			if tc.errorOnGetClient {
 				factory.SetFail.GetOutputClient = true
 			}
-			// Act
+
 			cmd := NewUpdateCmd(factory)
 			err := cmd.Execute()
-			// Assert
+
 			assert.Empty(t, errOut.String())
 			assert.Empty(t, in.String())
 			if tc.errorOnGetClient {
@@ -68,7 +60,8 @@ func TestUpdate_RootNoSubcommand(t *testing.T) {
 				assert.Empty(t, out.String())
 			} else {
 				require.NoError(t, err)
-				assert.Contains(t, out.String(), "Please provide a subcommand for config (see help)")
+				// TODO update this with an actual output
+				assert.Contains(t, out.String(), "No update functionality has been implemented yet")
 			}
 		})
 	}
