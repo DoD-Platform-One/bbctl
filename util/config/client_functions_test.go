@@ -129,6 +129,7 @@ func GetDefaultConfig(t *testing.T) schemas.BaseConfiguration {
 			DisableCompression: true,
 		},
 		VersionConfiguration:    schemas.VersionConfiguration{},
+		Version:                 "1.0.0",
 		ViolationsConfiguration: schemas.ViolationsConfiguration{},
 	}
 }

@@ -45,6 +45,8 @@ type GlobalConfiguration struct {
 	VersionConfiguration VersionConfiguration `mapstructure:"version" json:"version" yaml:"version"`
 	// Violations configuration: object
 	ViolationsConfiguration ViolationsConfiguration `mapstructure:"violation" json:"violation" yaml:"violation"`
+	// bbctl Version: string
+	Version string `mapstructure:"bbctl-version" json:"bbctl-version" yaml:"bbctl-version"`
 }
 
 // ReconcileConfiguration recursively reconciles the configurations.
@@ -55,6 +57,7 @@ func (g *GlobalConfiguration) ReconcileConfiguration(instance *viper.Viper) erro
 	g.LogFormat = instance.GetString("bbctl-log-format")
 	g.LogLevel = instance.GetString("bbctl-log-level")
 	g.LogOutput = instance.GetString("bbctl-log-output")
+	g.Version = instance.GetString("bbctl-version")
 
 	allErrors := []error{}
 	for _, subConfig := range g.getSubConfigurations() {
