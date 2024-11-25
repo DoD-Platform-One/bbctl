@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 0.7.4-bb.0](https://img.shields.io/badge/Version-0.7.4--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.5](https://img.shields.io/badge/AppVersion-0.7.5-informational?style=flat-square)
+![Version: 0.7.5-bb.0](https://img.shields.io/badge/Version-0.7.5--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.5](https://img.shields.io/badge/AppVersion-0.7.5-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -71,7 +71,7 @@ helm install bbctl chart/
 | bigbang | object | `{"addons":{"authservice":{"enabled":false,"values":{"selector":{"key":"protect","value":"keycloak"}}}},"domain":"bigbang.dev","istio":{"enabled":false,"hardened":{"enabled":false}},"monitoring":{"enabled":false},"networkPolicies":{"controlPlaneCidr":"0.0.0.0/0","controlPlaneNode":null,"enabled":false},"openshift":false}` | Passdown values from Big Bang |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `""` |  |
+| image.tag | string | `"0.7.5"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
 | yqImage.tag | string | `"4.44.3"` |  |
@@ -95,7 +95,6 @@ helm install bbctl chart/
 | nodeSelector | object | `{}` |  |
 | tolerations | list | `[]` |  |
 | affinity | object | `{}` |  |
-| istio.enabled | bool | `false` |  |
 | credentialsFile.credentials[0].uri | string | `"registry1.dso.mil"` |  |
 | credentialsFile.credentials[0].username | string | `""` |  |
 | credentialsFile.credentials[0].password | string | `""` |  |
@@ -151,6 +150,17 @@ helm install bbctl chart/
 | bigbangPreflight.serviceAccount.create | bool | `true` |  |
 | bigbangPreflight.serviceAccount.annotations | object | `{}` |  |
 | bigbangPreflight.serviceAccount.name | string | `""` |  |
+| bigbangPolicy.enabled | bool | `true` |  |
+| bigbangPolicy.policyEnforcer | string | `"kyverno"` |  |
+| bigbangPolicy.schedule | string | `"0 * * * *"` |  |
+| bigbangPolicy.bigbangReleaseName | string | `"bigbang"` |  |
+| bigbangPolicy.bigbangReleaseNamespace | string | `"bigbang"` |  |
+| bigbangPolicy.labels | object | `{}` |  |
+| bigbangPolicy.config | object | `{}` |  |
+| bigbangPolicy.podAnnotations | object | `{}` |  |
+| bigbangPolicy.serviceAccount.create | bool | `true` |  |
+| bigbangPolicy.serviceAccount.annotations | object | `{}` |  |
+| bigbangPolicy.serviceAccount.name | string | `""` |  |
 
 ## Contributing
 
