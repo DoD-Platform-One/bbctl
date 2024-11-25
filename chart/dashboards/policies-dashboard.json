@@ -1,0 +1,551 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 53,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "All cluster wide policies currently installed in the cluster.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green"
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 16,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 2,
+        "maxDataPoints": 1,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-policy\", container=\"bbctl\"} | json",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": "1h",
+        "title": "Cluster Policies",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "path": "crdPolicies"
+                }
+              ],
+              "keepTime": false,
+              "replace": true,
+              "source": "Line"
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "keepTime": false,
+              "replace": true,
+              "source": "crdPolicies"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "labelsToFields": false,
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "keepTime": false,
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "equal",
+                    "options": {
+                      "value": "clusterpolicies.kyverno.io"
+                    }
+                  },
+                  "fieldName": "crdName"
+                }
+              ],
+              "match": "all",
+              "type": "include"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "message": true
+              },
+              "includeByName": {},
+              "indexByName": {},
+              "renameByName": {}
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "policies"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "kind": true,
+                "namespace": true
+              },
+              "includeByName": {},
+              "indexByName": {
+                "action": 3,
+                "description": 4,
+                "kind": 2,
+                "name": 0,
+                "namespace": 1
+              },
+              "renameByName": {}
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "All allowed exceptions for the configured policies",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
+        "id": 4,
+        "maxDataPoints": 1,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "kind"
+            }
+          ]
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-policy\", container=\"bbctl\"} | json",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": "1h",
+        "title": "Policy Exceptions",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "path": "crdPolicies"
+                }
+              ],
+              "keepTime": false,
+              "replace": true,
+              "source": "Line"
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "keepTime": false,
+              "replace": true,
+              "source": "crdPolicies"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "labelsToFields": false,
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "keepTime": false,
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "substring",
+                    "options": {
+                      "value": "exception"
+                    }
+                  },
+                  "fieldName": "crdName"
+                }
+              ],
+              "match": "any",
+              "type": "include"
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "policies"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "action": true,
+                "description": true,
+                "kind": true,
+                "namespace": false
+              },
+              "includeByName": {},
+              "indexByName": {
+                "action": 3,
+                "description": 4,
+                "kind": 2,
+                "name": 0,
+                "namespace": 1
+              },
+              "renameByName": {}
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "Shows a list of installed policies for every policy CRD in the cluster. CRD types with no installed resources are not shown.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "center",
+              "cellOptions": {
+                "type": "json-view"
+              },
+              "filterable": true,
+              "inspect": true,
+              "minWidth": 175
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
+        "id": 3,
+        "maxDataPoints": 1,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-policy\", container=\"bbctl\"} | json",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": "1h",
+        "title": "All Policies",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "path": "crdPolicies"
+                }
+              ],
+              "keepTime": false,
+              "replace": true,
+              "source": "Line"
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "keepTime": false,
+              "replace": true,
+              "source": "crdPolicies"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "labelsToFields": false,
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "keepTime": false,
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "equal",
+                    "options": {
+                      "value": "No policies found"
+                    }
+                  },
+                  "fieldName": "message"
+                }
+              ],
+              "match": "all",
+              "type": "exclude"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "message": true
+              },
+              "includeByName": {},
+              "indexByName": {},
+              "renameByName": {}
+            }
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "schemaVersion": 39,
+    "tags": [],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "policies-dashboard",
+    "uid": "",
+    "version": 1,
+    "weekStart": ""
+  }
