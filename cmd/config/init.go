@@ -144,7 +144,7 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("unable to get version: %w", err)
 	}
-	config["version"] = constants.BigBangCliVersion
+	config["bbctl-version"] = constants.BigBangCliVersion
 
 	configKeys := []struct {
 		key      string

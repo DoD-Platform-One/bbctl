@@ -17,6 +17,7 @@ import (
 	genericCliOptions "k8s.io/cli-runtime/pkg/genericclioptions"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/cmd"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilPool "repo1.dso.mil/big-bang/product/packages/bbctl/util/pool"
 )
@@ -144,6 +145,15 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 			os.Exit(1)
 		}
 		logger.Debug(fmt.Sprintf("Command line settings: %v", string(allSettings)))
+
+		// check configuration version
+		constants, err := static.GetDefaultConstants()
+		if err != nil {
+			initLogger.Error(fmt.Sprintf("unable to get version: %v", err.Error()))
+		}
+		if config.Version != constants.BigBangCliVersion {
+			initLogger.Warn(fmt.Sprintf("Please update the configuration file to the latest version of bbctl by running: 'bbctl config init' ( Current Version: %v | Config Version: %v )", constants.BigBangCliVersion, config.Version))
+		}
 	})
 
 	bbctlCmd, rootCmdError := cmd.NewRootCmd(factory)
