@@ -21,7 +21,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/xanzy/go-gitlab v0.109.0
-	gopkg.in/yaml.v3 v3.0.1
+	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.16.1
 	istio.io/api v1.23.1
 	istio.io/client-go v1.23.1
@@ -31,6 +31,7 @@ require (
 	k8s.io/client-go v0.31.1
 	k8s.io/kubectl v0.31.1
 	k8s.io/metrics v0.31.1
+	repo1.dso.mil/big-bang/apps/developer-tools/go-utils/yamler v1.0.0
 	sigs.k8s.io/controller-runtime v0.19.0
 )
 
@@ -194,7 +195,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.31.1 // indirect
 	k8s.io/apiserver v0.31.1 // indirect
 	k8s.io/component-base v0.31.1 // indirect

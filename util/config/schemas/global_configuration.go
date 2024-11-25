@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+	"repo1.dso.mil/big-bang/apps/developer-tools/go-utils/yamler"
 
 	"github.com/spf13/viper"
 )

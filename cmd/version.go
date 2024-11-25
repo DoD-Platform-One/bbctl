@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+	"repo1.dso.mil/big-bang/apps/developer-tools/go-utils/yamler"
 
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
