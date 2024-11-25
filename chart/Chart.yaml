@@ -41,9 +41,8 @@ icon: https://repo1.dso.mil/uploads/-/system/group/avatar/3988/bigbanglogo.png?w
 sources:
 - https://repo1.dso.mil/big-bang/product/packages/bbctl
 maintainers:
-# this should be replaced by a shared email address
-- name: Andrew Shoell
-  email: andrew.shoell.ctr@us.af.mil
+- name: Big Bang Tooling and Automation Team
+  url: https://join.slack.com/t/bigbanguniver-ft39451/shared_invite/zt-21zrvwacw-zoionTAz0UdzVbjnAFSnDw
 annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   bigbang.dev/upstreamReleaseNotesMarkdown: |
