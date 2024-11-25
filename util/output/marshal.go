@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"repo1.dso.mil/big-bang/product/packages/bbctl/util/yamler"
+	"repo1.dso.mil/big-bang/apps/developer-tools/go-utils/yamler"
 )
 
 // Outputable interface is used to define the methods that an object must implement in order to be able to be marshaled into different formats
