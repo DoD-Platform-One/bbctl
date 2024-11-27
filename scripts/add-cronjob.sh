@@ -74,6 +74,7 @@ newValue=$(cat <<- NEW_VALUE
 
 $bbJob:
   enabled: true
+  importDashboards: true
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
   bigbangReleaseNamespace: "bigbang"

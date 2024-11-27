@@ -7,12 +7,18 @@ metadata:
   labels:
      grafana_dashboard: "1"
 data:
+  {{- if and .Values.bigbangUpdater.enabled .Values.bigbangUpdater.importDashboards }}
   versions-dashboard.json: |-
     {{ .Files.Get "dashboards/versions-dashboard.json" | nindent 4 }}
+  {{- end }}
+  {{- if and .Values.bigbangViolations.enabled .Values.bigbangViolations.importDashboards }}
   violations-dashboard.json: |-
     {{ .Files.Get "dashboards/violations-dashboard.json" | nindent 4 }}
+  {{- end }}
+  {{- if and .Values.bigbangPolicy.enabled .Values.bigbangPolicy.importDashboards }}
   policies-dashboard.json: |-
     {{ .Files.Get "dashboards/policies-dashboard.json" | nindent 4 }}
+  {{- end }}
   all-logs-dashboard.json: |-
     {{ .Files.Get "dashboards/all-logs-dashboard.json" | nindent 4 }}
 {{- end -}}

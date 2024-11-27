@@ -110,6 +110,7 @@ baseLabels: {}
 
 bigbangUpdater:
   enabled: true
+  importDashboards: true
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
   bigbangReleaseNamespace: "bigbang"
@@ -127,6 +128,7 @@ bigbangUpdater:
 
 bigbangStatus:
   enabled: true
+  importDashboards: true
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
   bigbangReleaseNamespace: "bigbang"
@@ -144,6 +146,7 @@ bigbangStatus:
 
 bigbangViolations:
   enabled: true
+  importDashboards: true
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
   bigbangReleaseNamespace: "bigbang"
@@ -161,6 +164,7 @@ bigbangViolations:
 
 bigbangPreflight:
   enabled: true
+  importDashboards: true
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
   bigbangReleaseNamespace: "bigbang"
@@ -179,6 +183,7 @@ bigbangPreflight:
 bigbangPolicy:
   enabled: true
   # Enforcer must be "gatekeeper" or "kyverno"
+  importDashboards: true
   policyEnforcer: "kyverno"
   schedule: "0 * * * *"
   bigbangReleaseName: "bigbang"
