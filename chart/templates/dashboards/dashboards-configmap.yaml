@@ -19,6 +19,10 @@ data:
   policies-dashboard.json: |-
     {{ .Files.Get "dashboards/policies-dashboard.json" | nindent 4 }}
   {{- end }}
+  {{- if and .Values.bigbangPreflight.enabled .Values.bigbangPreflight.importDashboards }}
+  preflight-dashboard.json: |-
+    {{ .Files.Get "dashboards/preflight-dashboard.json" | nindent 4 }}
+  {{- end }}
   all-logs-dashboard.json: |-
     {{ .Files.Get "dashboards/all-logs-dashboard.json" | nindent 4 }}
 {{- end -}}

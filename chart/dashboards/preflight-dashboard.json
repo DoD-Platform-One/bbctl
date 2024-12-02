@@ -1,0 +1,231 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 54,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "default": false,
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "description": "List of checks run in the cluster to verify everything is configured to support a Big Bang deployment.",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "left",
+              "cellOptions": {
+                "applyToRow": false,
+                "mode": "gradient",
+                "type": "color-background",
+                "wrapText": false
+              },
+              "filterable": true,
+              "inspect": true
+            },
+            "mappings": [
+              {
+                "options": {
+                  "Failed": {
+                    "color": "red",
+                    "index": 2,
+                    "text": "Fail"
+                  },
+                  "Passed": {
+                    "color": "green",
+                    "index": 0,
+                    "text": "Pass"
+                  },
+                  "Unknown": {
+                    "color": "yellow",
+                    "index": 1,
+                    "text": "Error"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "transparent",
+                  "value": null
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "status"
+              },
+              "properties": [
+                {
+                  "id": "custom.width",
+                  "value": 195
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "name"
+              },
+              "properties": [
+                {
+                  "id": "custom.width",
+                  "value": 274
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 18,
+          "w": 21,
+          "x": 0,
+          "y": 0
+        },
+        "id": 2,
+        "maxDataPoints": 1,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": true,
+            "fields": "",
+            "reducer": [
+              "lastNotNull"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "status"
+            }
+          ]
+        },
+        "pluginVersion": "11.2.2",
+        "targets": [
+          {
+            "datasource": {
+              "type": "loki",
+              "uid": "P8E80F9AEF21F6940"
+            },
+            "editorMode": "code",
+            "expr": "{app=\"bbctl-bigbang-preflight\", container=\"bbctl\"} | json",
+            "legendFormat": "",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "timeFrom": "1h",
+        "title": "Preflight Check",
+        "transformations": [
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "jsonPaths": [
+                {
+                  "path": "steps"
+                }
+              ],
+              "keepTime": false,
+              "replace": true,
+              "source": "Line"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "reduce",
+            "options": {
+              "reducers": [
+                "firstNotNull"
+              ]
+            }
+          },
+          {
+            "id": "extractFields",
+            "options": {
+              "format": "json",
+              "replace": true,
+              "source": "First *"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "includeByName": {},
+              "indexByName": {
+                "name": 1,
+                "output": 2,
+                "status": 0
+              },
+              "renameByName": {
+                "status": ""
+              }
+            }
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "refresh": "",
+    "schemaVersion": 39,
+    "tags": [],
+    "templating": {
+      "list": []
+    },
+    "time": {
+      "from": "now-12h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "preflight-dashboard",
+    "uid": "",
+    "version": 1,
+    "weekStart": ""
+  }

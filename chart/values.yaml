@@ -105,6 +105,10 @@ baseConfig:
   util-credential-helper:
     big-bang-credential-helper-credentials-file-path: "/home/bigbang/.bbctl/credentials.yaml"
     big-bang-credential-helper: "credentials-file"
+  preflight-check:
+    registryserver: ""
+    registryusername: ""
+    registrypassword: ""
 
 baseLabels: {}
 
