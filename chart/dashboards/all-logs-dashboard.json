@@ -18,7 +18,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "id": 52,
+    "id": {},
     "links": [],
     "panels": [
       {
@@ -27,7 +27,7 @@
           "type": "loki",
           "uid": "P8E80F9AEF21F6940"
         },
-        "description": "bbctl versions -U -A",
+        "description": "All logs pulled from all the existing cluster bbctl cronjobs",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -439,8 +439,8 @@
       "list": []
     },
     "time": {
-      "from": "2024-11-18T01:46:48.219Z",
-      "to": "2024-11-19T01:46:48.221Z"
+      "from": "now-12h",
+      "to": "now"
     },
     "timepicker": {},
     "timezone": "browser",

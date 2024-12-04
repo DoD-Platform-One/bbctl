@@ -23,6 +23,10 @@ data:
   preflight-dashboard.json: |-
     {{ .Files.Get "dashboards/preflight-dashboard.json" | nindent 4 }}
   {{- end }}
+  {{- if and .Values.bigbangStatus.enabled .Values.bigbangStatus.importDashboards }}
+  status-dashboard.json: |-
+    {{ .Files.Get "dashboards/status-dashboard.json" | nindent 4 }}
+  {{- end }}
   all-logs-dashboard.json: |-
     {{ .Files.Get "dashboards/all-logs-dashboard.json" | nindent 4 }}
 {{- end -}}
