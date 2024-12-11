@@ -17,7 +17,7 @@ import (
 	genericCliOptions "k8s.io/cli-runtime/pkg/genericclioptions"
 	genericIOOptions "k8s.io/cli-runtime/pkg/genericiooptions"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/cmd"
-	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
+	static "repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilPool "repo1.dso.mil/big-bang/product/packages/bbctl/util/pool"
 )

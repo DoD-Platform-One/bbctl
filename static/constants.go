@@ -10,6 +10,8 @@ var (
 	//go:embed resources
 	resources embed.FS
 	constants = Constants{} //nolint:unused,gochecknoglobals
+
+	buildDate = "UNSET" //nolint:gochecknoglobals
 )
 
 type Readable interface {
@@ -31,6 +33,8 @@ type Constants struct {
 	BigBangNamespace string `yaml:"BigBangNamespace"`
 	// BigBangCliVersion - constance for sematic versioning
 	BigBangCliVersion string `yaml:"BigBangCliVersion"`
+	// BigBangBuildDate - Build date of compiled resources
+	BigBangBuildDate string `yaml:"BigBangBuildDate"`
 }
 
 func (c *Constants) readConstants() error {
@@ -38,6 +42,7 @@ func (c *Constants) readConstants() error {
 	if err != nil {
 		return err
 	}
+	c.BigBangBuildDate = buildDate
 	err = yamler.Unmarshal(yamlFile, c)
 	return err
 }
