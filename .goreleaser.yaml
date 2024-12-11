@@ -25,7 +25,10 @@ release:
 
 # Multi-environment build settings
 builds:
-  - env:
+  - ldflags:
+      - -X repo1.dso.mil/big-bang/product/packages/bbctl/static.buildDate={{.Date}}
+      # still needs testing to see if this results in what we want
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
