@@ -10,3 +10,7 @@ pkg/
 config.yaml
 dist/
 .DS_Store
+node_modules/
+screenshots/
+videos/
+**/cypress/downloads

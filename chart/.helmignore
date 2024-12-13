@@ -23,4 +23,7 @@
 .vscode/
 # New cron job command template files
 templates/bigbangTemplate/
-
+node_modules/
+screenshots/
+videos/
+tests/cypress/downloads/
