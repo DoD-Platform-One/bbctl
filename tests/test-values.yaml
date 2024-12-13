@@ -1,0 +1,10 @@
+imagePullSecrets:
+  - name: private-registry
+
+bbtests:
+  enabled: true
+  cypress:
+    disableDefaultTests: false
+    envs:
+      cypress_grafana_username: "admin"
+      cypress_grafana_password: "prom-operator"
