@@ -21,7 +21,7 @@ import (
 	bbGitlab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 )
 
-func TestReadCredentialsFile(t *testing.T) {
+func TestReadCredentialsFile(t *testing.T) { //nolint:maintidx
 	testCases := []struct {
 		name                      string
 		useDefaultPath            bool
@@ -176,15 +176,37 @@ func TestReadCredentialsFile(t *testing.T) {
 			viperInstance.Set("big-bang-repo", "test")
 			viperInstance.Set("kubeconfig", "./test/data/kube-config.yaml")
 			viperInstance.Set("big-bang-credential-helper-credentials-file-path", "./test/data/test-credentials.yaml")
+			require.NoError(t, err)
 			if tc.useDefaultPath {
 				viperInstance.Set("big-bang-credential-helper-credentials-file-path", "")
 				homeDir, err := os.UserHomeDir()
 				require.NoError(t, err)
+
 				credentialsDir := path.Join(homeDir, ".bbctl")
 				credentialsPath := path.Join(credentialsDir, "credentials.yaml")
-				if _, err := os.Stat(credentialsPath); err != nil {
+
+				// Check if the .bbctl directory exists and create if it doesn't
+				// If we create it, delete it after the test so we do not leave
+				// a directory behind
+				if _, err := os.Stat(credentialsDir); os.IsNotExist(err) {
 					err := os.MkdirAll(credentialsDir, os.ModePerm)
 					require.NoError(t, err)
+
+					// Create the credentials.yaml file
+					_, err = os.Create(credentialsPath)
+					require.NoError(t, err)
+
+					// Defer deletion of the file and the directory
+					defer func() {
+						err = os.RemoveAll(credentialsDir)
+						require.NoError(t, err)
+					}()
+				}
+
+				// Check if the credentials.yaml file exists and create if it doesn't
+				// If we create it, delete it after the test so we do not leave
+				// a file behind
+				if _, err := os.Stat(credentialsPath); os.IsNotExist(err) {
 					_, err = os.Create(credentialsPath)
 					require.NoError(t, err)
 					defer func() {

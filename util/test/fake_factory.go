@@ -17,6 +17,7 @@ import (
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
+	bbFilesystem "repo1.dso.mil/big-bang/product/packages/bbctl/util/filesystem"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
@@ -24,6 +25,7 @@ import (
 	bbOutput "repo1.dso.mil/big-bang/product/packages/bbctl/util/output"
 	fakeApiWrappers "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/apiwrappers"
 	fakeAws "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/aws"
+	fakeFileSystem "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/filesystem"
 	fakeGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/gitlab"
 	fakeHelm "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/helm"
 	fakeIronBank "repo1.dso.mil/big-bang/product/packages/bbctl/util/test/ironbank"
@@ -207,6 +209,7 @@ type FakeFactory struct {
 		GetViperCount                int // the number of times the GetViper function has been called
 		GetGitLabClient              bool
 		GetIronBankClient            bool
+		GetFileSystemClient          bool
 
 		// configure the AWS fake client and fake istio client to fail on certain calls
 		// configure the AWS fake client to fail on certain calls
@@ -229,6 +232,10 @@ type FakeFactory struct {
 	}
 	ironbank struct {
 		getImageSHAFunc fakeIronBank.GetImageSHAFunc
+	}
+
+	filesystem struct {
+		homeDir string
 	}
 }
 
@@ -622,9 +629,27 @@ func (f *FakeFactory) SetIronBankGetImageSHAFunc(getImageSHAFunc fakeIronBank.Ge
 	f.ironbank.getImageSHAFunc = getImageSHAFunc
 }
 
+// GetIronBankClient constructs a fake ironbank client
+//
+// Various functions of the client can be set using the SetIronBank* functions
 func (f *FakeFactory) GetIronBankClient() (ironbank.Client, error) {
 	if f.SetFail.GetIronBankClient {
 		return nil, errors.New("failed to get ironbank client")
 	}
 	return fakeIronBank.NewFakeClient(f.ironbank.getImageSHAFunc), nil
+}
+
+// GetFileSystemClient constructs a fake file system client
+//
+// Various functions of the client can be set using the SetFileSystem* functions
+func (f *FakeFactory) GetFileSystemClient() (bbFilesystem.Client, error) {
+	if f.SetFail.GetFileSystemClient {
+		return nil, errors.New("failed to get file system client")
+	}
+	return fakeFileSystem.NewFakeClient(f.filesystem.homeDir), nil
+}
+
+// SetFileSystemHomeDir sets the home directory for the fake file system client
+func (f *FakeFactory) SetFileSystemHomeDir(homeDir string) {
+	f.filesystem.homeDir = homeDir
 }

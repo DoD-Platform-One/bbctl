@@ -22,6 +22,7 @@ import (
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
+	bbFileSystem "repo1.dso.mil/big-bang/product/packages/bbctl/util/filesystem"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
@@ -53,6 +54,8 @@ type Factory interface {
 	GetK8sDynamicClient(cmd *cobra.Command) (dynamic.Interface, error)
 	GetOutputClient(cmd *cobra.Command) (bbOutput.Client, error)
 	GetIronBankClient() (ironbank.Client, error)
+	GetFileSystemClient() (bbFileSystem.Client, error)
+
 	GetRestConfig(cmd *cobra.Command) (*rest.Config, error)
 	GetCommandExecutor(
 		cmd *cobra.Command,
@@ -539,4 +542,9 @@ func (f *UtilityFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.
 		return nil, nil, fmt.Errorf("unable to create pipe: %w", err)
 	}
 	return r, w, nil
+}
+
+// GetFileSystemClient returns a client for interacting with the file system
+func (f *UtilityFactory) GetFileSystemClient() (bbFileSystem.Client, error) {
+	return f.referenceFactory.GetFileSystemClient()
 }
