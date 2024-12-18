@@ -136,6 +136,11 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("unable to get config client: %w", err)
 	}
+
+	filesystemClient, err := factory.GetFileSystemClient()
+	if err != nil {
+		return fmt.Errorf("unable to get filesystem client: %w", err)
+	}
 	// Pull current config to verify inputs
 	oldConfig, getConfigErr := configClient.GetConfig()
 	config := make(map[string]interface{})
@@ -300,12 +305,18 @@ func initBBConfig(factory bbUtil.Factory, command *cobra.Command) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling YAML: %w", err)
 	}
-	writeErr := writeCredFile(credentialsYaml, credentialDir, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	writeErr := writeCredFile(credentialsYaml, credentialDir,
+		func(name string) (commonInterfaces.FileLike, error) {
+			return filesystemClient.Create(name)
+		})
 	if writeErr != nil {
 		return fmt.Errorf("unable to write credentials file: %w", err)
 	}
 
-	return writeConfigFile(&config, yamler.Marshal, output, func(name string) (commonInterfaces.FileLike, error) { return os.Create(name) })
+	return writeConfigFile(&config, yamler.Marshal, output,
+		func(name string) (commonInterfaces.FileLike, error) {
+			return filesystemClient.Create(name)
+		})
 }
 
 func writeConfigFile(

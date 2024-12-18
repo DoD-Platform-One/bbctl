@@ -22,6 +22,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/xanzy/go-gitlab v0.109.0
 	gopkg.in/yaml.v2 v2.4.0
+	gotest.tools/v3 v3.4.0
 	helm.sh/helm/v3 v3.16.1
 	istio.io/api v1.23.1
 	istio.io/client-go v1.23.1

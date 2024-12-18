@@ -19,6 +19,7 @@ import (
 	commonInterfaces "repo1.dso.mil/big-bang/product/packages/bbctl/util/commoninterfaces"
 	bbConfig "repo1.dso.mil/big-bang/product/packages/bbctl/util/config"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/credentialhelper"
+	bbFileSystem "repo1.dso.mil/big-bang/product/packages/bbctl/util/filesystem"
 	bbGitLab "repo1.dso.mil/big-bang/product/packages/bbctl/util/gitlab"
 	helm "repo1.dso.mil/big-bang/product/packages/bbctl/util/helm"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/util/ironbank"
@@ -53,6 +54,7 @@ type PooledFactory struct {
 	ioStream          *genericIOOptions.IOStreams
 	pipeReader        commonInterfaces.FileLike
 	pipeWriter        commonInterfaces.FileLike
+	fileSystemClient  bbFileSystem.Client
 }
 
 // NewPooledFactory returns a new pooled factory
@@ -373,4 +375,20 @@ func (pf *PooledFactory) GetPipe() (commonInterfaces.FileLike, commonInterfaces.
 	pf.pipeReader = r
 	pf.pipeWriter = w
 	return pf.pipeReader, pf.pipeWriter, nil
+}
+
+// GetFileSystemClient returns a client for the underlying file system
+func (pf *PooledFactory) GetFileSystemClient() (bbFileSystem.Client, error) {
+	if pf.underlyingFactory == nil {
+		return nil, &FactoryNotInitializedError{}
+	}
+
+	client, err := pf.underlyingFactory.GetFileSystemClient()
+	if err != nil {
+		return client, err
+	}
+
+	pf.fileSystemClient = client
+
+	return client, nil
 }

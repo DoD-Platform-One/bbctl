@@ -555,7 +555,7 @@ func getPodStatus(clientset k8sClient.Interface) []string {
 
 		// add bad pods to slice of podData
 		// there are 5 possible phases: Pending, Running, Succeeded, Failed, Unknown
-		switch podObj.Status.Phase { //nolint:exhaustive
+		switch podObj.Status.Phase { //nolint:exhaustive,nolintlint
 		case "Running":
 			// check if all containers are ready
 			getContainerStatus(podObj.Status.ContainerStatuses, &podDataObj, &podReady, false)
