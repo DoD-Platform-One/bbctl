@@ -1,5 +1,3 @@
-# Do not merge this, this is a placeholder
-
 # bbctl
 
 `bbctl` is a command line tool designed to help you deploy, manage, and upgrade your Big Bang clusters. It is intended to be your one-stop-shop for all things Big Bang and assist in preparing a cluster for Big Bang, deploying Big Bang into the cluster, and maintaining and utilizing your cluster.
