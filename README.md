@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 0.7.5-bb.0](https://img.shields.io/badge/Version-0.7.5--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.5](https://img.shields.io/badge/AppVersion-0.7.5-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 0.7.6-bb.0](https://img.shields.io/badge/Version-0.7.6--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.6](https://img.shields.io/badge/AppVersion-0.7.6-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -71,7 +71,7 @@ helm install bbctl chart/
 | bigbang | object | `{"addons":{"authservice":{"enabled":false,"values":{"selector":{"key":"protect","value":"keycloak"}}}},"domain":"bigbang.dev","istio":{"enabled":false,"hardened":{"enabled":false}},"monitoring":{"enabled":false},"networkPolicies":{"controlPlaneCidr":"0.0.0.0/0","controlPlaneNode":null,"enabled":false},"openshift":false}` | Passdown values from Big Bang |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `"0.7.5"` |  |
+| image.tag | string | `"0.7.6"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
 | yqImage.tag | string | `"4.44.3"` |  |
@@ -109,8 +109,12 @@ helm install bbctl chart/
 | baseConfig.output-config.format | string | `"json"` |  |
 | baseConfig.util-credential-helper.big-bang-credential-helper-credentials-file-path | string | `"/home/bigbang/.bbctl/credentials.yaml"` |  |
 | baseConfig.util-credential-helper.big-bang-credential-helper | string | `"credentials-file"` |  |
+| baseConfig.preflight-check.registryserver | string | `""` |  |
+| baseConfig.preflight-check.registryusername | string | `""` |  |
+| baseConfig.preflight-check.registrypassword | string | `""` |  |
 | baseLabels | object | `{}` |  |
 | bigbangUpdater.enabled | bool | `true` |  |
+| bigbangUpdater.importDashboards | bool | `true` |  |
 | bigbangUpdater.schedule | string | `"0 * * * *"` |  |
 | bigbangUpdater.bigbangReleaseName | string | `"bigbang"` |  |
 | bigbangUpdater.bigbangReleaseNamespace | string | `"bigbang"` |  |
@@ -121,6 +125,7 @@ helm install bbctl chart/
 | bigbangUpdater.serviceAccount.annotations | object | `{}` |  |
 | bigbangUpdater.serviceAccount.name | string | `""` |  |
 | bigbangStatus.enabled | bool | `true` |  |
+| bigbangStatus.importDashboards | bool | `true` |  |
 | bigbangStatus.schedule | string | `"0 * * * *"` |  |
 | bigbangStatus.bigbangReleaseName | string | `"bigbang"` |  |
 | bigbangStatus.bigbangReleaseNamespace | string | `"bigbang"` |  |
@@ -131,6 +136,7 @@ helm install bbctl chart/
 | bigbangStatus.serviceAccount.annotations | object | `{}` |  |
 | bigbangStatus.serviceAccount.name | string | `""` |  |
 | bigbangViolations.enabled | bool | `true` |  |
+| bigbangViolations.importDashboards | bool | `true` |  |
 | bigbangViolations.schedule | string | `"0 * * * *"` |  |
 | bigbangViolations.bigbangReleaseName | string | `"bigbang"` |  |
 | bigbangViolations.bigbangReleaseNamespace | string | `"bigbang"` |  |
@@ -141,6 +147,7 @@ helm install bbctl chart/
 | bigbangViolations.serviceAccount.annotations | object | `{}` |  |
 | bigbangViolations.serviceAccount.name | string | `""` |  |
 | bigbangPreflight.enabled | bool | `true` |  |
+| bigbangPreflight.importDashboards | bool | `true` |  |
 | bigbangPreflight.schedule | string | `"0 * * * *"` |  |
 | bigbangPreflight.bigbangReleaseName | string | `"bigbang"` |  |
 | bigbangPreflight.bigbangReleaseNamespace | string | `"bigbang"` |  |
@@ -151,6 +158,7 @@ helm install bbctl chart/
 | bigbangPreflight.serviceAccount.annotations | object | `{}` |  |
 | bigbangPreflight.serviceAccount.name | string | `""` |  |
 | bigbangPolicy.enabled | bool | `true` |  |
+| bigbangPolicy.importDashboards | bool | `true` |  |
 | bigbangPolicy.policyEnforcer | string | `"kyverno"` |  |
 | bigbangPolicy.schedule | string | `"0 * * * *"` |  |
 | bigbangPolicy.bigbangReleaseName | string | `"bigbang"` |  |
