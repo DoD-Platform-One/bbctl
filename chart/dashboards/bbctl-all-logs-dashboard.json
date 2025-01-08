@@ -444,7 +444,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "all-logs-dashboard",
+    "title": "bbctl-all-logs-dashboard",
     "uid": {},
     "version": {},
     "weekStart": ""

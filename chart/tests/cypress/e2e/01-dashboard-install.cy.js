@@ -16,12 +16,12 @@ before(function () {
   describe('BBCTL Dashboard Testing', function () {
     it('Test for Logs Dashboard', function () {
       let dashboards = [
-        "all-logs-dashboard",
-        "policies-dashboard",
-        "preflight-dashboard",
-        "status-dashboard",
-        "version-dashboard",
-        "violations-dashboard"
+        "bbctl-all-logs-dashboard",
+        "bbctl-policies-dashboard",
+        "bbctl-preflight-dashboard",
+        "bbctl-status-dashboard",
+        "bbctl-version-dashboard",
+        "bbctl-violations-dashboard"
       ]
       cy.visit(`${Cypress.env('grafana_url')}/dashboards`);
       cy.wait(1000);
