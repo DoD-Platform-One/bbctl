@@ -544,7 +544,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "policies-dashboard",
+    "title": "bbctl-policies-dashboard",
     "uid": "",
     "version": {},
     "weekStart": ""

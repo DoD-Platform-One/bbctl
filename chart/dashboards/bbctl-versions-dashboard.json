@@ -27,7 +27,7 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
-      "description": "All status of deployments logs",
+      "description": "All versions and update checks of existing cluster images",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -56,8 +56,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
         "y": 0
       },
@@ -73,15 +73,9 @@
           ],
           "show": false
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": false,
-            "displayName": "Found bigbang release version 2.40.0 status: deployed\n]"
-          }
-        ]
+        "showHeader": true
       },
-      "pluginVersion": "11.3.1",
+      "pluginVersion": "11.2.2",
       "targets": [
         {
           "datasource": {
@@ -89,13 +83,13 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bigbangStatus=\"statuses[0].output\", podStatus=\"statuses[1].output\", statefulsetStatus=\"statuses[2].output\", kubernetesStatus=\"statuses[3].output\", daemonsetStatus=\"statuses[4].output\", fluxhelmreleaseStatus=\"statuses[5].output\", fluxgitStatus=\"statuses[6].output\", fluxkustomizeStatus=\"statuses[7].output\"",
+          "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable`",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Status Logs",
+      "title": "Versions Logs",
       "transformations": [
         {
           "id": "extractFields",
@@ -103,7 +97,7 @@
             "format": "auto",
             "keepTime": true,
             "replace": true,
-            "source": "labels"
+            "source": "Line"
           }
         },
         {
@@ -113,25 +107,6 @@
             "timeField": "Time",
             "timezone": "browser",
             "useTimezone": true
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "byVariable": false,
-            "include": {
-              "names": [
-                "Time",
-                "bigbangStatus",
-                "daemonsetStatus",
-                "fluxgitStatus",
-                "fluxkustomizeStatus",
-                "kubernetesStatus",
-                "podStatus",
-                "statefulsetStatus",
-                "fluxhelmreleaseStatus"
-              ]
-            }
           }
         }
       ],
@@ -143,7 +118,7 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
-      "description": "All status of deployments visualized",
+      "description": "bbctl versions -U -A",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -156,44 +131,39 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
-            "lineWidth": 0,
-            "spanNulls": false
+            "lineWidth": 1
           },
           "fieldMinMax": false,
           "mappings": [
             {
               "options": {
-                "All": {
-                  "color": "semi-dark-green",
+                "match": "null+nan",
+                "result": {
+                  "color": "dark-yellow",
                   "index": 0,
-                  "text": "Status: healthy"
-                },
-                "Found": {
-                  "color": "semi-dark-green",
-                  "index": 1,
-                  "text": "Status: healthy"
-                },
-                "No": {
-                  "color": "semi-dark-red",
-                  "index": 2,
-                  "text": "Status: unhealthy"
-                },
-                "There": {
-                  "color": "semi-dark-red",
-                  "index": 3,
-                  "text": "Status: unhealthy"
+                  "text": "error"
                 }
               },
-              "type": "value"
+              "type": "special"
             },
             {
               "options": {
-                "match": "null+nan",
+                "match": "true",
                 "result": {
-                  "color": "semi-dark-yellow",
-                  "index": 4,
-                  "text": "Status: missing"
+                  "color": "semi-dark-red",
+                  "index": 1,
+                  "text": "true"
+                }
+              },
+              "type": "special"
+            },
+            {
+              "options": {
+                "match": "false",
+                "result": {
+                  "color": "semi-dark-green",
+                  "index": 2,
+                  "text": "false"
                 }
               },
               "type": "special"
@@ -212,28 +182,27 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
-        "y": 10
+        "y": 8
       },
       "id": 1,
       "options": {
-        "alignValue": "center",
+        "colWidth": 0.9,
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
-        "mergeValues": false,
         "rowHeight": 0.9,
-        "showValue": "never",
+        "showValue": "always",
         "tooltip": {
           "mode": "single",
           "sort": "none"
         }
       },
-      "pluginVersion": "11.3.1",
+      "pluginVersion": "11.2.2",
       "targets": [
         {
           "datasource": {
@@ -241,12 +210,12 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bbStatus=\"statuses[0].output[0]\", podStatus=\"statuses[1].output[0]\", statefulsetStatus=\"statuses[2].output[0]\", k8sStatus=\"statuses[3].output[0]\", k8sdaemonsetStatus=\"statuses[4].output[0]\", fluxhrStatus=\"statuses[5].output[0]\", fluxgitStatus=\"statuses[6].output[0]\", fluxkustomizeStatus=\"statuses[7].output[0]\" | line_format `\"Big Bang Status\": {{ .bbStatus }}, \"Pod Status\": {{ .podStatus }}, \"StatefulSet Status\": {{ .statefulsetStatus }}, \"Kubernetes Status\": {{ .k8sStatus }}, \"Kubernetes DaemonSet Status\": {{ .k8sdaemonsetStatus }}, \"Flux Helm Release Status\": {{ .fluxhrStatus }}, \"Flux Git Status\": {{ .fluxgitStatus }}, \"Flux Kustomize Status\": {{ .fluxkustomizeStatus }}`",
+          "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable` | json auth=\"authservice.updateAvailable\", bb=\"bigbang.updateAvailable\", graf=\"grafana.updateAvailable\", ist=\"istio.updateAvailable\", istop=`[\"istio-operator\"].updateAvailable`, kia=\"kiali.updateAvailable\", kyv=\"kyverno.updateAvailable\", kyvpo=`[\"kyverno-policies\"].updateAvailable`, kyvre=`[\"kyverno-reporter\"].updateAvailable`, lok=\"loki.updateAvailable\", minop=`[\"minio-operator\"].updateAvailable`, mon=\"monitoring.updateAvailable\", neu=\"neuvector.updateAvailable\", prom=\"promtail.updateAvailable\", temp=\"tempo.updateAvailable\" | line_format `\"authservice\": {{ .auth}}, \"bigbang\": {{ .bb }}, \"grafana\": {{ .graf }}, \"istio\": {{ .ist }}, \"istio-operator\": {{ .istop }}, \"kiali\": {{ .kia }}, \"kyverno\": {{ .kyv }}, \"kyverno-policies\": {{ .kyvpo }}, \"kyverno-reporter\": {{ .kyvre }}, \"loki\": {{ .lok }}, \"minio-operator\": {{ .minop }}, \"monitoring\": {{ .mon }}, \"neuvector\": {{ .neu }}, \"promtail\": {{ .prom }}, \"tempo\": {{ .temp }}`",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Cluster Status",
+      "title": "Update Available",
       "transformations": [
         {
           "id": "extractFields",
@@ -256,32 +225,13 @@
             "replace": true,
             "source": "Line"
           }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "names": [
-                "Time",
-                "Big Bang Status",
-                "Pod Status",
-                "StatefulSet Status",
-                "Kubernetes Status",
-                "Kubernetes DaemonSet Status",
-                "Flux Helm Release Status",
-                "Flux Git Status",
-                "Flux Kustomize Status"
-              ]
-            }
-          }
         }
       ],
-      "type": "state-timeline"
+      "type": "status-history"
     }
   ],
-  "preload": false,
   "refresh": "",
-  "schemaVersion": 40,
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": []
@@ -292,7 +242,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "status-dashboard",
+  "title": "bbctl-version-dashboard",
   "uid": {},
   "version": {},
   "weekStart": ""

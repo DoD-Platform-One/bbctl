@@ -224,7 +224,7 @@
     },
     "timepicker": {},
     "timezone": "browser",
-    "title": "preflight-dashboard",
+    "title": "bbctl-preflight-dashboard",
     "uid": "",
     "version": 1,
     "weekStart": ""

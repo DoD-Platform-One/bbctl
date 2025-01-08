@@ -307,7 +307,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "violations-dashboard",
+  "title": "bbctl-violations-dashboard",
   "uid": "",
   "version": 1,
   "weekStart": ""

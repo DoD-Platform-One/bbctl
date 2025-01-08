@@ -8,25 +8,25 @@ metadata:
      grafana_dashboard: "1"
 data:
   {{- if and .Values.bigbangUpdater.enabled .Values.bigbangUpdater.importDashboards }}
-  versions-dashboard.json: |-
-    {{ .Files.Get "dashboards/versions-dashboard.json" | nindent 4 }}
+  bbctl-versions-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-versions-dashboard.json" | nindent 4 }}
   {{- end }}
   {{- if and .Values.bigbangViolations.enabled .Values.bigbangViolations.importDashboards }}
-  violations-dashboard.json: |-
-    {{ .Files.Get "dashboards/violations-dashboard.json" | nindent 4 }}
+  bbctl-violations-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-violations-dashboard.json" | nindent 4 }}
   {{- end }}
   {{- if and .Values.bigbangPolicy.enabled .Values.bigbangPolicy.importDashboards }}
-  policies-dashboard.json: |-
-    {{ .Files.Get "dashboards/policies-dashboard.json" | nindent 4 }}
+  bbctl-policies-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-policies-dashboard.json" | nindent 4 }}
   {{- end }}
   {{- if and .Values.bigbangPreflight.enabled .Values.bigbangPreflight.importDashboards }}
-  preflight-dashboard.json: |-
-    {{ .Files.Get "dashboards/preflight-dashboard.json" | nindent 4 }}
+  bbctl-preflight-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-preflight-dashboard.json" | nindent 4 }}
   {{- end }}
   {{- if and .Values.bigbangStatus.enabled .Values.bigbangStatus.importDashboards }}
-  status-dashboard.json: |-
-    {{ .Files.Get "dashboards/status-dashboard.json" | nindent 4 }}
+  bbctl-status-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-status-dashboard.json" | nindent 4 }}
   {{- end }}
-  all-logs-dashboard.json: |-
-    {{ .Files.Get "dashboards/all-logs-dashboard.json" | nindent 4 }}
+  bbctl-all-logs-dashboard.json: |-
+    {{ .Files.Get "dashboards/bbctl-all-logs-dashboard.json" | nindent 4 }}
 {{- end -}}
