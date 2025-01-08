@@ -1,0 +1,27 @@
+{
+    "baseBranches": [
+        "main"
+    ],
+    "pinDigests": false,
+    "configWarningReuseIssue": false,
+    "dependencyDashboard": true,
+    "dependencyDashboardAutoclose": true,
+    "dependencyDashboardTitle": "Renovate: Upgrade BBCTL Dependencies",
+    "draftPR": true,
+    "labels": [
+        "bbctl",
+        "kind::maintenance",
+        "team::Tools & Automation"
+    ],
+    "packageRules": [
+        {
+            "matchUpdateTypes": ["patch", "minor", "major"],
+            "groupName": "Dependency updates",
+            "dependencyDashboardApproval": true
+        }
+    ],
+    "separateMajorMinor": false,
+    "postUpdateOptions": [
+        "gomodUpdateImportPaths"
+    ]
+}
