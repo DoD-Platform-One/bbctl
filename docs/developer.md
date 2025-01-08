@@ -236,7 +236,7 @@ packages:
     git:
       repo: https://repo1.dso.mil/big-bang/product/packages/bbctl.git
       path: chart
-      tag: 0.7.4-bb.0
+      tag: 0.7.6-bb.0
     #   tag: null
     #   branch: 197-implement-helm-chart
     flux:
