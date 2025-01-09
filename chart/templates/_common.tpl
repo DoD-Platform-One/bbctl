@@ -155,6 +155,10 @@ spec:
             - name: kube-config-volume
               mountPath: /home/bigbang/.kube/
               readOnly: true
+            {{- with .scope.Values.resources }}
+            resources:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
           volumes:
           - name: config-volume
             configMap:
@@ -177,10 +181,6 @@ spec:
           {{- end }}
           {{- with .scope.Values.tolerations }}
           tolerations:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .scope.Values.resources }}
-          resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 {{- end }}
