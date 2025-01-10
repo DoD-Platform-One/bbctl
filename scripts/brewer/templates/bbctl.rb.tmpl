@@ -18,6 +18,8 @@ class Bbctl < Formula
   depends_on "go" => :build
 
   def install
+    # CGO is not needed by bbctl and was causing issues on some linuxbrew installs
+    ENV["CGO_ENABLED" = "0"
     build_date = Time.now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # To see available flags and descriptions: `go build -ldflags="-help" ./main.go`
