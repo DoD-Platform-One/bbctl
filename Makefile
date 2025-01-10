@@ -1,3 +1,5 @@
+include homebrew.mk
+
 .PHONY: default all build clean coverage dup dstop dbuild fmt format golint install lint mocks release run test vet
 
 # If the first argument is "run"...

@@ -20,7 +20,10 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Run tests
 echo "Running tests in $PACKAGE_DIR..."
-go test ./... -v --coverprofile=cover.txt
+
+# build a list of test paths that omits messy internals like brewer
+SKIP_TEST_PATHS_REGEX='scripts/brewer'
+go test $(go list ./... | grep -v "${SKIP_TEST_PATHS_REGEX}") -v --coverprofile=cover.txt
 
 # Generate file-by-file coverage report
 go tool cover -html=cover.txt -o coverage.html

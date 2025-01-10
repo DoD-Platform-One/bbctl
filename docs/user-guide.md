@@ -2,7 +2,40 @@
 
 The `bbctl` command line interface (CLI) tool is designed to simplify development, deployment, auditing and troubleshooting of the Big Bang product in a kubernetes cluster. The `bbctl` repository is mirrored to PartyBus <https://code.il2.dso.mil> where a Mission DevOps pipeline is ran and a package is built and pushed back to <https://repo1.dso.mil>. The code has passed security scans and is eligible to receive a certificate to field(CTF).
 
-## Installation
+## Installing the latest `bbctl`
+
+### Homebrew package manager (Mac, Linux)
+
+1. You will need to have the `brew` command installed on your machine. [See their official docs for instructions](https://brew.sh/).
+
+2. Add Big Bang's `homebrew-tools-public` repository as a homebrew package source:
+
+```console
+❯ brew tap bigbang/tools-public https://repo1.dso.mil/big-bang/homebrew-tools-public.git
+==> Tapping bigbang/tools-public
+Cloning into '/opt/homebrew/Library/Taps/bigbang/homebrew-tools-public'...
+remote: Enumerating objects: 71, done.
+remote: Counting objects: 100% (7/7), done.
+remote: Compressing objects: 100% (7/7), done.
+remote: Total 71 (delta 1), reused 0 (delta 0), pack-reused 64 (from 1)
+Receiving objects: 100% (71/71), 11.68 KiB | 11.68 MiB/s, done.
+Resolving deltas: 100% (18/18), done.
+Tapped 1 formula (21 files, 24.3KB).
+```
+
+3. Install `bbctl` from the above source:
+
+```console
+❯ brew install bbctl
+==> Fetching bigbang/tools-public/bbctl
+==> Downloading https://repo1.dso.mil/big-bang/product/packages/bbctl/-/archive/0.7.6/bbctl-0.7.
+ #=O#-  #   #
+==> Installing bbctl from bigbang/tools-public
+==> go build -ldflags=-s -w -X static.buildDate=2025-01-10T14:34:31Z
+🍺  /opt/homebrew/Cellar/bbctl/0.7.6: 7 files, 91.6MB, built in 6 seconds
+```
+
+### Manual installation (Windows, Mac, Linux)
 
 1. Navigate to the [Package Registry Page](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/packages).
 1. Locate the most current package based on semantic versioning. Click on the package name.
