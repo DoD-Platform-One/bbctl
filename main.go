@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +10,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	pFlag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -20,6 +24,7 @@ import (
 	static "repo1.dso.mil/big-bang/product/packages/bbctl/static"
 	bbUtil "repo1.dso.mil/big-bang/product/packages/bbctl/util"
 	bbUtilPool "repo1.dso.mil/big-bang/product/packages/bbctl/util/pool"
+	"repo1.dso.mil/big-bang/product/packages/bbctl/util/update"
 )
 
 // main - main exectable function for bbctl
@@ -54,6 +59,9 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 	flags.String("big-bang-repo",
 		"",
 		"Location on the filesystem where the Big Bang product repo is checked out")
+	flags.Bool("skip-update-check", // just here for documentation since cobra is a control-freak
+		false,
+		"If true, skip checking for updates")
 
 	// setup the init logger
 	streams, err := factory.GetIOStream()
@@ -72,6 +80,8 @@ func injectableMain(factory bbUtil.Factory, flags *pFlag.FlagSet) {
 		initLogger.Error(fmt.Sprintf("error getting viper: %v", err.Error()))
 		os.Exit(1)
 	}
+
+	checkForUpdates(initLogger)
 
 	cobra.OnInitialize(func() {
 		// automatically read in environment variables that match supported flags
@@ -239,7 +249,7 @@ func setupSlog(
 			initLogger.Error("Log file not defined")
 			return nil, errors.New("log file not defined")
 		}
-		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(logFileString, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o666)
 		if err != nil {
 			initLogger.Error(fmt.Sprintf("error opening log file: %v", err.Error()))
 			return nil, err
@@ -262,7 +272,7 @@ func setupSlog(
 		writer = streams.ErrOut
 		initLogger.Warn("No log output defined, defaulting to stderr")
 	default:
-		var err = fmt.Errorf("invalid log output: %v", logOutputString)
+		err := fmt.Errorf("invalid log output: %v", logOutputString)
 		initLogger.Error(err.Error())
 		return nil, err
 	}
@@ -278,11 +288,65 @@ func setupSlog(
 		logger = slog.New(slog.NewTextHandler(writer, &slogHandlerOptions))
 		initLogger.Warn("No log format defined, defaulting to text")
 	default:
-		var err = fmt.Errorf("invalid log format: %v", logFormatString)
+		err := fmt.Errorf("invalid log format: %v", logFormatString)
 		initLogger.Error(err.Error())
 		return nil, err
 	}
 
 	slog.SetDefault(logger)
 	return logger, nil
+}
+
+func checkForUpdates(logger *slog.Logger) {
+	if slices.Contains(os.Args, "completion") {
+		return // don't check for updates when generating completion scripts
+	}
+	f := pFlag.NewFlagSet("bbctl", pFlag.ContinueOnError)
+	skipUpdateCheck := false
+	f.BoolVar(&skipUpdateCheck, "skip-update-check", false, "If true, skip checking for updates")
+	_ = f.Parse(os.Args[1:])
+	if os.Getenv("SKIP_UPDATE_CHECK") == "true" {
+		skipUpdateCheck = true
+	}
+
+	if skipUpdateCheck {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	skew, err := update.Check(ctx)
+	if err != nil {
+		logger.Warn(
+			"failed to check for updates",
+			slog.String("error", err.Error()),
+		)
+	}
+
+	if skew.IsUpToDate() {
+		return
+	}
+
+	ninetyDays := 90 * 24 * time.Hour
+
+	color := lipgloss.Color("#FFCC66") // yellowish
+	if skew.HasMajorUpdate() || skew.MoreThan(ninetyDays) {
+		color = lipgloss.Color("#FF6666") // reddish
+	}
+
+	msg := lipgloss.NewStyle().
+		Foreground(color).
+		Bold(true).
+		Render("UPGRADE AVAILABLE")
+
+	//nolint:forbidigo // We need to print directly and bypass the logger
+	switch {
+	case skew.MoreThan(ninetyDays):
+		fmt.Printf("%s: Your version of bbctl is more than 90 days old. Version %s is available. You are strongly encouraged to upgrade.\n\n", msg, skew.LatestVersion())
+	case skew.HasMajorUpdate():
+		fmt.Printf("%s: Version %s is available. You are strongly encouraged to upgrade.\n\n", msg, skew.LatestVersion())
+	case skew.HasMinorUpdate(), skew.HasPatchUpdate():
+		fmt.Printf("%s: Version %s is available. Consider upgrading.\n\n", msg, skew.LatestVersion())
+	}
 }
