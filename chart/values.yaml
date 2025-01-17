@@ -24,6 +24,9 @@ bigbang:
           key: protect
           value: keycloak
 
+bbtests:
+  enabled: false
+
 image:
   repository: "registry1.dso.mil/ironbank/big-bang/bbctl"
   pullPolicy: Always

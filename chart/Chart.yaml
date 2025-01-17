@@ -47,3 +47,7 @@ annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   bigbang.dev/upstreamReleaseNotesMarkdown: |
     There is no upstream for this chart.
+dependencies:
+  - name: gluon
+    version: "0.5.12"
+    repository: "oci://registry1.dso.mil/bigbang"

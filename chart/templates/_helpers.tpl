@@ -110,6 +110,7 @@ Create the config file
 {{- define "bbctl.config" -}}
 {{- if .Values.baseConfig }}
 {{ .Values.baseConfig | toYaml }}
+bbctl-version: {{ .Values.image.tag }}
 {{- else }}
 {}
 {{- end }}
