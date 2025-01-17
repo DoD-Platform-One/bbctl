@@ -21,7 +21,6 @@ import (
 	runtimeSchema "k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicFake "k8s.io/client-go/dynamic/fake"
 	fake "k8s.io/client-go/kubernetes/fake"
-	typedFake "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	k8sTesting "k8s.io/client-go/testing"
 )
 
@@ -899,7 +898,7 @@ func TestGetViolations(t *testing.T) {
 				factory.SetFail.GetK8sDynamicClientPrepFuncs = append(factory.SetFail.GetK8sDynamicClientPrepFuncs, &modFunc)
 
 				clientSetModFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					client.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("error in list events")
 					})
 				}
@@ -1059,7 +1058,7 @@ func TestListKyvernoViolations(t *testing.T) {
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					client.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("error in list events")
 					})
 				}
@@ -1214,7 +1213,7 @@ func TestListGkDenyViolations(t *testing.T) {
 
 			if test.errorOnListEvents {
 				modFunc := func(client *fake.Clientset) {
-					client.CoreV1().Events("").(*typedFake.FakeEvents).Fake.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					client.PrependReactor("list", "events", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("error in list events")
 					})
 				}

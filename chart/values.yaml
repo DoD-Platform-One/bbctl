@@ -33,7 +33,7 @@ image:
 yqImage:
   repository: "registry1.dso.mil/ironbank/opensource/yq/yq"
   pullPolicy: Always
-  tag: "4.44.3"
+  tag: "4.45.1"
 
 registryCredentials:
   registry: registry1.dso.mil

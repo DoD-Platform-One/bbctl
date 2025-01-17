@@ -1,7 +1,7 @@
 package gitlab
 
 import (
-	gitlab "github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 // ClientGetter is an interface for getting a GitLab client
