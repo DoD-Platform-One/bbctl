@@ -25,9 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fake "k8s.io/client-go/kubernetes/fake"
-	fakeTypedBatchV1 "k8s.io/client-go/kubernetes/typed/batch/v1/fake"
-	fakeTypedCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1/fake"
-	fakeTyped "k8s.io/client-go/kubernetes/typed/storage/v1/fake"
 	k8sTesting "k8s.io/client-go/testing"
 )
 
@@ -249,7 +246,7 @@ func TestCheckDefaultStorageClass(t *testing.T) {
 					return true, nil, errors.New("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.StorageV1().StorageClasses().(*fakeTyped.FakeStorageClasses).Fake.PrependReactor("list", "storageclasses", failFunc)
+					clientset.PrependReactor("list", "storageclasses", failFunc)
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			}
@@ -362,7 +359,7 @@ func TestCheckFluxController(t *testing.T) {
 					return true, nil, errors.New("testing error")
 				}
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Pods("flux-system").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", failFunc)
+					clientset.PrependReactor("list", "pods", failFunc)
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			}
@@ -866,20 +863,20 @@ func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 					return true, nil, errors.New("failed to create namespace")
 				}
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("create", "namespaces", failFunc)
+					clientset.PrependReactor("create", "namespaces", failFunc)
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			}
 			if test.failGetPod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("failed to get pod")
 					})
 				}
 				factory.SetFail.GetK8sClientsetPrepFuncs = append(factory.SetFail.GetK8sClientsetPrepFuncs, &modFunc)
 			} else if !test.failTimeoutPod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Pods("preflight-check").(*fakeTypedCoreV1.FakePods).Fake.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("list", "pods", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, &coreV1.PodList{
 							Items: []coreV1.Pod{
 								*podToFind,
@@ -896,7 +893,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 			}
 			if test.failDeleteNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("namespaces \"preflight-check\" not found")
 					})
 				}
@@ -904,7 +901,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 			}
 			if test.failTimeoutNamespace || test.failDeleteNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("create", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("create", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, k8sErrors.NewAlreadyExists(schema.GroupResource{Group: "", Resource: "namespaces"}, "preflight-check")
 					})
 				}
@@ -912,7 +909,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 			}
 			if test.failTimeoutNamespace {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.CoreV1().Namespaces().(*fakeTypedCoreV1.FakeNamespaces).Fake.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("delete", "namespaces", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, &coreV1.Namespace{}, nil
 					})
 				}
@@ -920,7 +917,7 @@ func TestCreateResourcesForCommandExecution(t *testing.T) { //nolint:maintidx
 			}
 			if test.failCreatePod {
 				modFunc := func(clientset *fake.Clientset) {
-					clientset.BatchV1().Jobs("preflight-check").(*fakeTypedBatchV1.FakeJobs).Fake.PrependReactor("create", "jobs", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
+					clientset.PrependReactor("create", "jobs", func(_ k8sTesting.Action) (bool, runtime.Object, error) {
 						return true, nil, errors.New("failed to create pod")
 					})
 				}

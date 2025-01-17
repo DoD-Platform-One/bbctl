@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xanzy/go-gitlab"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"golang.org/x/sync/errgroup"
 	"repo1.dso.mil/big-bang/product/packages/bbctl/static"
 )

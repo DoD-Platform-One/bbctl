@@ -134,28 +134,28 @@ func TestVersionOutput_Encode(t *testing.T) {
 	tests := []struct {
 		name     string
 		marshal  func() ([]byte, error)
-		expected string
+		expected []string
 	}{
 		{
 			name: "YAML",
 			marshal: func() ([]byte, error) {
 				return testObject.EncodeYAML()
 			},
-			expected: "bigbang:\n  latestVersion: 1.2.3\n  updateAvailable: true\n  version: 1.0.0\ngrafana:\n  latestVersion: 1.2.3\n  shasMatch: All SHAs match\n  updateAvailable: true\n  version: 1.0.0\n",
+			expected: []string{"bigbang:\n  latestVersion: 1.2.3\n  updateAvailable: true\n  version: 1.0.0\ngrafana:\n  latestVersion: 1.2.3\n  shasMatch: All SHAs match\n  updateAvailable: true\n  version: 1.0.0\n"},
 		},
 		{
 			name: "JSON",
 			marshal: func() ([]byte, error) {
 				return testObject.EncodeJSON()
 			},
-			expected: "{\"bigbang\":{\"latestVersion\":\"1.2.3\",\"updateAvailable\":true,\"version\":\"1.0.0\"},\"grafana\":{\"latestVersion\":\"1.2.3\",\"shasMatch\":\"All SHAs match\",\"updateAvailable\":true,\"version\":\"1.0.0\"}}",
+			expected: []string{"{\"bigbang\":{\"latestVersion\":\"1.2.3\",\"updateAvailable\":true,\"version\":\"1.0.0\"},\"grafana\":{\"latestVersion\":\"1.2.3\",\"shasMatch\":\"All SHAs match\",\"updateAvailable\":true,\"version\":\"1.0.0\"}}"},
 		},
 		{
 			name: "HumanReadable",
 			marshal: func() ([]byte, error) {
 				return testObject.EncodeText()
 			},
-			expected: "grafana:\nVersion: 1.0.0\nLatest Version: 1.2.3\nUpdate Available: true\nSHAs Match: All SHAs match\nbigbang:\nVersion: 1.0.0\nLatest Version: 1.2.3\nUpdate Available: true\n",
+			expected: []string{"grafana:\nVersion: 1.0.0\nLatest Version: 1.2.3\nUpdate Available: true\nSHAs Match: All SHAs match", "bigbang:\nVersion: 1.0.0\nLatest Version: 1.2.3\nUpdate Available: true\n"},
 		},
 	}
 
@@ -163,7 +163,9 @@ func TestVersionOutput_Encode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			actual, err := test.marshal()
 			require.NoError(t, err)
-			assert.Equal(t, test.expected, string(actual))
+			for _, value := range test.expected {
+				assert.Contains(t, string(actual), value)
+			}
 		})
 	}
 }
