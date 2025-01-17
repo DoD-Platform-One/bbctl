@@ -69,6 +69,7 @@ helm install bbctl chart/
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | bigbang | object | `{"addons":{"authservice":{"enabled":false,"values":{"selector":{"key":"protect","value":"keycloak"}}}},"domain":"bigbang.dev","istio":{"enabled":false,"hardened":{"enabled":false}},"monitoring":{"enabled":false},"networkPolicies":{"controlPlaneCidr":"0.0.0.0/0","controlPlaneNode":null,"enabled":false},"openshift":false}` | Passdown values from Big Bang |
+| bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
 | image.tag | string | `"0.7.6"` |  |
@@ -91,7 +92,10 @@ helm install bbctl chart/
 | securityContext.runAsNonRoot | bool | `true` |  |
 | securityContext.runAsUser | int | `1000` |  |
 | securityContext.runAsGroup | int | `1000` |  |
-| resources | object | `{}` |  |
+| resources.requests.cpu | string | `"100m"` |  |
+| resources.requests.memory | string | `"128Mi"` |  |
+| resources.limits.cpu | string | `"100m"` |  |
+| resources.limits.memory | string | `"128Mi"` |  |
 | nodeSelector | object | `{}` |  |
 | tolerations | list | `[]` |  |
 | affinity | object | `{}` |  |

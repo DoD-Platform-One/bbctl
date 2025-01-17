@@ -6,5 +6,6 @@ bbtests:
   cypress:
     disableDefaultTests: false
     envs:
+      cypress_grafana_url: "https://grafana.dev.bigbang.mil"
       cypress_grafana_username: "admin"
       cypress_grafana_password: "prom-operator"
