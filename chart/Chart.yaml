@@ -7,19 +7,13 @@ description: |
 
   `bbctl` is a command line interface (CLI) tool to simplify development, deployment, auditing, and maintaining the deployment of Big Bang a kubernetes cluster.
 
-  ## User Guide
-
-  Follow the [user guide](/docs/user-guide.md) for how to install and use the `bbctl` tool.
+  This repository is for the `bbctl` chart. For `bbctl` application, development please refer to: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
 
   ## Developer Documentation
 
   Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
   ## `bbctl` Usage and Design Priorities
-
-  ### Automated usage over interactive usage
-
-  `bbctl` is primarily intended to be piped to/from other tools and shell scripts. Interactive use is a future possibility.
 
   ### Multiple execution contexts
 
@@ -47,6 +41,7 @@ annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   bigbang.dev/upstreamReleaseNotesMarkdown: |
     There is no upstream for this chart.
+    Application development for `bbctl` is done in this repository: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
 dependencies:
   - name: gluon
     version: "0.5.12"

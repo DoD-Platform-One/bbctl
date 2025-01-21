@@ -9,19 +9,13 @@ bbctl as a helm chart for partial automated management of Big Bang.
 
 `bbctl` is a command line interface (CLI) tool to simplify development, deployment, auditing, and maintaining the deployment of Big Bang a kubernetes cluster.
 
-## User Guide
-
-Follow the [user guide](/docs/user-guide.md) for how to install and use the `bbctl` tool.
+This repository is for the `bbctl` chart. For `bbctl` application, development please refer to: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
 
 ## Developer Documentation
 
 Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
 ## `bbctl` Usage and Design Priorities
-
-### Automated usage over interactive usage
-
-`bbctl` is primarily intended to be piped to/from other tools and shell scripts. Interactive use is a future possibility.
 
 ### Multiple execution contexts
 
@@ -32,13 +26,14 @@ Help Contribute! See the [developer documentation](/docs/developer.md). The CLI 
 `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 
 ## Upstream References
-- <https://repo1.dso.mil/big-bang/product/packages/bbctl>
 
-* <https://repo1.dso.mil/big-bang/product/packages/bbctl>
+- <https://repo1.dso.mil/big-bang/product/packages/bbctl>
+- <https://repo1.dso.mil/big-bang/product/packages/bbctl>
 
 ## Upstream Release Notes
 
 There is no upstream for this chart.
+Application development for `bbctl` is done in this repository: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
 
 ## Learn More
 
@@ -75,7 +70,7 @@ helm install bbctl chart/
 | image.tag | string | `"0.7.6"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
-| yqImage.tag | string | `"4.44.3"` |  |
+| yqImage.tag | string | `"4.45.1"` |  |
 | registryCredentials.registry | string | `"registry1.dso.mil"` |  |
 | registryCredentials.username | string | `""` |  |
 | registryCredentials.password | string | `""` |  |
