@@ -26,10 +26,12 @@ release:
 # Multi-environment build settings
 builds:
   - ldflags:
+      # - -s # Strip symbols
+      - -w # Strip debug info
       - -X repo1.dso.mil/big-bang/product/packages/bbctl/static.buildDate={{.Date}}
-      # still needs testing to see if this results in what we want
     env:
       - CGO_ENABLED=0
+      - GOGC=50
     goos:
       - linux
       - windows
@@ -37,6 +39,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
 
 # Define archive release artifacts
 archives:
