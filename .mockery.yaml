@@ -1,9 +1,0 @@
-# Generate type-safe expect methods https://vektra.github.io/mockery/latest/features/#expecter-structs
-with-expecter: true
-
-# Define packages to generate mocks from here
-packages:
-  repo1.dso.mil/big-bang/product/packages/bbctl/static:
-    config:
-    interfaces:
-      ConstantsClient:
