@@ -3,6 +3,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [0.7.6-bb.2] - 2025-01-29
+
+### Changed
+
+- cypress - major - ^13.0.0 -> ^14.0.0
+- gluon - patch - 0.5.12 -> 0.5.14
+- Updated renovate.json to work for independent chart repo structure
+
 ## [0.7.6-bb.1] - 2025-01-06
 
 ### Changed
