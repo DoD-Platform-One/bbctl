@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 0.7.6-bb.2](https://img.shields.io/badge/Version-0.7.6--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.7.6](https://img.shields.io/badge/AppVersion-0.7.6-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 1.0.0-bb.0](https://img.shields.io/badge/Version-1.0.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -67,7 +67,7 @@ helm install bbctl chart/
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `"0.7.6"` |  |
+| image.tag | string | `"1.0.0"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
 | yqImage.tag | string | `"4.45.1"` |  |
