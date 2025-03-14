@@ -1,4 +1,3 @@
-{{- if .Values.bigbang.monitoring.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,4 +28,3 @@ data:
   {{- end }}
   bbctl-all-logs-dashboard.json: |-
     {{ .Files.Get "dashboards/bbctl-all-logs-dashboard.json" | nindent 4 }}
-{{- end -}}
