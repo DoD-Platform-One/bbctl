@@ -4,6 +4,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.0.0-bb.1] - 2025-03-13
+
+### Changed
+
+- Added Istio custom service entry template to work with Istio hardening configurations
+- Updated structure of Big Bang values in values.yaml
+
 ## [1.0.0-bb.0] - 2025-03-04
 
 ### Changed

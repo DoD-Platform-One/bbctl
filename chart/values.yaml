@@ -3,26 +3,39 @@
 # Declare variables to be passed into your templates.
 
 # -- Passdown values from Big Bang
-bigbang:
-  domain: bigbang.dev
-  openshift: false
-  networkPolicies:
+# These values are for the BigBang overrides
+domain: dev.bigbang.mil
+
+networkPolicies:
+  enabled: false
+  controlPlaneCidr: 0.0.0.0/0
+  ingressLabels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  additionalPolicies: []
+
+istio:
+  enabled: false
+  hardened:
     enabled: false
-    controlPlaneCidr: 0.0.0.0/0
-    controlPlaneNode:
-  istio:
-    enabled: false
-    hardened:
-      enabled: false
-  monitoring:
-    enabled: false
-  addons:
-    authservice:
-      enabled: false
-      values:
-        selector:
-          key: protect
-          value: keycloak
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+    customServiceEntries:
+      - name: "external-service-entries-bbctl"
+        enabled: true
+        spec:
+          hosts:
+            - 'repo1.dso.mil'
+          location: MESH_EXTERNAL
+          ports:
+            - number: 443
+              protocol: TLS
+              name: https
+          resolution: DNS
+    customAuthorizationPolicies: []
+    clusterWideHardenedEnabled: false
+
+monitoring:
+  enabled: false
 
 bbtests:
   enabled: false

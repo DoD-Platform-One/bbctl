@@ -92,8 +92,8 @@ Create the service account annotations
 Create the pod annotations
 */}}
 {{- define "bbctl.pod-annotations" -}}
-{{- if or .Values.podAnnotations .Values.bigbang.istio.enabled }}
-{{- if .Values.bigbang.istio.enabled }}
+{{- if or .Values.podAnnotations .Values.istio.enabled }}
+{{- if .Values.istio.enabled }}
 sidecar.istio.io/inject: "true"
 {{- end }}
 {{- if .Values.podAnnotations }}
