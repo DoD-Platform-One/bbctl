@@ -4,6 +4,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.0.0-bb.2] - 2025-03-20
+
+### Changed
+
+- Added Istio custom authorization policies template to work with Istio hardening configurations
+- Updated README to include the new istio field value descriptions
+
 ## [1.0.0-bb.1] - 2025-03-13
 
 ### Changed

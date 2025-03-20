@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 1.0.0-bb.0](https://img.shields.io/badge/Version-1.0.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 1.0.0-bb.2](https://img.shields.io/badge/Version-1.0.0--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -63,7 +63,26 @@ helm install bbctl chart/
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| bigbang | object | `{"addons":{"authservice":{"enabled":false,"values":{"selector":{"key":"protect","value":"keycloak"}}}},"domain":"bigbang.dev","istio":{"enabled":false,"hardened":{"enabled":false}},"monitoring":{"enabled":false},"networkPolicies":{"controlPlaneCidr":"0.0.0.0/0","controlPlaneNode":null,"enabled":false},"openshift":false}` | Passdown values from Big Bang |
+| domain | string | `"dev.bigbang.mil"` | Passdown values from Big Bang These values are for the BigBang overrides |
+| networkPolicies.enabled | bool | `false` |  |
+| networkPolicies.controlPlaneCidr | string | `"0.0.0.0/0"` |  |
+| networkPolicies.ingressLabels.app | string | `"istio-ingressgateway"` |  |
+| networkPolicies.ingressLabels.istio | string | `"ingressgateway"` |  |
+| networkPolicies.additionalPolicies | list | `[]` |  |
+| istio.enabled | bool | `false` |  |
+| istio.hardened.enabled | bool | `false` |  |
+| istio.hardened.outboundTrafficPolicyMode | string | `"REGISTRY_ONLY"` |  |
+| istio.hardened.customServiceEntries[0].name | string | `"external-service-entries-bbctl"` |  |
+| istio.hardened.customServiceEntries[0].enabled | bool | `true` |  |
+| istio.hardened.customServiceEntries[0].spec.hosts[0] | string | `"repo1.dso.mil"` |  |
+| istio.hardened.customServiceEntries[0].spec.location | string | `"MESH_EXTERNAL"` |  |
+| istio.hardened.customServiceEntries[0].spec.ports[0].number | int | `443` |  |
+| istio.hardened.customServiceEntries[0].spec.ports[0].protocol | string | `"TLS"` |  |
+| istio.hardened.customServiceEntries[0].spec.ports[0].name | string | `"https"` |  |
+| istio.hardened.customServiceEntries[0].spec.resolution | string | `"DNS"` |  |
+| istio.hardened.customAuthorizationPolicies | list | `[]` |  |
+| istio.hardened.clusterWideHardenedEnabled | bool | `false` |  |
+| monitoring.enabled | bool | `false` |  |
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |

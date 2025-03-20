@@ -24,7 +24,7 @@ description: |
   `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
-version: 1.0.0-bb.1
+version: 1.0.0-bb.2
 # This is the version number of the application being deployed.
 appVersion: "1.0.0"
 keywords:
