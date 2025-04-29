@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.0.0-bb.5] (2025-04-22)
+
+### Changed
+
+- Added "bigbang.dev/applicationVersions" annotation to the chart
+
 ## [1.0.0-bb.4] (2025-04-10)
 
 ### Changed
