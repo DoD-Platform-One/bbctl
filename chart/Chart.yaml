@@ -24,7 +24,7 @@ description: |
   `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
-version: 1.0.0-bb.6
+version: 1.0.0-bb.7
 # This is the version number of the application being deployed.
 appVersion: "1.2.0"
 keywords:
@@ -40,10 +40,17 @@ maintainers:
 annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   bigbang.dev/applicationVersions: |
-    - bbctl: 1.0.0
+    - bbctl: 1.2.0
   bigbang.dev/upstreamReleaseNotesMarkdown: |
     There is no upstream for this chart.
     Application development for `bbctl` is done in this repository: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
+  helm.sh/images: |
+    - name: bbctl
+      image: registry1.dso.mil/ironbank/big-bang/bbctl:1.2.0
+    - name: yq
+      image: registry1.dso.mil/ironbank/opensource/yq/yq:4.45.1
+    - name: ubi8-minimal
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal:8.4
 dependencies:
   - name: gluon
     version: "0.5.15"

@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.0.0-bb.7] (2025-05-13)
+
+### Changed
+- Added helm images annotation to Chart.yaml
+- Updated resource limits to reduce OOM issues
+
 ## [1.0.0-bb.6] (2025-05-07)
 
 ### Changed
