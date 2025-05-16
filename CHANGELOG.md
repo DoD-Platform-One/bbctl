@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.0.0-bb.8] (2025-05-15)
+### Changed
+- gluon updated from 0.5.15 to 0.5.19
+- updated registry1.dso.mil/ironbank/opensource/yq/yq (source) 4.45.1 -> 4.45.4
+- updated registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal (source) 8.4 -> 8.10
+
 ## [1.0.0-bb.7] (2025-05-13)
 
 ### Changed
