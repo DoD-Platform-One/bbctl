@@ -25,7 +25,7 @@ before(function () {
       ]
       cy.visit(`${Cypress.env('grafana_url')}/dashboards`);
       cy.wait(1000);
-      cy.get('input[placeholder="Search for dashboards and folders"').type('-');
+      cy.get('input[placeholder="Search for dashboards and folders"]').type('-');
       cy.wait(500);
       for (const title of dashboards) {
         cy.get('a').contains(title);
