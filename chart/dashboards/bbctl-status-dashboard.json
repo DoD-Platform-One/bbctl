@@ -89,7 +89,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bigbangStatus=\"statuses[0].output\", podStatus=\"statuses[1].output\", statefulsetStatus=\"statuses[2].output\", kubernetesStatus=\"statuses[3].output\", daemonsetStatus=\"statuses[4].output\", fluxhelmreleaseStatus=\"statuses[5].output\", fluxgitStatus=\"statuses[6].output\", fluxkustomizeStatus=\"statuses[7].output\"",
+          "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bigbangStatus=\"statuses[0].output\", podStatus=\"statuses[1].output\", statefulsetStatus=\"statuses[2].output\", kubernetesStatus=\"statuses[3].output\", daemonsetStatus=\"statuses[4].output\", fluxhelmreleaseStatus=\"statuses[5].output\", fluxgitStatus=\"statuses[6].output\", fluxkustomizeStatus=\"statuses[7].output\"",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -241,7 +241,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bbStatus=\"statuses[0].output[0]\", podStatus=\"statuses[1].output[0]\", statefulsetStatus=\"statuses[2].output[0]\", k8sStatus=\"statuses[3].output[0]\", k8sdaemonsetStatus=\"statuses[4].output[0]\", fluxhrStatus=\"statuses[5].output[0]\", fluxgitStatus=\"statuses[6].output[0]\", fluxkustomizeStatus=\"statuses[7].output[0]\" | line_format `\"Big Bang Status\": {{ .bbStatus }}, \"Pod Status\": {{ .podStatus }}, \"StatefulSet Status\": {{ .statefulsetStatus }}, \"Kubernetes Status\": {{ .k8sStatus }}, \"Kubernetes DaemonSet Status\": {{ .k8sdaemonsetStatus }}, \"Flux Helm Release Status\": {{ .fluxhrStatus }}, \"Flux Git Status\": {{ .fluxgitStatus }}, \"Flux Kustomize Status\": {{ .fluxkustomizeStatus }}`",
+          "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-status\", container=\"bbctl\"} | json bbStatus=\"statuses[0].output[0]\", podStatus=\"statuses[1].output[0]\", statefulsetStatus=\"statuses[2].output[0]\", k8sStatus=\"statuses[3].output[0]\", k8sdaemonsetStatus=\"statuses[4].output[0]\", fluxhrStatus=\"statuses[5].output[0]\", fluxgitStatus=\"statuses[6].output[0]\", fluxkustomizeStatus=\"statuses[7].output[0]\" | line_format `\"Big Bang Status\": {{ .bbStatus }}, \"Pod Status\": {{ .podStatus }}, \"StatefulSet Status\": {{ .statefulsetStatus }}, \"Kubernetes Status\": {{ .k8sStatus }}, \"Kubernetes DaemonSet Status\": {{ .k8sdaemonsetStatus }}, \"Flux Helm Release Status\": {{ .fluxhrStatus }}, \"Flux Git Status\": {{ .fluxgitStatus }}, \"Flux Kustomize Status\": {{ .fluxkustomizeStatus }}`",
           "queryType": "range",
           "refId": "A"
         }

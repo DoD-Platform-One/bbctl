@@ -83,7 +83,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable`",
+          "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable`",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -210,7 +210,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable` | json auth=\"authservice.updateAvailable\", bb=\"bigbang.updateAvailable\", graf=\"grafana.updateAvailable\", ist=\"istio.updateAvailable\", istop=`[\"istio-operator\"].updateAvailable`, kia=\"kiali.updateAvailable\", kyv=\"kyverno.updateAvailable\", kyvpo=`[\"kyverno-policies\"].updateAvailable`, kyvre=`[\"kyverno-reporter\"].updateAvailable`, lok=\"loki.updateAvailable\", minop=`[\"minio-operator\"].updateAvailable`, mon=\"monitoring.updateAvailable\", neu=\"neuvector.updateAvailable\", prom=\"promtail.updateAvailable\", temp=\"tempo.updateAvailable\" | line_format `\"authservice\": {{ .auth}}, \"bigbang\": {{ .bb }}, \"grafana\": {{ .graf }}, \"istio\": {{ .ist }}, \"istio-operator\": {{ .istop }}, \"kiali\": {{ .kia }}, \"kyverno\": {{ .kyv }}, \"kyverno-policies\": {{ .kyvpo }}, \"kyverno-reporter\": {{ .kyvre }}, \"loki\": {{ .lok }}, \"minio-operator\": {{ .minop }}, \"monitoring\": {{ .mon }}, \"neuvector\": {{ .neu }}, \"promtail\": {{ .prom }}, \"tempo\": {{ .temp }}`",
+          "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-updater\", container=\"bbctl\"} |= `updateAvailable` | json auth=\"authservice.updateAvailable\", bb=\"bigbang.updateAvailable\", graf=\"grafana.updateAvailable\", ist=\"istio.updateAvailable\", istop=`[\"istio-operator\"].updateAvailable`, kia=\"kiali.updateAvailable\", kyv=\"kyverno.updateAvailable\", kyvpo=`[\"kyverno-policies\"].updateAvailable`, kyvre=`[\"kyverno-reporter\"].updateAvailable`, lok=\"loki.updateAvailable\", minop=`[\"minio-operator\"].updateAvailable`, mon=\"monitoring.updateAvailable\", neu=\"neuvector.updateAvailable\", prom=\"promtail.updateAvailable\", temp=\"tempo.updateAvailable\" | line_format `\"authservice\": {{ .auth}}, \"bigbang\": {{ .bb }}, \"grafana\": {{ .graf }}, \"istio\": {{ .ist }}, \"istio-operator\": {{ .istop }}, \"kiali\": {{ .kia }}, \"kyverno\": {{ .kyv }}, \"kyverno-policies\": {{ .kyvpo }}, \"kyverno-reporter\": {{ .kyvre }}, \"loki\": {{ .lok }}, \"minio-operator\": {{ .minop }}, \"monitoring\": {{ .mon }}, \"neuvector\": {{ .neu }}, \"promtail\": {{ .prom }}, \"tempo\": {{ .temp }}`",
           "queryType": "range",
           "refId": "A"
         }

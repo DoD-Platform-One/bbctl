@@ -83,7 +83,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-updater\", container=\"bbctl\"}",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-updater\", container=\"bbctl\"}",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"
@@ -165,7 +165,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-policy\", container=\"bbctl\"}",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-policy\", container=\"bbctl\"}",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"
@@ -247,7 +247,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-preflight\", container=\"bbctl\"}",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-preflight\", container=\"bbctl\"}",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"
@@ -329,7 +329,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-status\", container=\"bbctl\"}",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-status\", container=\"bbctl\"}",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"
@@ -411,7 +411,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-violations\", container=\"bbctl\"}",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-violations\", container=\"bbctl\"}",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"
