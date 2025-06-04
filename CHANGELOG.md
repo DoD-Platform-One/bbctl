@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [2.0.0-bb.1] (2025-06-04)
+### Changed
+- adjusted cypress test to use gluon grafana logon built in command
+
 ## [2.0.0-bb.0] (2025-06-02)
 ### Changed
 - updated all dashboard queries label selector from "app" to "app_kubernetes_io_name" to work with Alloy
