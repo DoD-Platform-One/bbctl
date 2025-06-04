@@ -138,7 +138,7 @@
               "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
-            "expr": "{app=\"bbctl-bigbang-preflight\", container=\"bbctl\"} | json",
+            "expr": "{app_kubernetes_io_name=\"bbctl-bigbang-preflight\", container=\"bbctl\"} | json",
             "legendFormat": "",
             "queryType": "range",
             "refId": "A"

@@ -3,6 +3,12 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [2.0.0-bb.0] (2025-06-02)
+### Changed
+- updated all dashboard queries label selector from "app" to "app_kubernetes_io_name" to work with Alloy
+### Deprecated
+- Promtail is now deprecated and is only supported by the 1.0.0-bb.x chart versions
+
 ## [1.0.0-bb.11] (2025-06-02)
 ### Changed
 - gluon updated from 0.5.19 to 0.6.2
