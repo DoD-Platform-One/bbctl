@@ -6,10 +6,16 @@ before(function () {
       cy.contains('SSO').click();
       cy.performKeycloakLogin(Cypress.env('tnr_username'), Cypress.env('tnr_password'))
     } else {
-      cy.get('input[name="user"]').type(Cypress.env('grafana_username'));
-      cy.get('input[name="password"]').type(Cypress.env('grafana_password'));
-      cy.contains('Log in').click();
-      cy.wait(1000);
+      cy.visit(Cypress.env('grafana_url'))
+        .then(() => {
+          // Check if the URL contains '/login'
+          cy.url().then(currentUrl => {
+            if (currentUrl.includes('/login')) {
+              // Perform login if the URL contains '/login'
+              cy.performGrafanaLogin(Cypress.env('grafana_username'), Cypress.env('grafana_password'));
+            }
+          });
+        });
     }
   });
   
