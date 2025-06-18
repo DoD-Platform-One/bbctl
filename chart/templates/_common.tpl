@@ -79,6 +79,7 @@ metadata:
     {{- .custom.labels | nindent 4 }}
 spec:
   schedule: {{ .custom.schedule }}
+  concurrencyPolicy: Forbid
   jobTemplate:
     spec:
       template:
