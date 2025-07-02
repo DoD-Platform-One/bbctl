@@ -3,6 +3,11 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [2.0.0-bb.3] (2025-06-27)
+### Changed
+- gluon updated from 0.6.2 to 0.6.3
+- Upgraded bbctl to application version 1.4.0
+
 ## [2.0.0-bb.2] (2025-06-18)
 ### Changed
 - set "concurrencyPolicy: Forbid"
