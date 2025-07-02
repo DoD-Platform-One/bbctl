@@ -9,8 +9,8 @@ neuvector:
   enabled: false
 # loki:
 #   enabled: false
-# promtail:
-#   enabled: false
+promtail:
+  enabled: false
 tempo:
   enabled: false
 kyvernoReporter:
@@ -30,7 +30,7 @@ grafana:
   enabled: true
 loki:
   enabled: true
-promtail:
+alloy:
   enabled: true
 addons:
   minioOperator:
