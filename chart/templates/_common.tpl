@@ -34,9 +34,6 @@ data:
   config.yaml: |
     # The configuration for the {{ .custom.fullname }}, this comment provides a properly indented first line
     {{- .custom.config | nindent 4 }}
-  credentials.yaml: |
-    # The credentials file for the {{ .custom.fullname }}, this comment provides a properly indented first line
-    {{- .scope.Values.credentialsFile | toYaml | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -126,7 +123,8 @@ spec:
               # curl -s -X GET --cacert "${CACERT}" --header "Authorization: Bearer ${TOKEN}" ${HOST}/api/v1/configmaps | yq -r '[.items[] | select(.metadata.name=="kube-root-ca.crt") | .data."ca.crt"] | unique | .[]'
             volumeMounts:
             - name: config-volume
-              mountPath: /home/bigbang/.bbctl/
+              mountPath: /home/bigbang/.bbctl/config.yaml
+              subPath: config.yaml
               readOnly: true
             - name: ro-kube-config-volume
               mountPath: /home/bigbang/ro.kube/
@@ -151,11 +149,18 @@ spec:
             {{- end }}
             volumeMounts:
             - name: config-volume
-              mountPath: /home/bigbang/.bbctl/
+              mountPath: /home/bigbang/.bbctl/config.yaml
+              subPath: config.yaml
               readOnly: true
             - name: kube-config-volume
               mountPath: /home/bigbang/.kube/
               readOnly: true
+            {{- if or .scope.Values.credentialsFile.credentials .scope.Values.registryCredentials.password }}
+            - name: credentials-volume
+              mountPath: /home/bigbang/.bbctl/credentials.yaml
+              subPath: credentials.yaml
+              readOnly: true
+            {{- end }}
             {{- with .scope.Values.resources }}
             resources:
               {{- toYaml . | nindent 14 }}
@@ -171,6 +176,11 @@ spec:
             emptyDir: {}
           - name: tmp
             emptyDir: {}
+          {{- if or .scope.Values.credentialsFile.credentials .scope.Values.registryCredentials.password }}
+          - name: credentials-volume
+            secret:
+              secretName: {{ include "bbctl.fullname" .scope }}-credentials
+          {{- end }}
           restartPolicy: Never
           {{- with .scope.Values.nodeSelector }}
           nodeSelector:
