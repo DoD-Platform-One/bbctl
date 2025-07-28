@@ -3,6 +3,14 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+## [2.1.0-bb.1] (2025-07-24)
+### Changed
+- gluon updated from 0.6.3 to 0.7.0
+- updated registry1.dso.mil/ironbank/opensource/yq/yq (source) 4.45.4 -> 4.47.1
+- updated bbctl to application version 1.5.0
+- updated ubi-minimal image major version from 8 to 9
+  - registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal:8.10 -> registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.6
+
 ## [2.1.0-bb.0] (2025-07-09)
 ### Changed
 - Modified chart to use a secret for credentials instead of a configmap.
