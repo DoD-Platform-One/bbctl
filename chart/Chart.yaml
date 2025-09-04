@@ -24,7 +24,7 @@ description: |
   `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
-version: 2.1.0-bb.1
+version: 2.1.0-bb.2
 # This is the version number of the application being deployed.
 appVersion: "1.5.0"
 keywords:
@@ -53,5 +53,5 @@ annotations:
       image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.6
 dependencies:
   - name: gluon
-    version: "0.7.0"
+    version: "0.8.0"
     repository: "oci://registry1.dso.mil/bigbang"
