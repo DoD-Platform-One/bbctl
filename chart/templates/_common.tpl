@@ -155,7 +155,7 @@ spec:
             - name: kube-config-volume
               mountPath: /home/bigbang/.kube/
               readOnly: true
-            {{- if or .scope.Values.credentialsFile.credentials .scope.Values.registryCredentials.password }}
+            {{- if .scope.Values.credentialsFile.credentials }}
             - name: credentials-volume
               mountPath: /home/bigbang/.bbctl/credentials.yaml
               subPath: credentials.yaml
@@ -176,7 +176,7 @@ spec:
             emptyDir: {}
           - name: tmp
             emptyDir: {}
-          {{- if or .scope.Values.credentialsFile.credentials .scope.Values.registryCredentials.password }}
+          {{- if .scope.Values.credentialsFile.credentials }}
           - name: credentials-volume
             secret:
               secretName: {{ include "bbctl.fullname" .scope }}-credentials

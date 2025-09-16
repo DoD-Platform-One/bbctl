@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 2.1.0-bb.2](https://img.shields.io/badge/Version-2.1.0--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.0](https://img.shields.io/badge/AppVersion-1.5.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 3.0.0-bb.0](https://img.shields.io/badge/Version-3.0.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -86,14 +86,10 @@ helm install bbctl chart/
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `"1.5.0"` |  |
+| image.tag | string | `"2.0.0"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
-| yqImage.tag | string | `"4.47.1"` |  |
-| registryCredentials.registry | string | `"registry1.dso.mil"` |  |
-| registryCredentials.username | string | `""` |  |
-| registryCredentials.password | string | `""` |  |
-| registryCredentials.email | string | `""` |  |
+| yqImage.tag | string | `"4.47.2"` |  |
 | imagePullSecrets[0].name | string | `"private-registry"` |  |
 | nameOverride | string | `""` |  |
 | fullnameOverride | string | `""` |  |
@@ -125,14 +121,13 @@ helm install bbctl chart/
 | baseConfig.bbctl-log-output | string | `"stderr"` |  |
 | baseConfig.big-bang-repo | string | `"https://repo1.dso.mil/big-bang/bigbang/-/blob/master/"` |  |
 | baseConfig.big-bang-skip-auto-update | bool | `true` |  |
+| baseConfig.registry-override | list | `[]` |  |
 | baseConfig.output-config.format | string | `"json"` |  |
 | baseConfig.output-config.json-pretty-print | bool | `false` |  |
+| baseConfig.preflight-check.image | string | `""` |  |
 | baseConfig.skip-update-check | bool | `true` |  |
 | baseConfig.util-credential-helper.big-bang-credential-helper-credentials-file-path | string | `"/home/bigbang/.bbctl/credentials.yaml"` |  |
 | baseConfig.util-credential-helper.big-bang-credential-helper | string | `"credentials-file"` |  |
-| baseConfig.preflight-check.registryserver | string | `""` |  |
-| baseConfig.preflight-check.registryusername | string | `""` |  |
-| baseConfig.preflight-check.registrypassword | string | `""` |  |
 | baseLabels | object | `{}` |  |
 | bigbangUpdater.enabled | bool | `true` |  |
 | bigbangUpdater.importDashboards | bool | `true` |  |
