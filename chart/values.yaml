@@ -44,18 +44,12 @@ image:
   repository: "registry1.dso.mil/ironbank/big-bang/bbctl"
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 1.5.0
+  tag: 2.0.0
 
 yqImage:
   repository: "registry1.dso.mil/ironbank/opensource/yq/yq"
   pullPolicy: Always
-  tag: "4.47.1"
-
-registryCredentials:
-  registry: registry1.dso.mil
-  username: ""
-  password: ""
-  email: ""
+  tag: "4.47.2"
 
 imagePullSecrets:
   - name: "private-registry"
@@ -113,17 +107,20 @@ baseConfig:
   bbctl-log-output: stderr
   big-bang-repo: https://repo1.dso.mil/big-bang/bigbang/-/blob/master/
   big-bang-skip-auto-update: true
+  # registry-override - List of docker image registry hostnames to use in commands that deploy images
+  # Defaults to "registry1.dso.mil"
+  registry-override: []
   output-config:
     format: json
     json-pretty-print: false
+  # preflight-check.image - Image override including tag for the preflight check pod.
+  # Defaults to registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.6
+  preflight-check:
+    image: ""
   skip-update-check: true
   util-credential-helper:
     big-bang-credential-helper-credentials-file-path: "/home/bigbang/.bbctl/credentials.yaml"
     big-bang-credential-helper: "credentials-file"
-  preflight-check:
-    registryserver: ""
-    registryusername: ""
-    registrypassword: ""
 
 baseLabels: {}
 

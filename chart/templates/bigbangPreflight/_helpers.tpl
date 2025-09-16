@@ -99,10 +99,16 @@ Create the config file
 Create the command
 */}}
 {{- define "bigbang-preflight.command" -}}
+{{- $args := "" }}
+{{- $imageOverride := dig "baseConfig" "preflight-check" "image" "" .Values.AsMap }}
+{{- if $imageOverride }}
+{{- $args = print $args "-i " $imageOverride }}
+{{- end }}
+
 - "/bin/bash"
 - "-c"
 - | 
-  echo "$(./bbctl preflight-check)"
+  echo {{ print "$(./bbctl preflight-check " (include "bbctl.registryOverride" . | trim) " " $args ")"}}
 {{- end }}
 
 {{/*

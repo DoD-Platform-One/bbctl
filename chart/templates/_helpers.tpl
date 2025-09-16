@@ -115,3 +115,15 @@ bbctl-version: {{ .Values.image.tag }}
 {}
 {{- end }}
 {{- end }}
+
+{{/*
+Define the registry override parameter if provided in values.yaml
+*/}}
+{{- define "bbctl.registryOverride" -}}
+{{- $overrides := (index .Values.baseConfig "registry-override") }}
+{{- $overrideParameter := "" }}
+{{- range $overrides }}
+    {{- $overrideParameter = print $overrideParameter " --registry-override " . }}
+{{- end }}
+{{ $overrideParameter }}
+{{- end }}

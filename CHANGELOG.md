@@ -3,6 +3,16 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+
+## [3.0.0-bb.0] (2025-09-15)
+### Changed
+- updated bbctl to application version 2.0.0
+- added new registry-override section to the app config to support custom container registries in multiple commands
+- added preflight check image override value to support custom image (defaults to registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.6 when empty)
+- removed preflight check credentials from app config
+- gluon updated from 0.8.0 to 0.9.0
+- updated registry1.dso.mil/ironbank/opensource/yq/yq (source) 4.47.1 -> 4.47.2
+
 ## [2.1.0-bb.2] (2025-08-16)
 ### Changed
 - gluon updated from 0.7.0 to 0.8.0
