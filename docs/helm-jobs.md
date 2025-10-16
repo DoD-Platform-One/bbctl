@@ -28,7 +28,7 @@ This document defines the process used to add additional Helm Chart resources.
 
 
   This will primarily be focused on adding new commands to our existing cronjob definitions.
-  A script has been created to automate this process [here](/scripts/add-cronjob.sh).
+  A script has been created to automate this process [here](../scripts/add-cronjob.sh).
 
 
 Use the following syntax to add `bbctl` cronjob commands from your terminal window:
