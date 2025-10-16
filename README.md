@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 3.0.0-bb.0](https://img.shields.io/badge/Version-3.0.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 3.0.1-bb.0](https://img.shields.io/badge/Version-3.0.1--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.0.0](https://img.shields.io/badge/AppVersion-2.0.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -13,7 +13,7 @@ This repository is for the `bbctl` chart. For `bbctl` application, development p
 
 ## Developer Documentation
 
-Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
+Help Contribute! See the [developer documentation](docs/DEVELOPMENT_MAINTENANCE.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
 ## `bbctl` Usage and Design Priorities
 
@@ -37,7 +37,6 @@ Application development for `bbctl` is done in this repository: https://repo1.ds
 
 ## Learn More
 
-- [Application Overview](docs/overview.md)
 - [Other Documentation](docs/)
 
 ## Pre-Requisites
@@ -86,10 +85,10 @@ helm install bbctl chart/
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `"2.0.0"` |  |
+| image.tag | string | `"2.1.0"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
-| yqImage.tag | string | `"4.47.2"` |  |
+| yqImage.tag | string | `"4.48.1"` |  |
 | imagePullSecrets[0].name | string | `"private-registry"` |  |
 | nameOverride | string | `""` |  |
 | fullnameOverride | string | `""` |  |
