@@ -44,12 +44,12 @@ image:
   repository: "registry1.dso.mil/ironbank/big-bang/bbctl"
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 2.1.0
+  tag: 2.2.0
 
 yqImage:
   repository: "registry1.dso.mil/ironbank/opensource/yq/yq"
   pullPolicy: Always
-  tag: "4.48.1"
+  tag: "4.50.1"
 
 imagePullSecrets:
   - name: "private-registry"
@@ -96,9 +96,11 @@ credentialsFile:
   - uri: "registry1.dso.mil"
     username: ""
     password: ""
+    email: ""
   - uri: "repo1.dso.mil"
     username: ""
     password: ""
+    email: ""
 
 baseConfig:
   bbctl-log-add-source: true
