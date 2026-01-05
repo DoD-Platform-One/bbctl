@@ -4,6 +4,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [3.0.1-bb.1] (2026-1-2)
+### Changed
+- updated bbctl to application version 2.2.0
+- gluon updated from 0.9.5 to 0.9.7
+- updated registry1.dso.mil/ironbank/opensource/yq/yq (source) 4.48.1 -> 4.50.1
+- updated registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal (source) 9.6 -> 9.7
+
 ## [3.0.1-bb.0] (2025-10-15)
 ### Changed
 - updated bbctl to application version 2.1.0
