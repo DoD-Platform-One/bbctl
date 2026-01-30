@@ -11,7 +11,7 @@ description: |
 
   ## Developer Documentation
 
-  Help Contribute! See the [developer documentation](/docs/developer.md). The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
+  Help Contribute! See [CONTRIBUTING.md](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/CONTRIBUTING.md) and the [developer documentation](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/docs/DEVELOPMENT_MAINTENANCE.md) for more information. The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
   ## `bbctl` Usage and Design Priorities
 
@@ -24,9 +24,9 @@ description: |
   `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
 type: application
 # This is the chart version. This version number should be incremented each time you make changes
-version: 3.0.1-bb.1
+version: 3.0.1-bb.2
 # This is the version number of the application being deployed.
-appVersion: "2.2.0"
+appVersion: "2.3.1"
 keywords:
 - bigbang
 - bbctl
@@ -40,13 +40,13 @@ maintainers:
 annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   bigbang.dev/applicationVersions: |
-    - bbctl: 2.2.0
+    - bbctl: 2.3.1
   bigbang.dev/upstreamReleaseNotesMarkdown: |
     There is no upstream for this chart.
     Application development for `bbctl` is done in this repository: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
   helm.sh/images: |
     - name: bbctl
-      image: registry1.dso.mil/ironbank/big-bang/bbctl:2.2.0
+      image: registry1.dso.mil/ironbank/big-bang/bbctl:2.3.1
     - name: yq
       image: registry1.dso.mil/ironbank/opensource/yq/yq:4.50.1
     - name: ubi9-minimal

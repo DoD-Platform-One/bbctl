@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 3.0.1-bb.1](https://img.shields.io/badge/Version-3.0.1--bb.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.2.0](https://img.shields.io/badge/AppVersion-2.2.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 3.0.1-bb.2](https://img.shields.io/badge/Version-3.0.1--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.1](https://img.shields.io/badge/AppVersion-2.3.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -9,11 +9,11 @@ bbctl as a helm chart for partial automated management of Big Bang.
 
 `bbctl` is a command line interface (CLI) tool to simplify development, deployment, auditing, and maintaining the deployment of Big Bang a kubernetes cluster.
 
-This repository is for the `bbctl` Helm chart. For `bbctl` application, development please refer to: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
+This repository is for the `bbctl` chart. For `bbctl` application, development please refer to: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
 
 ## Developer Documentation
 
-Help Contribute! See the [developer documentation](https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl/-/blob/main/docs/developer.md) for more information on how to contribute to the bbctl application.
+Help Contribute! See [CONTRIBUTING.md](/CONTRIBUTING.md) and the [developer documentation](/docs/DEVELOPMENT_MAINTENANCE.md) for more information. The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
 ## `bbctl` Usage and Design Priorities
 
@@ -86,7 +86,7 @@ helm install bbctl chart/
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
 | image.pullPolicy | string | `"Always"` |  |
-| image.tag | string | `"2.2.0"` |  |
+| image.tag | string | `"2.3.1"` |  |
 | yqImage.repository | string | `"registry1.dso.mil/ironbank/opensource/yq/yq"` |  |
 | yqImage.pullPolicy | string | `"Always"` |  |
 | yqImage.tag | string | `"4.50.1"` |  |

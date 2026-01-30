@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [3.0.1-bb.2] (2026-01-29)
+### Changed
+- updated bbctl to application version 2.3.1
+
 ## [3.0.1-bb.1] (2026-1-2)
 ### Changed
 - updated bbctl to application version 2.2.0
