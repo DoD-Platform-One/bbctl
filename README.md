@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # bbctl
 
-![Version: 3.0.1-bb.2](https://img.shields.io/badge/Version-3.0.1--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.1](https://img.shields.io/badge/AppVersion-2.3.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 3.0.1-bb.3](https://img.shields.io/badge/Version-3.0.1--bb.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.3.1](https://img.shields.io/badge/AppVersion-2.3.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 bbctl as a helm chart for partial automated management of Big Bang.
 
@@ -13,7 +13,7 @@ This repository is for the `bbctl` chart. For `bbctl` application, development p
 
 ## Developer Documentation
 
-Help Contribute! See [CONTRIBUTING.md](/CONTRIBUTING.md) and the [developer documentation](/docs/DEVELOPMENT_MAINTENANCE.md) for more information. The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
+Help Contribute! See [CONTRIBUTING.md](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/CONTRIBUTING.md) and the [developer documentation](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/docs/DEVELOPMENT_MAINTENANCE.md) for more information. The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
 
 ## `bbctl` Usage and Design Priorities
 
@@ -65,23 +65,34 @@ helm install bbctl chart/
 |-----|------|---------|-------------|
 | domain | string | `"dev.bigbang.mil"` | Passdown values from Big Bang These values are for the BigBang overrides |
 | networkPolicies.enabled | bool | `false` |  |
-| networkPolicies.controlPlaneCidr | string | `"0.0.0.0/0"` |  |
-| networkPolicies.ingressLabels.app | string | `"istio-ingressgateway"` |  |
-| networkPolicies.ingressLabels.istio | string | `"ingressgateway"` |  |
+| networkPolicies.egress.definitions.private-registry.to[0].ipBlock.cidr | string | `"15.205.173.153/32"` |  |
+| networkPolicies.egress.definitions.private-registry.ports[0].port | int | `443` |  |
+| networkPolicies.egress.definitions.private-registry.ports[0].protocol | string | `"TCP"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.to[0].ipBlock.cidr | string | `"15.200.176.128/28"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.to[1].ipBlock.cidr | string | `"15.200.28.240/28"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.to[2].ipBlock.cidr | string | `"108.175.48.0/22"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.to[3].ipBlock.cidr | string | `"108.175.56.0/22"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.to[4].ipBlock.cidr | string | `"136.18.0.0/23"` |  |
+| networkPolicies.egress.definitions.bigbang-releases.ports[0].port | int | `443` |  |
+| networkPolicies.egress.definitions.bigbang-releases.ports[0].protocol | string | `"TCP"` |  |
+| networkPolicies.egress.from.bbctl-bigbang-policy.to.definition.kubeAPI | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-preflight.to.definition.kubeAPI | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-status.to.definition.kubeAPI | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-updater.to.definition.kubeAPI | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-updater.to.definition.private-registry | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-updater.to.definition.bigbang-releases | bool | `true` |  |
+| networkPolicies.egress.from.bbctl-bigbang-violations.to.definition.kubeAPI | bool | `true` |  |
 | networkPolicies.additionalPolicies | list | `[]` |  |
 | istio.enabled | bool | `false` |  |
-| istio.hardened.enabled | bool | `false` |  |
-| istio.hardened.outboundTrafficPolicyMode | string | `"REGISTRY_ONLY"` |  |
-| istio.hardened.customServiceEntries[0].name | string | `"external-service-entries-bbctl"` |  |
-| istio.hardened.customServiceEntries[0].enabled | bool | `true` |  |
-| istio.hardened.customServiceEntries[0].spec.hosts[0] | string | `"repo1.dso.mil"` |  |
-| istio.hardened.customServiceEntries[0].spec.location | string | `"MESH_EXTERNAL"` |  |
-| istio.hardened.customServiceEntries[0].spec.ports[0].number | int | `443` |  |
-| istio.hardened.customServiceEntries[0].spec.ports[0].protocol | string | `"TLS"` |  |
-| istio.hardened.customServiceEntries[0].spec.ports[0].name | string | `"https"` |  |
-| istio.hardened.customServiceEntries[0].spec.resolution | string | `"DNS"` |  |
-| istio.hardened.customAuthorizationPolicies | list | `[]` |  |
-| istio.hardened.clusterWideHardenedEnabled | bool | `false` |  |
+| istio.sidecar.enabled | bool | `false` |  |
+| istio.sidecar.outboundTrafficPolicyMode | string | `"REGISTRY_ONLY"` |  |
+| istio.authorizationPolicies.enabled | bool | `false` |  |
+| istio.authorizationPolicies.custom | list | `[]` |  |
+| istio.mtls.mode | string | `"STRICT"` |  |
+| routes.outbound.bbctl.enabled | bool | `true` |  |
+| routes.outbound.bbctl.hosts[0] | string | `"repo1.dso.mil"` |  |
+| routes.outbound.bbctl.hosts[1] | string | `"registry1.dso.mil"` |  |
+| routes.outbound.bbctl.hosts[2] | string | `"umbrella-bigbang-releases.s3-us-gov-west-1.amazonaws.com"` |  |
 | monitoring.enabled | bool | `false` |  |
 | bbtests.enabled | bool | `false` |  |
 | image.repository | string | `"registry1.dso.mil/ironbank/big-bang/bbctl"` |  |
