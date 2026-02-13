@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [3.0.1-bb.3] (2026-02-11)
+### Changed
+- Updated gluon from 0.9.7 to 0.9.8
+- Added bb-common library chart to dynamically generate network policies and istio related resources
+
 ## [3.0.1-bb.2] (2026-01-29)
 ### Changed
 - updated bbctl to application version 2.3.1
