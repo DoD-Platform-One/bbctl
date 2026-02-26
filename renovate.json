@@ -2,6 +2,7 @@
     "baseBranches": [
         "main"
     ],
+    "branchName": "renovate/ironbank",
     "pinDigests": false,
     "configWarningReuseIssue": false,
     "dependencyDashboard": true,
